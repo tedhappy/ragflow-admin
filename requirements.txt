@@ -1,0 +1,20 @@
+﻿# RAGFlow Admin - Python Dependencies
+
+# Web Framework (与RAGFlow一致)
+quart==0.20.0
+quart-cors==0.8.0
+flasgger>=0.9.7.1,<0.10.0
+
+# RAGFlow SDK
+ragflow-sdk
+
+# Config
+pyyaml>=6.0
+python-dotenv>=1.0.0
+
+# Utils
+httpx>=0.28.0
+pydantic>=2.0.0
+
+# Auth
+itsdangerous>=2.1.0

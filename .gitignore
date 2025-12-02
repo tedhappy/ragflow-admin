@@ -1,0 +1,41 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+
+# Config (用户配置不提交)
+conf/config.yaml
+
+# Logs
+logs/
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+dist/
+.umi/
+.umi-production/
+
+# Build
+build/
+*.egg-info/
+
+# Test
+.coverage
+htmlcov/
+.pytest_cache/

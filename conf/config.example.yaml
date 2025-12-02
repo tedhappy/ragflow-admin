@@ -1,0 +1,27 @@
+﻿# RAGFlow Admin 配置文件
+# 复制此文件为 config.yaml 并修改配置
+
+# RAGFlow 连接配置
+ragflow:
+  # RAGFlow 服务地址
+  base_url: "http://localhost:9380"
+  # API Key (在RAGFlow用户设置中获取)
+  api_key: "ragflow-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+# 管理后台服务配置
+server:
+  # 服务监听地址
+  host: "0.0.0.0"
+  # 服务端口
+  port: 8080
+  # 调试模式
+  debug: true
+  # 密钥 (用于session加密，请修改为随机字符串)
+  secret_key: "change-me-to-random-string"
+
+# 管理员账号配置
+admin:
+  # 用户名
+  username: "admin"
+  # 密码 (请修改为安全密码)
+  password: "admin123"

@@ -1,0 +1,38 @@
+﻿{
+  "private": true,
+  "name": "ragflow-admin-web",
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "umi dev",
+    "build": "umi build",
+    "postinstall": "umi setup",
+    "start": "npm run dev"
+  },
+  "dependencies": {
+    "@ant-design/icons": "^5.2.6",
+    "@ant-design/pro-components": "^2.6.46",
+    "@ant-design/pro-layout": "^7.17.16",
+    "@tanstack/react-query": "^5.40.0",
+    "ahooks": "^3.7.10",
+    "antd": "^5.12.7",
+    "axios": "^1.12.0",
+    "classnames": "^2.5.1",
+    "dayjs": "^1.11.10",
+    "i18next": "^23.7.16",
+    "i18next-browser-languagedetector": "^8.0.0",
+    "lucide-react": "^0.546.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-i18next": "^14.0.0",
+    "umi": "^4.0.90",
+    "zustand": "^4.5.2"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.33",
+    "@types/react-dom": "^18.0.11",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3",
+    "typescript": "^5.0.3"
+  }
+}
