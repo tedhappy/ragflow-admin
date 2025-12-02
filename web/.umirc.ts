@@ -11,8 +11,6 @@ export default defineConfig({
     { path: '/settings', component: '@/pages/settings' },
   ],
   npmClient: 'npm',
-  tailwindcss: {},
-  plugins: ['@umijs/plugins/dist/tailwindcss'],
   proxy: {
     '/api': {
       target: 'http://localhost:8080',
