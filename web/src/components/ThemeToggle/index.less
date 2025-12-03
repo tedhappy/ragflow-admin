@@ -1,0 +1,40 @@
+.themeToggle {
+  padding: 2px !important;
+  height: 28px !important;
+  width: 56px !important;
+  border-radius: 14px !important;
+  background: var(--bg-card) !important;
+  border: none !important;
+  
+  &:hover {
+    background: var(--bg-card) !important;
+  }
+}
+
+.toggleContainer {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+}
+
+.iconWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  width: 22px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  color: var(--text-disabled);
+  
+  &.active {
+    background: var(--bg-base);
+    color: var(--text-primary);
+    flex: 1;
+  }
+}
+
+.icon {
+  font-size: 14px;
+}

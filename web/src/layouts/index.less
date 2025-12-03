@@ -5,14 +5,16 @@
 }
 
 .sider {
-  border-right: 1px solid @border-color-light;
+  border-right: 1px solid var(--border-default);
+  transition: border-color 0.3s;
   
   .logo {
     height: @header-height;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-bottom: 1px solid @border-color-light;
+    border-bottom: 1px solid var(--border-default);
+    transition: border-color 0.3s;
     
     img {
       height: 32px;
@@ -22,7 +24,7 @@
     .title {
       font-size: 18px;
       font-weight: @font-weight-semibold;
-      color: @primary-color;
+      color: var(--primary-color);
       white-space: nowrap;
     }
   }
@@ -31,16 +33,17 @@
 .header {
   height: @header-height;
   padding: 0 @spacing-lg;
-  background: @bg-color;
-  border-bottom: 1px solid @border-color-light;
+  background: var(--bg-header);
+  border-bottom: 1px solid var(--border-default);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  transition: background-color 0.3s, border-color 0.3s;
   
   .headerTitle {
     font-size: @font-size-lg;
     font-weight: @font-weight-medium;
-    color: @text-color;
+    color: var(--text-primary);
   }
   
   .headerRight {
@@ -52,8 +55,9 @@
 
 .content {
   padding: @spacing-lg;
-  background: @layout-bg;
+  background: var(--bg-canvas);
   overflow: auto;
+  transition: background-color 0.3s;
 }
 
 .menu {
@@ -63,14 +67,15 @@
     .ant-menu-item {
       margin: 4px 8px;
       border-radius: @border-radius-base;
+      transition: background-color 0.3s;
       
       &:hover {
-        background-color: @primary-color-light;
+        background-color: var(--bg-card) !important;
       }
     }
     
     .ant-menu-item-selected {
-      background-color: @primary-color-light;
+      background-color: var(--bg-card) !important;
       
       &::after {
         display: none;

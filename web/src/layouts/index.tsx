@@ -17,20 +17,32 @@ import {
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
+import ThemeToggle from '@/components/ThemeToggle';
+import { ThemeProvider, useTheme } from '@/components/ThemeProvider';
 import { Language } from '@/locales';
 
 import styles from './index.less';
 
 const { Header, Sider, Content } = Layout;
 
-const BasicLayout: React.FC = () => {
+// Inner layout component that uses theme context
+const LayoutContent: React.FC = () => {
   const { t, i18n } = useTranslation();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const { token } = theme.useToken();
+  const { isDark } = useTheme();
 
   // Get Ant Design locale based on current language
   const antdLocale = i18n.language === Language.Zh ? zhCN : enUS;
+  
+  // Ant Design theme config for dark mode
+  const antdTheme = {
+    algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
+    token: {
+      colorPrimary: '#1677ff',
+    },
+  };
 
   const menuItems = [
     { 
@@ -77,7 +89,7 @@ const BasicLayout: React.FC = () => {
   ];
 
   return (
-    <ConfigProvider locale={antdLocale}>
+    <ConfigProvider locale={antdLocale} theme={antdTheme}>
       <Layout className={styles.layout}>
         <Sider 
           theme="light" 
@@ -110,6 +122,7 @@ const BasicLayout: React.FC = () => {
               <span className={styles.headerTitle}>{t('header.console')}</span>
             </Space>
             <div className={styles.headerRight}>
+              <ThemeToggle />
               <LanguageSwitcher />
               <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
                 <Space style={{ cursor: 'pointer' }}>
@@ -129,6 +142,15 @@ const BasicLayout: React.FC = () => {
         </Layout>
       </Layout>
     </ConfigProvider>
+  );
+};
+
+// Main layout component that wraps with ThemeProvider
+const BasicLayout: React.FC = () => {
+  return (
+    <ThemeProvider>
+      <LayoutContent />
+    </ThemeProvider>
   );
 };
 

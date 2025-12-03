@@ -1,5 +1,53 @@
 ﻿@import './less/variable.less';
 
+// Light theme CSS variables (default)
+:root {
+  --bg-base: #ffffff;
+  --bg-card: rgba(0, 0, 0, 0.05);
+  --bg-component: #ffffff;
+  --bg-canvas: #f6f6f7;
+  --bg-sider: #ffffff;
+  --bg-header: #ffffff;
+  
+  --text-primary: #161618;
+  --text-secondary: #75787a;
+  --text-disabled: #b2b5b7;
+  
+  --border-default: rgba(0, 0, 0, 0.1);
+  --border-strong: rgba(0, 0, 0, 0.2);
+  
+  --shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px 0 rgba(0, 0, 0, 0.02);
+  
+  --primary-color: #1677ff;
+  --success-color: #52c41a;
+  --warning-color: #faad14;
+  --error-color: #ff4d4f;
+}
+
+// Dark theme CSS variables
+:root.dark {
+  --bg-base: #161618;
+  --bg-card: rgba(255, 255, 255, 0.05);
+  --bg-component: #202025;
+  --bg-canvas: #000000;
+  --bg-sider: #141414;
+  --bg-header: #1f1f1f;
+  
+  --text-primary: #f6f6f7;
+  --text-secondary: #b2b5b7;
+  --text-disabled: #75787a;
+  
+  --border-default: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.2);
+  
+  --shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.1), 0 1px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px 0 rgba(0, 0, 0, 0.1);
+  
+  --primary-color: #1677ff;
+  --success-color: #52c41a;
+  --warning-color: #faad14;
+  --error-color: #ff4d4f;
+}
+
 html {
   height: 100%;
   overflow: hidden;
@@ -8,10 +56,11 @@ html {
 body {
   font-family: @font-family;
   font-size: @font-size-base;
-  color: @text-color;
+  color: var(--text-primary);
   margin: 0;
   height: 100%;
-  background-color: @layout-bg;
+  background-color: var(--bg-canvas);
+  transition: background-color 0.3s, color 0.3s;
 }
 
 #root {
@@ -30,33 +79,196 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--bg-card);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: var(--text-disabled);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: var(--text-secondary);
 }
 
 // Ant Design overrides for RAGFlow Admin style
 .ant-layout {
-  background: @layout-bg;
+  background: var(--bg-canvas) !important;
+  transition: background-color 0.3s;
 }
 
 .ant-layout-sider {
-  background: @bg-color !important;
+  background: var(--bg-sider) !important;
+  transition: background-color 0.3s;
+}
+
+.ant-layout-header {
+  background: var(--bg-header) !important;
+  transition: background-color 0.3s;
 }
 
 .ant-menu-light {
-  background: transparent;
+  background: transparent !important;
+}
+
+// Dark mode menu styles
+:root.dark {
+  .ant-menu-light {
+    color: var(--text-primary);
+    
+    .ant-menu-item {
+      color: var(--text-secondary);
+      
+      &:hover {
+        color: var(--text-primary);
+        background: var(--bg-card) !important;
+      }
+      
+      &.ant-menu-item-selected {
+        color: var(--primary-color);
+        background: var(--bg-card) !important;
+      }
+    }
+    
+    .ant-menu-title-content {
+      color: inherit;
+    }
+  }
+  
+  .ant-card {
+    background: var(--bg-component);
+    border-color: var(--border-default);
+  }
+  
+  .ant-table {
+    background: var(--bg-component);
+    color: var(--text-primary);
+    
+    .ant-table-thead > tr > th {
+      background: var(--bg-card);
+      color: var(--text-primary);
+      border-color: var(--border-default);
+    }
+    
+    .ant-table-tbody > tr > td {
+      border-color: var(--border-default);
+    }
+    
+    .ant-table-tbody > tr:hover > td {
+      background: var(--bg-card);
+    }
+  }
+  
+  .ant-input {
+    background: var(--bg-component);
+    border-color: var(--border-default);
+    color: var(--text-primary);
+    
+    &::placeholder {
+      color: var(--text-disabled);
+    }
+  }
+  
+  .ant-select-selector {
+    background: var(--bg-component) !important;
+    border-color: var(--border-default) !important;
+    color: var(--text-primary);
+  }
+  
+  .ant-btn-default {
+    background: var(--bg-component);
+    border-color: var(--border-default);
+    color: var(--text-primary);
+    
+    &:hover {
+      border-color: var(--primary-color);
+      color: var(--primary-color);
+    }
+  }
+  
+  .ant-typography {
+    color: var(--text-primary);
+  }
+  
+  .ant-typography.ant-typography-secondary {
+    color: var(--text-secondary);
+  }
+  
+  .ant-spin-text {
+    color: var(--text-secondary);
+  }
+  
+  .ant-pagination {
+    .ant-pagination-item {
+      background: var(--bg-component);
+      border-color: var(--border-default);
+      
+      a {
+        color: var(--text-primary);
+      }
+      
+      &:hover {
+        border-color: var(--primary-color);
+      }
+    }
+    
+    .ant-pagination-item-active {
+      border-color: var(--primary-color);
+    }
+  }
+  
+  .ant-form-item-label > label {
+    color: var(--text-primary);
+  }
+  
+  .ant-divider {
+    border-color: var(--border-default);
+  }
+  
+  .ant-tag {
+    background: var(--bg-card);
+    border-color: var(--border-default);
+    color: var(--text-primary);
+  }
+  
+  .ant-statistic-title {
+    color: var(--text-secondary);
+  }
+  
+  .ant-statistic-content {
+    color: var(--text-primary);
+  }
+  
+  .ant-dropdown-menu {
+    background: var(--bg-component);
+    
+    .ant-dropdown-menu-item {
+      color: var(--text-primary);
+      
+      &:hover {
+        background: var(--bg-card);
+      }
+    }
+  }
+  
+  .ant-popover-inner {
+    background: var(--bg-component);
+    
+    .ant-popover-title {
+      color: var(--text-primary);
+    }
+    
+    .ant-popover-inner-content {
+      color: var(--text-primary);
+    }
+  }
 }
 
 .ant-card {
   border-radius: @border-radius-lg;
-  box-shadow: @box-shadow-card;
+  box-shadow: var(--shadow-card);
+  background: var(--bg-component);
+  border-color: var(--border-default);
+  transition: background-color 0.3s, border-color 0.3s;
 }
