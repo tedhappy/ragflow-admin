@@ -1,12 +1,13 @@
 ﻿import React, { useState } from 'react';
 import { Table, Button, Space, Card, message, Input, Typography, Spin } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { DeleteOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { chatApi, Chat } from '@/services/api';
 import { useTableList } from '@/hooks/useTableList';
 import { useConnectionCheck } from '@/hooks/useConnectionCheck';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import ConfirmDelete from '@/components/ConfirmDelete';
 import { translateErrorMessage } from '@/utils/i18n';
 import dayjs from 'dayjs';
 
@@ -77,14 +78,7 @@ const ChatPage: React.FC = () => {
       key: 'action',
       width: 120,
       render: (_, record) => (
-        <Button 
-          type="link" 
-          size="small" 
-          danger
-          onClick={() => handleDelete([record.id])}
-        >
-          {t('common.delete')}
-        </Button>
+        <ConfirmDelete onConfirm={() => handleDelete([record.id])} />
       ),
     },
   ];
@@ -111,14 +105,13 @@ const ChatPage: React.FC = () => {
               </Space>
               <Space>
                 <Button icon={<ReloadOutlined />} onClick={refresh}>{t('common.refresh')}</Button>
-                <Button 
-                  danger 
-                  icon={<DeleteOutlined />}
+                <ConfirmDelete
+                  onConfirm={() => handleDelete(selectedRowKeys as string[])}
                   disabled={selectedRowKeys.length === 0}
-                  onClick={() => handleDelete(selectedRowKeys as string[])}
-                >
-                  {t('common.deleteSelected', { count: selectedRowKeys.length })}
-                </Button>
+                  buttonText={t('common.deleteSelected', { count: selectedRowKeys.length })}
+                  buttonType="default"
+                  buttonSize="middle"
+                />
               </Space>
             </div>
             <Table 
