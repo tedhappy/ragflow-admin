@@ -5,8 +5,9 @@
 #
 
 import httpx
-from quart import Blueprint, jsonify
+from quart import Blueprint, jsonify, request
 from api.settings import settings
+from api.services.ragflow_client import ragflow_client
 
 manager = Blueprint("system", __name__)
 
@@ -72,6 +73,92 @@ async def get_status():
     })
 
 
+@manager.route("/test-connection", methods=["POST"])
+async def test_connection():
+    """
+    Test connection with user-provided URL and API key
+    ---
+    tags:
+      - System
+    responses:
+      200:
+        description: Connection test result
+    """
+    try:
+        data = await request.get_json()
+        ragflow_url = data.get("ragflow_url", "").rstrip("/")
+        api_key = data.get("api_key", "")
+        
+        if not ragflow_url:
+            return jsonify({
+                "code": -1,
+                "message": "RAGFlow URL is required"
+            }), 400
+        
+        if not api_key:
+            return jsonify({
+                "code": -1,
+                "message": "API Key is required"
+            }), 400
+        
+        ragflow_status = "unknown"
+        error_message = None
+        
+        async with httpx.AsyncClient() as client:
+            # Test connection using datasets API
+            response = await client.get(
+                f"{ragflow_url}/api/v1/datasets",
+                params={"page": 1, "page_size": 1},
+                headers={"Authorization": f"Bearer {api_key}"},
+                timeout=10
+            )
+            if response.status_code == 200:
+                resp_data = response.json()
+                if resp_data.get("code") == 0:
+                    ragflow_status = "connected"
+                else:
+                    ragflow_status = "error"
+                    error_message = resp_data.get("message", "API returned error")
+            elif response.status_code == 401:
+                ragflow_status = "error"
+                error_message = "Invalid API Key (401 Unauthorized)"
+            else:
+                ragflow_status = "error"
+                error_message = f"HTTP {response.status_code}"
+                
+        return jsonify({
+            "code": 0 if ragflow_status == "connected" else -1,
+            "data": {
+                "ragflow_status": ragflow_status,
+                "error_message": error_message
+            }
+        })
+    except httpx.ConnectError:
+        return jsonify({
+            "code": -1,
+            "data": {
+                "ragflow_status": "disconnected",
+                "error_message": "Cannot connect to RAGFlow server"
+            }
+        })
+    except httpx.TimeoutException:
+        return jsonify({
+            "code": -1,
+            "data": {
+                "ragflow_status": "timeout",
+                "error_message": "Connection timeout"
+            }
+        })
+    except Exception as e:
+        return jsonify({
+            "code": -1,
+            "data": {
+                "ragflow_status": "error",
+                "error_message": str(e)
+            }
+        })
+
+
 @manager.route("/health", methods=["GET"])
 async def check_health():
     """
@@ -135,3 +222,54 @@ async def get_config():
             "debug": settings.debug
         }
     })
+
+
+@manager.route("/config", methods=["POST"])
+async def save_config():
+    """
+    Save RAGFlow configuration
+    ---
+    tags:
+      - System
+    responses:
+      200:
+        description: Configuration saved
+    """
+    try:
+        data = await request.get_json()
+        ragflow_url = data.get("ragflow_url", "").rstrip("/")
+        api_key = data.get("api_key", "")
+        
+        if not ragflow_url:
+            return jsonify({
+                "code": -1,
+                "message": "RAGFlow URL is required"
+            }), 400
+        
+        if not api_key:
+            return jsonify({
+                "code": -1,
+                "message": "API Key is required"
+            }), 400
+        
+        # Update settings and save to config.yaml
+        success = settings.update_ragflow_config(ragflow_url, api_key)
+        
+        if success:
+            # Reload ragflow client with new configuration
+            ragflow_client.reload()
+            
+            return jsonify({
+                "code": 0,
+                "message": "Configuration saved successfully"
+            })
+        else:
+            return jsonify({
+                "code": -1,
+                "message": "Failed to save configuration"
+            }), 500
+    except Exception as e:
+        return jsonify({
+            "code": -1,
+            "message": str(e)
+        }), 500

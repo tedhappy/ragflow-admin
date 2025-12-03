@@ -22,6 +22,7 @@ export interface UseTableListOptions<T, P extends ListParams> {
   fetchFn: (params: P) => Promise<ListResponse<T>>;
   defaultParams?: Partial<P>;
   defaultPageSize?: number;
+  enabled?: boolean; // If false, skip initial fetch
 }
 
 export interface UseTableListReturn<T, P extends ListParams> {
@@ -46,7 +47,7 @@ export interface UseTableListReturn<T, P extends ListParams> {
 export function useTableList<T, P extends ListParams = ListParams>(
   options: UseTableListOptions<T, P>
 ): UseTableListReturn<T, P> {
-  const { fetchFn, defaultParams = {}, defaultPageSize = 10 } = options;
+  const { fetchFn, defaultParams = {}, defaultPageSize = 10, enabled = true } = options;
 
   // Use ref to store fetchFn to avoid infinite loop
   const fetchFnRef = useRef(fetchFn);
@@ -86,8 +87,13 @@ export function useTableList<T, P extends ListParams = ListParams>(
     }
   }, []);
 
-  // Initial fetch on mount only
+  // Initial fetch on mount only (if enabled)
   useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+    // Reset initial loading state when enabled
+    setInitialLoading(true);
     const initialParams = {
       page: 1,
       page_size: defaultPageSize,
@@ -95,7 +101,7 @@ export function useTableList<T, P extends ListParams = ListParams>(
     } as P;
     fetchData(initialParams, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [enabled]);
 
   const setParams = useCallback((newParams: Partial<P>) => {
     setParamsState(prev => ({ ...prev, ...newParams }));

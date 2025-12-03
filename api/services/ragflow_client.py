@@ -91,12 +91,24 @@ class RAGFlowClient:
 
     def __init__(self):
         if not self._initialized:
-            self._api_url = f"{settings.ragflow_base_url}/api/v1"
-            self._headers = {
-                "Authorization": f"Bearer {settings.ragflow_api_key}",
-                "Content-Type": "application/json"
-            }
+            self._load_config()
             self._initialized = True
+
+    def _load_config(self):
+        """Load configuration from settings."""
+        self._api_url = f"{settings.ragflow_base_url}/api/v1"
+        self._headers = {
+            "Authorization": f"Bearer {settings.ragflow_api_key}",
+            "Content-Type": "application/json"
+        }
+
+    def reload(self):
+        """Reload configuration and reset HTTP client."""
+        self._load_config()
+        if self._http_client is not None and not self._http_client.is_closed:
+            # Close the old client asynchronously would be ideal, but for simplicity we'll let it be garbage collected
+            self._http_client = None
+        logger.info(f"RAGFlowClient reloaded with URL: {self._api_url}")
 
     def _get_http_client(self) -> httpx.AsyncClient:
         """Get or create async HTTP client with connection pooling."""

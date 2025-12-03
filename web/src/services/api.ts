@@ -112,9 +112,18 @@ export interface SystemStatus {
   error_message: string | null;
 }
 
+export interface TestConnectionResult {
+  ragflow_status: 'connected' | 'disconnected' | 'error' | 'timeout' | 'unknown';
+  error_message: string | null;
+}
+
 export const systemApi = {
   getStatus: () => request.get<any, SystemStatus>('/system/status'),
   checkHealth: () => request.get<any, { status: string }>('/system/health'),
+  testConnection: (data: { ragflow_url: string; api_key: string }) =>
+    request.post<any, TestConnectionResult>('/system/test-connection', data),
+  saveConfig: (data: { ragflow_url: string; api_key: string }) =>
+    request.post<any, { message: string }>('/system/config', data),
 };
 
 export default request;

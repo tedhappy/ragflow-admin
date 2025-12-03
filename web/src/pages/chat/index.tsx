@@ -1,16 +1,17 @@
 ﻿import React, { useState } from 'react';
-import { Table, Button, Space, Card, message, Input, Typography } from 'antd';
+import { Table, Button, Space, Card, message, Input, Typography, Spin } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { DeleteOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import { chatApi, Chat } from '@/services/api';
 import { useTableList } from '@/hooks/useTableList';
+import { useConnectionCheck } from '@/hooks/useConnectionCheck';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import TableSkeleton from '@/components/TableSkeleton';
 import dayjs from 'dayjs';
 
 const { Title } = Typography;
 
 const ChatPage: React.FC = () => {
+  const { checking, connected } = useConnectionCheck();
   const [searchName, setSearchName] = useState('');
 
   const {
@@ -29,6 +30,7 @@ const ChatPage: React.FC = () => {
   } = useTableList<Chat>({
     fetchFn: (params) => chatApi.list(params),
     defaultPageSize: 10,
+    enabled: connected,
   });
 
   const handleSearch = () => {
@@ -84,65 +86,60 @@ const ChatPage: React.FC = () => {
     },
   ];
 
-  if (initialLoading) {
-    return (
-      <div>
-        <Title level={4} style={{ marginBottom: 24 }}>Chat Assistants</Title>
-        <TableSkeleton rows={5} columns={4} />
-      </div>
-    );
-  }
+  const isLoading = checking || initialLoading;
 
   return (
     <ErrorBoundary>
-      <div>
-        <Title level={4} style={{ marginBottom: 24 }}>Chat Assistants</Title>
-        <Card>
-          <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
-            <Space>
-              <Input
-                placeholder="Search by name"
-                prefix={<SearchOutlined />}
-                value={searchName}
-                onChange={(e) => setSearchName(e.target.value)}
-                onPressEnter={handleSearch}
-                style={{ width: 200 }}
-              />
-              <Button icon={<SearchOutlined />} onClick={handleSearch}>Search</Button>
-            </Space>
-            <Space>
-              <Button icon={<ReloadOutlined />} onClick={refresh}>Refresh</Button>
-              <Button 
-                danger 
-                icon={<DeleteOutlined />}
-                disabled={selectedRowKeys.length === 0}
-                onClick={() => handleDelete(selectedRowKeys as string[])}
-              >
-                Delete Selected ({selectedRowKeys.length})
-              </Button>
-            </Space>
-          </div>
-          <Table 
-            columns={columns} 
-            dataSource={data} 
-            rowKey="id"
-            loading={loading}
-            rowSelection={{
-              selectedRowKeys,
-              onChange: setSelectedRowKeys,
-            }}
-            pagination={{
-              current: page,
-              pageSize: pageSize,
-              total: total,
-              showSizeChanger: true,
-              showQuickJumper: true,
-              showTotal: (t) => `Total ${t} items`,
-              onChange: handlePageChange,
-            }}
-          />
-        </Card>
-      </div>
+      <Spin spinning={isLoading} size="large">
+        <div style={{ minHeight: isLoading ? 400 : 'auto', visibility: isLoading ? 'hidden' : 'visible' }}>
+          <Title level={4} style={{ marginBottom: 24 }}>Chat Assistants</Title>
+          <Card>
+            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
+              <Space>
+                <Input
+                  placeholder="Search by name"
+                  prefix={<SearchOutlined />}
+                  value={searchName}
+                  onChange={(e) => setSearchName(e.target.value)}
+                  onPressEnter={handleSearch}
+                  style={{ width: 200 }}
+                />
+                <Button icon={<SearchOutlined />} onClick={handleSearch}>Search</Button>
+              </Space>
+              <Space>
+                <Button icon={<ReloadOutlined />} onClick={refresh}>Refresh</Button>
+                <Button 
+                  danger 
+                  icon={<DeleteOutlined />}
+                  disabled={selectedRowKeys.length === 0}
+                  onClick={() => handleDelete(selectedRowKeys as string[])}
+                >
+                  Delete Selected ({selectedRowKeys.length})
+                </Button>
+              </Space>
+            </div>
+            <Table 
+              columns={columns} 
+              dataSource={data} 
+              rowKey="id"
+              loading={!initialLoading && loading}
+              rowSelection={{
+                selectedRowKeys,
+                onChange: setSelectedRowKeys,
+              }}
+              pagination={{
+                current: page,
+                pageSize: pageSize,
+                total: total,
+                showSizeChanger: true,
+                showQuickJumper: true,
+                showTotal: (t) => `Total ${t} items`,
+                onChange: handlePageChange,
+              }}
+            />
+          </Card>
+        </div>
+      </Spin>
     </ErrorBoundary>
   );
 };
