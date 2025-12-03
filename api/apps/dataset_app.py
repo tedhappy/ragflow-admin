@@ -13,7 +13,7 @@ manager = Blueprint("dataset", __name__)
 @manager.route("", methods=["GET"])
 async def list_datasets():
     """
-    获取数据集列表
+    List all datasets
     ---
     tags:
       - Dataset
@@ -26,16 +26,24 @@ async def list_datasets():
         in: query
         type: integer
         default: 20
+      - name: name
+        in: query
+        type: string
+        description: Filter by dataset name
     responses:
       200:
-        description: 数据集列表
+        description: Dataset list
     """
     page = request.args.get("page", 1, type=int)
     page_size = request.args.get("page_size", 20, type=int)
+    name = request.args.get("name", None)
     
     try:
-        datasets = ragflow_client.list_datasets(page=page, page_size=page_size)
-        return jsonify({"code": 0, "data": datasets})
+        kwargs = {}
+        if name:
+            kwargs["name"] = name
+        result = ragflow_client.list_datasets(page=page, page_size=page_size, **kwargs)
+        return jsonify({"code": 0, "data": result})
     except Exception as e:
         return jsonify({"code": -1, "message": str(e)}), 500
 
@@ -43,7 +51,7 @@ async def list_datasets():
 @manager.route("", methods=["POST"])
 async def create_dataset():
     """
-    创建数据集
+    Create a new dataset
     ---
     tags:
       - Dataset
@@ -56,18 +64,21 @@ async def create_dataset():
           properties:
             name:
               type: string
+            description:
+              type: string
     responses:
       200:
-        description: 创建成功
+        description: Dataset created successfully
     """
     data = await request.get_json()
     name = data.get("name")
+    description = data.get("description", "")
     
     if not name:
         return jsonify({"code": -1, "message": "name is required"}), 400
     
     try:
-        dataset = ragflow_client.create_dataset(name=name)
+        dataset = ragflow_client.create_dataset(name=name, description=description)
         return jsonify({"code": 0, "data": dataset})
     except Exception as e:
         return jsonify({"code": -1, "message": str(e)}), 500
@@ -76,7 +87,7 @@ async def create_dataset():
 @manager.route("/batch-delete", methods=["POST"])
 async def batch_delete_datasets():
     """
-    批量删除数据集
+    Delete datasets in batch
     ---
     tags:
       - Dataset
@@ -93,7 +104,7 @@ async def batch_delete_datasets():
                 type: string
     responses:
       200:
-        description: 删除成功
+        description: Datasets deleted successfully
     """
     data = await request.get_json()
     ids = data.get("ids", [])

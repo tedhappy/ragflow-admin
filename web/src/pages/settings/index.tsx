@@ -1,35 +1,119 @@
-﻿import React from 'react';
-import { Card, Descriptions, Tag, Button } from 'antd';
-import { CheckCircleOutlined, CloseCircleOutlined, ReloadOutlined } from '@ant-design/icons';
+﻿import React, { useEffect, useState } from 'react';
+import { Card, Descriptions, Tag, Button, Spin, message, Typography } from 'antd';
+import { 
+  CheckCircleOutlined, 
+  CloseCircleOutlined, 
+  ExclamationCircleOutlined,
+  ReloadOutlined,
+  LoadingOutlined 
+} from '@ant-design/icons';
+import { systemApi, SystemStatus } from '@/services/api';
+
+const { Title } = Typography;
 
 const Settings: React.FC = () => {
+  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState<SystemStatus | null>(null);
+
+  const fetchStatus = async () => {
+    try {
+      setLoading(true);
+      const data = await systemApi.getStatus();
+      setStatus(data);
+    } catch (error: any) {
+      message.error(error.message || 'Failed to fetch system status');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStatus();
+  }, []);
+
+  const getStatusTag = () => {
+    if (!status) return null;
+    
+    switch (status.ragflow_status) {
+      case 'connected':
+        return (
+          <Tag icon={<CheckCircleOutlined />} color="success">
+            Connected
+          </Tag>
+        );
+      case 'disconnected':
+        return (
+          <Tag icon={<CloseCircleOutlined />} color="error">
+            Disconnected
+          </Tag>
+        );
+      case 'timeout':
+        return (
+          <Tag icon={<ExclamationCircleOutlined />} color="warning">
+            Timeout
+          </Tag>
+        );
+      case 'error':
+        return (
+          <Tag icon={<CloseCircleOutlined />} color="error">
+            Error
+          </Tag>
+        );
+      default:
+        return (
+          <Tag icon={<LoadingOutlined />} color="default">
+            Unknown
+          </Tag>
+        );
+    }
+  };
+
   return (
-    <div className="p-6">
+    <Spin spinning={loading}>
+      <Title level={4} style={{ marginBottom: 24 }}>System Settings</Title>
       <Card
-        title="系统设置"
-        extra={<Button icon={<ReloadOutlined />}>检查连接</Button>}
+        extra={
+          <Button 
+            icon={<ReloadOutlined />} 
+            onClick={fetchStatus}
+            loading={loading}
+          >
+            Refresh
+          </Button>
+        }
       >
         <Descriptions bordered column={1}>
-          <Descriptions.Item label="RAGFlow 地址">
-            http://localhost:9380
+          <Descriptions.Item label="RAGFlow URL">
+            {status?.ragflow_url || '-'}
           </Descriptions.Item>
-          <Descriptions.Item label="连接状态">
-            <Tag icon={<CheckCircleOutlined />} color="success">
-              已连接
-            </Tag>
+          <Descriptions.Item label="Connection Status">
+            {getStatusTag()}
+            {status?.error_message && (
+              <span style={{ marginLeft: 8, color: '#ff4d4f' }}>
+                {status.error_message}
+              </span>
+            )}
           </Descriptions.Item>
           <Descriptions.Item label="API Key">
-            ragflow-**********************
+            <code>{status?.api_key_masked || '-'}</code>
           </Descriptions.Item>
-          <Descriptions.Item label="后台版本">
-            v0.1.0
+          <Descriptions.Item label="Admin Version">
+            v{status?.admin_version || '-'}
           </Descriptions.Item>
-          <Descriptions.Item label="RAGFlow版本">
-            v0.22.1
+          <Descriptions.Item label="RAGFlow Version">
+            {status?.ragflow_version ? `v${status.ragflow_version}` : '-'}
+          </Descriptions.Item>
+          <Descriptions.Item label="Server Port">
+            {status?.server_port || '-'}
+          </Descriptions.Item>
+          <Descriptions.Item label="Debug Mode">
+            <Tag color={status?.debug ? 'orange' : 'green'}>
+              {status?.debug ? 'Enabled' : 'Disabled'}
+            </Tag>
           </Descriptions.Item>
         </Descriptions>
       </Card>
-    </div>
+    </Spin>
   );
 };
 

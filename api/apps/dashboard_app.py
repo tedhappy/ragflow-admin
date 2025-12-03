@@ -5,6 +5,7 @@
 #
 
 from quart import Blueprint, jsonify
+from api.services.ragflow_client import ragflow_client
 
 manager = Blueprint("dashboard", __name__)
 
@@ -12,21 +13,31 @@ manager = Blueprint("dashboard", __name__)
 @manager.route("/stats", methods=["GET"])
 async def get_stats():
     """
-    获取仪表盘统计数据
+    Get dashboard statistics
     ---
     tags:
       - Dashboard
     responses:
       200:
-        description: 统计数据
+        description: Dashboard statistics
     """
-    # TODO: 实现统计逻辑
-    return jsonify({
-        "code": 0,
-        "data": {
-            "datasets_count": 0,
-            "documents_count": 0,
-            "chats_count": 0,
-            "agents_count": 0,
-        }
-    })
+    try:
+        # Fetch counts from RAGFlow
+        datasets = ragflow_client.list_datasets(page=1, page_size=1)
+        chats = ragflow_client.list_chats(page=1, page_size=1)
+        agents = ragflow_client.list_agents(page=1, page_size=1)
+        
+        return jsonify({
+            "code": 0,
+            "data": {
+                "dataset_count": datasets.get("total", 0),
+                "document_count": 0,  # TODO: implement document count
+                "chat_count": chats.get("total", 0),
+                "agent_count": agents.get("total", 0),
+            }
+        })
+    except Exception as e:
+        return jsonify({
+            "code": -1,
+            "message": str(e)
+        }), 500

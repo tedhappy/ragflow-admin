@@ -1,34 +1,132 @@
-﻿import React from 'react';
-import { Table, Button, Space, Card } from 'antd';
-import { ReloadOutlined } from '@ant-design/icons';
+﻿import React, { useEffect, useState } from 'react';
+import { Table, Button, Space, Card, message, Input, Typography } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
+import { DeleteOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+import { chatApi, Chat } from '@/services/api';
+import dayjs from 'dayjs';
 
-const Chat: React.FC = () => {
-  const columns = [
-    { title: '名称', dataIndex: 'name', key: 'name' },
-    { title: '描述', dataIndex: 'description', key: 'description' },
-    { title: '会话数', dataIndex: 'session_count', key: 'session_count' },
-    { title: '创建时间', dataIndex: 'create_time', key: 'create_time' },
+const { Title } = Typography;
+
+const ChatPage: React.FC = () => {
+  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState<Chat[]>([]);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [searchName, setSearchName] = useState('');
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const params: any = { page: 1, page_size: 100 };
+      if (searchName) {
+        params.name = searchName;
+      }
+      const result = await chatApi.list(params);
+      setData(result.items || []);
+    } catch (error: any) {
+      message.error(error.message || 'Failed to fetch chats');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const handleDelete = async (ids: string[]) => {
+    try {
+      await chatApi.batchDelete(ids);
+      message.success('Deleted successfully');
+      setSelectedRowKeys([]);
+      fetchData();
+    } catch (error: any) {
+      message.error(error.message || 'Failed to delete');
+    }
+  };
+
+  const columns: ColumnsType<Chat> = [
+    { 
+      title: 'Name', 
+      dataIndex: 'name', 
+      key: 'name',
+      width: 200,
+    },
+    { 
+      title: 'Description', 
+      dataIndex: 'description', 
+      key: 'description',
+      ellipsis: true,
+    },
+    { 
+      title: 'Created', 
+      dataIndex: 'create_time', 
+      key: 'create_time',
+      width: 180,
+      render: (val) => val ? dayjs(val).format('YYYY-MM-DD HH:mm') : '-',
+    },
     {
-      title: '操作',
+      title: 'Actions',
       key: 'action',
-      render: () => (
-        <Space>
-          <Button type="link" size="small">查看会话</Button>
-        </Space>
+      width: 120,
+      render: (_, record) => (
+        <Button 
+          type="link" 
+          size="small" 
+          danger
+          onClick={() => handleDelete([record.id])}
+        >
+          Delete
+        </Button>
       ),
     },
   ];
 
   return (
-    <div className="p-6">
-      <Card
-        title="聊天助手管理"
-        extra={<Button icon={<ReloadOutlined />}>刷新</Button>}
-      >
-        <Table columns={columns} dataSource={[]} />
+    <div>
+      <Title level={4} style={{ marginBottom: 24 }}>Chat Assistants</Title>
+      <Card>
+        <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
+          <Space>
+            <Input
+              placeholder="Search by name"
+              prefix={<SearchOutlined />}
+              value={searchName}
+              onChange={(e) => setSearchName(e.target.value)}
+              onPressEnter={fetchData}
+              style={{ width: 200 }}
+            />
+            <Button icon={<SearchOutlined />} onClick={fetchData}>Search</Button>
+          </Space>
+          <Space>
+            <Button icon={<ReloadOutlined />} onClick={fetchData}>Refresh</Button>
+            <Button 
+              danger 
+              icon={<DeleteOutlined />}
+              disabled={selectedRowKeys.length === 0}
+              onClick={() => handleDelete(selectedRowKeys as string[])}
+            >
+              Delete Selected ({selectedRowKeys.length})
+            </Button>
+          </Space>
+        </div>
+        <Table 
+          columns={columns} 
+          dataSource={data} 
+          rowKey="id"
+          loading={loading}
+          rowSelection={{
+            selectedRowKeys,
+            onChange: setSelectedRowKeys,
+          }}
+          pagination={{
+            showSizeChanger: true,
+            showQuickJumper: true,
+            showTotal: (total) => `Total ${total} items`,
+          }}
+        />
       </Card>
     </div>
   );
 };
 
-export default Chat;
+export default ChatPage;
