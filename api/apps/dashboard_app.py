@@ -4,8 +4,12 @@
 #  Licensed under the Apache License, Version 2.0
 #
 
+import asyncio
+import logging
 from quart import Blueprint, jsonify
-from api.services.ragflow_client import ragflow_client
+from api.services.ragflow_client import ragflow_client, RAGFlowAPIError
+
+logger = logging.getLogger(__name__)
 
 manager = Blueprint("dashboard", __name__)
 
@@ -22,27 +26,33 @@ async def get_stats():
         description: Dashboard statistics
     """
     try:
-        # Fetch all items to get accurate counts
-        datasets = ragflow_client.list_datasets(page=1, page_size=1000)
-        chats = ragflow_client.list_chats(page=1, page_size=1000)
-        agents = ragflow_client.list_agents(page=1, page_size=1000)
+        # Fetch all items concurrently for better performance
+        datasets_task = ragflow_client.list_datasets(page=1, page_size=1000)
+        chats_task = ragflow_client.list_chats(page=1, page_size=1000)
+        agents_task = ragflow_client.list_agents(page=1, page_size=1000)
+        
+        datasets, chats, agents = await asyncio.gather(
+            datasets_task, chats_task, agents_task
+        )
         
         # Calculate document count from all datasets
-        document_count = 0
-        for ds in datasets.get("items", []):
-            document_count += ds.get("document_count", 0) or 0
+        document_count = sum(
+            ds.get("document_count", 0) or 0 
+            for ds in datasets.get("items", [])
+        )
         
         return jsonify({
             "code": 0,
             "data": {
-                "dataset_count": len(datasets.get("items", [])),
+                "dataset_count": datasets.get("total", 0),
                 "document_count": document_count,
-                "chat_count": len(chats.get("items", [])),
-                "agent_count": len(agents.get("items", [])),
+                "chat_count": chats.get("total", 0),
+                "agent_count": agents.get("total", 0),
             }
         })
+    except RAGFlowAPIError as e:
+        logger.error(f"Failed to get dashboard stats: {e.message}")
+        return jsonify({"code": e.code, "message": e.message}), 500
     except Exception as e:
-        return jsonify({
-            "code": -1,
-            "message": str(e)
-        }), 500
+        logger.exception("Unexpected error getting dashboard stats")
+        return jsonify({"code": -1, "message": str(e)}), 500

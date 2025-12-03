@@ -4,8 +4,11 @@
 #  Licensed under the Apache License, Version 2.0
 #
 
+import logging
 from quart import Blueprint, jsonify, request
-from api.services.ragflow_client import ragflow_client
+from api.services.ragflow_client import ragflow_client, RAGFlowAPIError
+
+logger = logging.getLogger(__name__)
 
 manager = Blueprint("chat", __name__)
 
@@ -42,9 +45,13 @@ async def list_chats():
         kwargs = {}
         if name:
             kwargs["name"] = name
-        result = ragflow_client.list_chats(page=page, page_size=page_size, **kwargs)
+        result = await ragflow_client.list_chats(page=page, page_size=page_size, **kwargs)
         return jsonify({"code": 0, "data": result})
+    except RAGFlowAPIError as e:
+        logger.error(f"Failed to list chats: {e.message}")
+        return jsonify({"code": e.code, "message": e.message}), 500
     except Exception as e:
+        logger.exception("Unexpected error listing chats")
         return jsonify({"code": -1, "message": str(e)}), 500
 
 
@@ -77,7 +84,11 @@ async def batch_delete_chats():
         return jsonify({"code": -1, "message": "ids is required"}), 400
     
     try:
-        ragflow_client.delete_chats(ids=ids)
+        await ragflow_client.delete_chats(ids=ids)
         return jsonify({"code": 0, "message": "success"})
+    except RAGFlowAPIError as e:
+        logger.error(f"Failed to delete chats: {e.message}")
+        return jsonify({"code": e.code, "message": e.message}), 500
     except Exception as e:
+        logger.exception("Unexpected error deleting chats")
         return jsonify({"code": -1, "message": str(e)}), 500

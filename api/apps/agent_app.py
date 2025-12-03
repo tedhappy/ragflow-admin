@@ -4,8 +4,11 @@
 #  Licensed under the Apache License, Version 2.0
 #
 
+import logging
 from quart import Blueprint, jsonify, request
-from api.services.ragflow_client import ragflow_client
+from api.services.ragflow_client import ragflow_client, RAGFlowAPIError
+
+logger = logging.getLogger(__name__)
 
 manager = Blueprint("agent", __name__)
 
@@ -42,7 +45,11 @@ async def list_agents():
         kwargs = {}
         if title:
             kwargs["title"] = title
-        result = ragflow_client.list_agents(page=page, page_size=page_size, **kwargs)
+        result = await ragflow_client.list_agents(page=page, page_size=page_size, **kwargs)
         return jsonify({"code": 0, "data": result})
+    except RAGFlowAPIError as e:
+        logger.error(f"Failed to list agents: {e.message}")
+        return jsonify({"code": e.code, "message": e.message}), 500
     except Exception as e:
+        logger.exception("Unexpected error listing agents")
         return jsonify({"code": -1, "message": str(e)}), 500

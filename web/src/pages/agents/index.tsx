@@ -1,50 +1,41 @@
-﻿import React, { useEffect, useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Table, Button, Space, Card, message, Input, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import { agentApi, Agent } from '@/services/api';
+import { useTableList } from '@/hooks/useTableList';
+import ErrorBoundary from '@/components/ErrorBoundary';
+import TableSkeleton from '@/components/TableSkeleton';
 import dayjs from 'dayjs';
 
 const { Title } = Typography;
 
 const Agents: React.FC = () => {
-  const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<Agent[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
   const [searchTitle, setSearchTitle] = useState('');
+  const [initialLoading, setInitialLoading] = useState(true);
 
-  const fetchData = async (p = page, ps = pageSize) => {
-    try {
-      setLoading(true);
-      const params: any = { page: p, page_size: ps };
-      if (searchTitle) {
-        params.title = searchTitle;
-      }
+  const {
+    data,
+    total,
+    loading,
+    page,
+    pageSize,
+    setParams,
+    refresh,
+    handlePageChange,
+    handleSearch: triggerSearch,
+  } = useTableList<Agent>({
+    fetchFn: async (params) => {
       const result = await agentApi.list(params);
-      setData(result.items || []);
-      setTotal(result.total || 0);
-    } catch (error: any) {
-      message.error(error.message || 'Failed to fetch agents');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData(1, pageSize);
-  }, []);
+      setInitialLoading(false);
+      return result;
+    },
+    defaultPageSize: 10,
+  });
 
   const handleSearch = () => {
-    setPage(1);
-    fetchData(1, pageSize);
-  };
-
-  const handlePageChange = (p: number, ps: number) => {
-    setPage(p);
-    setPageSize(ps);
-    fetchData(p, ps);
+    setParams({ title: searchTitle || undefined });
+    triggerSearch();
   };
 
   const columns: ColumnsType<Agent> = [
@@ -76,41 +67,52 @@ const Agents: React.FC = () => {
     },
   ];
 
+  if (initialLoading) {
+    return (
+      <div>
+        <Title level={4} style={{ marginBottom: 24 }}>Agents</Title>
+        <TableSkeleton rows={5} columns={4} />
+      </div>
+    );
+  }
+
   return (
-    <div>
-      <Title level={4} style={{ marginBottom: 24 }}>Agents</Title>
-      <Card>
-        <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
-          <Space>
-            <Input
-              placeholder="Search by title"
-              prefix={<SearchOutlined />}
-              value={searchTitle}
-              onChange={(e) => setSearchTitle(e.target.value)}
-              onPressEnter={handleSearch}
-              style={{ width: 200 }}
-            />
-            <Button icon={<SearchOutlined />} onClick={handleSearch}>Search</Button>
-          </Space>
-          <Button icon={<ReloadOutlined />} onClick={handleSearch}>Refresh</Button>
-        </div>
-        <Table 
-          columns={columns} 
-          dataSource={data} 
-          rowKey="id"
-          loading={loading}
-          pagination={{
-            current: page,
-            pageSize: pageSize,
-            total: total,
-            showSizeChanger: true,
-            showQuickJumper: true,
-            showTotal: (t) => `Total ${t} items`,
-            onChange: handlePageChange,
-          }}
-        />
-      </Card>
-    </div>
+    <ErrorBoundary>
+      <div>
+        <Title level={4} style={{ marginBottom: 24 }}>Agents</Title>
+        <Card>
+          <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
+            <Space>
+              <Input
+                placeholder="Search by title"
+                prefix={<SearchOutlined />}
+                value={searchTitle}
+                onChange={(e) => setSearchTitle(e.target.value)}
+                onPressEnter={handleSearch}
+                style={{ width: 200 }}
+              />
+              <Button icon={<SearchOutlined />} onClick={handleSearch}>Search</Button>
+            </Space>
+            <Button icon={<ReloadOutlined />} onClick={refresh}>Refresh</Button>
+          </div>
+          <Table 
+            columns={columns} 
+            dataSource={data} 
+            rowKey="id"
+            loading={loading}
+            pagination={{
+              current: page,
+              pageSize: pageSize,
+              total: total,
+              showSizeChanger: true,
+              showQuickJumper: true,
+              showTotal: (t) => `Total ${t} items`,
+              onChange: handlePageChange,
+            }}
+          />
+        </Card>
+      </div>
+    </ErrorBoundary>
   );
 };
 

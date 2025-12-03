@@ -5,14 +5,30 @@
 #
 
 import time
+import logging
 import httpx
+from typing import Optional, Any
 from ragflow_sdk import RAGFlow
 from api.settings import settings
 
 
+# Logger for this module
+logger = logging.getLogger(__name__)
+
 # Configuration for pagination
 MAX_PAGE_SIZE = 10000  # Maximum items to fetch for counting
 CACHE_TTL = 300  # Cache TTL in seconds (5 minutes)
+HTTP_TIMEOUT = 30  # HTTP request timeout in seconds
+
+
+class RAGFlowAPIError(Exception):
+    """Custom exception for RAGFlow API errors."""
+    
+    def __init__(self, message: str, code: int = -1, details: Any = None):
+        self.message = message
+        self.code = code
+        self.details = details
+        super().__init__(self.message)
 
 
 class TotalCountCache:
@@ -22,7 +38,7 @@ class TotalCountCache:
         self._cache: dict = {}
         self._ttl = ttl
     
-    def get(self, key: str) -> int | None:
+    def get(self, key: str) -> Optional[int]:
         """Get cached total count if not expired."""
         if key in self._cache:
             value, timestamp = self._cache[key]
@@ -63,8 +79,11 @@ def serialize_sdk_object(obj) -> dict:
 
 
 class RAGFlowClient:
+    """Async HTTP client for RAGFlow API with connection pooling."""
+    
     _instance = None
     _client = None
+    _http_client: Optional[httpx.AsyncClient] = None
 
     def __new__(cls):
         if cls._instance is None:
@@ -87,26 +106,76 @@ class RAGFlowClient:
     def client(self) -> RAGFlow:
         return self._client
 
-    def _get(self, path: str, params: dict = None) -> dict:
-        """Make GET request to RAGFlow API."""
-        with httpx.Client() as client:
-            resp = client.get(f"{self._api_url}{path}", params=params, headers=self._headers)
-            return resp.json()
+    def _get_http_client(self) -> httpx.AsyncClient:
+        """Get or create async HTTP client with connection pooling."""
+        if self._http_client is None or self._http_client.is_closed:
+            self._http_client = httpx.AsyncClient(
+                base_url=self._api_url,
+                headers=self._headers,
+                timeout=HTTP_TIMEOUT,
+                limits=httpx.Limits(max_keepalive_connections=10, max_connections=20)
+            )
+        return self._http_client
 
-    def _post(self, path: str, json: dict = None) -> dict:
-        """Make POST request to RAGFlow API."""
-        with httpx.Client() as client:
-            resp = client.post(f"{self._api_url}{path}", json=json, headers=self._headers)
+    async def _get(self, path: str, params: dict = None) -> dict:
+        """Make async GET request to RAGFlow API."""
+        client = self._get_http_client()
+        try:
+            start_time = time.time()
+            resp = await client.get(path, params=params)
+            elapsed = time.time() - start_time
+            logger.debug(f"GET {path} completed in {elapsed:.3f}s, status={resp.status_code}")
+            resp.raise_for_status()
             return resp.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error on GET {path}: {e.response.status_code}")
+            raise RAGFlowAPIError(f"HTTP {e.response.status_code}", code=e.response.status_code)
+        except httpx.RequestError as e:
+            logger.error(f"Request error on GET {path}: {str(e)}")
+            raise RAGFlowAPIError(f"Request failed: {str(e)}")
 
-    def _delete(self, path: str, json: dict = None) -> dict:
-        """Make DELETE request to RAGFlow API."""
-        with httpx.Client() as client:
-            resp = client.delete(f"{self._api_url}{path}", json=json, headers=self._headers)
+    async def _post(self, path: str, json: dict = None) -> dict:
+        """Make async POST request to RAGFlow API."""
+        client = self._get_http_client()
+        try:
+            start_time = time.time()
+            resp = await client.post(path, json=json)
+            elapsed = time.time() - start_time
+            logger.debug(f"POST {path} completed in {elapsed:.3f}s, status={resp.status_code}")
+            resp.raise_for_status()
             return resp.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error on POST {path}: {e.response.status_code}")
+            raise RAGFlowAPIError(f"HTTP {e.response.status_code}", code=e.response.status_code)
+        except httpx.RequestError as e:
+            logger.error(f"Request error on POST {path}: {str(e)}")
+            raise RAGFlowAPIError(f"Request failed: {str(e)}")
+
+    async def _delete(self, path: str, json: dict = None) -> dict:
+        """Make async DELETE request to RAGFlow API."""
+        client = self._get_http_client()
+        try:
+            start_time = time.time()
+            resp = await client.request("DELETE", path, json=json)
+            elapsed = time.time() - start_time
+            logger.debug(f"DELETE {path} completed in {elapsed:.3f}s, status={resp.status_code}")
+            resp.raise_for_status()
+            return resp.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error on DELETE {path}: {e.response.status_code}")
+            raise RAGFlowAPIError(f"HTTP {e.response.status_code}", code=e.response.status_code)
+        except httpx.RequestError as e:
+            logger.error(f"Request error on DELETE {path}: {str(e)}")
+            raise RAGFlowAPIError(f"Request failed: {str(e)}")
+    
+    async def close(self):
+        """Close the HTTP client."""
+        if self._http_client and not self._http_client.is_closed:
+            await self._http_client.aclose()
+            self._http_client = None
 
     # Dataset operations (using HTTP to get accurate total count)
-    def list_datasets(self, page: int = 1, page_size: int = 20, **kwargs) -> dict:
+    async def list_datasets(self, page: int = 1, page_size: int = 20, **kwargs) -> dict:
         """List all datasets with pagination."""
         params = {
             "page": page,
@@ -119,7 +188,7 @@ class RAGFlowClient:
         if kwargs.get("id"):
             params["id"] = kwargs["id"]
         
-        result = self._get("/datasets", params=params)
+        result = await self._get("/datasets", params=params)
         if result.get("code") == 0:
             # RAGFlow returns total_datasets for datasets count
             total = result.get("total") or result.get("total_datasets") or len(result.get("data", []))
@@ -127,31 +196,33 @@ class RAGFlowClient:
                 "items": result.get("data", []),
                 "total": total
             }
-        raise Exception(result.get("message", "Failed to list datasets"))
+        raise RAGFlowAPIError(result.get("message", "Failed to list datasets"))
 
-    def create_dataset(self, name: str, **kwargs) -> dict:
+    async def create_dataset(self, name: str, **kwargs) -> dict:
         """Create a new dataset."""
-        dataset = self._client.create_dataset(name=name, **kwargs)
-        return serialize_sdk_object(dataset)
+        payload = {"name": name, **kwargs}
+        result = await self._post("/datasets", json=payload)
+        if result.get("code") == 0:
+            return result.get("data", {})
+        raise RAGFlowAPIError(result.get("message", "Failed to create dataset"))
 
-    def delete_datasets(self, ids: list):
+    async def delete_datasets(self, ids: list):
         """Delete datasets by IDs."""
-        result = self._client.delete_datasets(ids=ids)
+        result = await self._delete("/datasets", json={"ids": ids})
         _total_cache.invalidate("datasets:")  # Invalidate datasets cache
+        if result.get("code") != 0:
+            raise RAGFlowAPIError(result.get("message", "Failed to delete datasets"))
         return result
 
     # Chat operations (RAGFlow API doesn't return total, so we fetch all and paginate)
-    def list_chats(self, page: int = 1, page_size: int = 20, **kwargs) -> dict:
+    async def list_chats(self, page: int = 1, page_size: int = 20, **kwargs) -> dict:
         """List all chats with pagination."""
         cache_key = f"chats:{kwargs.get('name', '')}"
         
-        # Check cache for total count
-        cached_total = _total_cache.get(cache_key)
-        
-        # Build request params
+        # Build request params - fetch all for accurate count
         params = {
             "page": 1,
-            "page_size": MAX_PAGE_SIZE,  # Configurable max page size
+            "page_size": MAX_PAGE_SIZE,
             "orderby": kwargs.get("orderby", "create_time"),
             "desc": kwargs.get("desc", True),
         }
@@ -160,7 +231,7 @@ class RAGFlowClient:
         if kwargs.get("id"):
             params["id"] = kwargs["id"]
         
-        result = self._get("/chats", params=params)
+        result = await self._get("/chats", params=params)
         if result.get("code") == 0:
             all_items = result.get("data", [])
             total = len(all_items)
@@ -176,23 +247,25 @@ class RAGFlowClient:
                 "items": items,
                 "total": total
             }
-        raise Exception(result.get("message", "Failed to list chats"))
+        raise RAGFlowAPIError(result.get("message", "Failed to list chats"))
 
-    def delete_chats(self, ids: list):
+    async def delete_chats(self, ids: list):
         """Delete chats by IDs."""
-        result = self._client.delete_chats(ids=ids)
+        result = await self._delete("/chats", json={"ids": ids})
         _total_cache.invalidate("chats:")  # Invalidate chats cache
+        if result.get("code") != 0:
+            raise RAGFlowAPIError(result.get("message", "Failed to delete chats"))
         return result
 
     # Agent operations (RAGFlow API doesn't return total, so we fetch all and paginate)
-    def list_agents(self, page: int = 1, page_size: int = 20, **kwargs) -> dict:
+    async def list_agents(self, page: int = 1, page_size: int = 20, **kwargs) -> dict:
         """List all agents with pagination."""
         cache_key = f"agents:{kwargs.get('title', '')}"
         
-        # Build request params
+        # Build request params - fetch all for accurate count
         params = {
             "page": 1,
-            "page_size": MAX_PAGE_SIZE,  # Configurable max page size
+            "page_size": MAX_PAGE_SIZE,
             "orderby": kwargs.get("orderby", "update_time"),
             "desc": kwargs.get("desc", True),
         }
@@ -201,7 +274,7 @@ class RAGFlowClient:
         if kwargs.get("id"):
             params["id"] = kwargs["id"]
         
-        result = self._get("/agents", params=params)
+        result = await self._get("/agents", params=params)
         if result.get("code") == 0:
             all_items = result.get("data", [])
             total = len(all_items)
@@ -217,7 +290,7 @@ class RAGFlowClient:
                 "items": items,
                 "total": total
             }
-        raise Exception(result.get("message", "Failed to list agents"))
+        raise RAGFlowAPIError(result.get("message", "Failed to list agents"))
     
     def invalidate_cache(self, resource: str = None):
         """Invalidate cached total counts."""
