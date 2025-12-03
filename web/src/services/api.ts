@@ -106,13 +106,9 @@ export const dashboardApi = {
 
 // System API
 export interface SystemStatus {
-  admin_version: string;
   ragflow_url: string;
   ragflow_status: 'connected' | 'disconnected' | 'error' | 'timeout' | 'unknown';
-  ragflow_version: string | null;
   api_key_masked: string;
-  server_port: number;
-  debug: boolean;
   error_message: string | null;
 }
 

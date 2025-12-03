@@ -4,7 +4,7 @@
 // Licensed under the Apache License, Version 2.0
 //
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { message } from 'antd';
 
 export interface ListParams {
@@ -28,6 +28,7 @@ export interface UseTableListReturn<T, P extends ListParams> {
   data: T[];
   total: number;
   loading: boolean;
+  initialLoading: boolean;
   page: number;
   pageSize: number;
   params: P;
@@ -47,9 +48,14 @@ export function useTableList<T, P extends ListParams = ListParams>(
 ): UseTableListReturn<T, P> {
   const { fetchFn, defaultParams = {}, defaultPageSize = 10 } = options;
 
+  // Use ref to store fetchFn to avoid infinite loop
+  const fetchFnRef = useRef(fetchFn);
+  fetchFnRef.current = fetchFn;
+
   const [data, setData] = useState<T[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(defaultPageSize);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
@@ -59,31 +65,37 @@ export function useTableList<T, P extends ListParams = ListParams>(
     ...defaultParams,
   } as P);
 
-  const fetchData = useCallback(async (fetchParams: P) => {
+  const fetchData = useCallback(async (fetchParams: P, isInitial = false) => {
     try {
       setLoading(true);
-      const result = await fetchFn(fetchParams);
+      const result = await fetchFnRef.current(fetchParams);
       setData(result.items || []);
       setTotal(result.total || 0);
+      if (isInitial) {
+        setInitialLoading(false);
+      }
     } catch (error: any) {
       message.error(error.message || 'Failed to fetch data');
       setData([]);
       setTotal(0);
+      if (isInitial) {
+        setInitialLoading(false);
+      }
     } finally {
       setLoading(false);
     }
-  }, [fetchFn]);
+  }, []);
 
-  // Initial fetch on mount
+  // Initial fetch on mount only
   useEffect(() => {
     const initialParams = {
       page: 1,
       page_size: defaultPageSize,
       ...defaultParams,
     } as P;
-    fetchData(initialParams);
+    fetchData(initialParams, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchData]);
+  }, []);
 
   const setParams = useCallback((newParams: Partial<P>) => {
     setParamsState(prev => ({ ...prev, ...newParams }));
@@ -112,6 +124,7 @@ export function useTableList<T, P extends ListParams = ListParams>(
     data,
     total,
     loading,
+    initialLoading,
     page,
     pageSize,
     params,

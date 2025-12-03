@@ -10,8 +10,6 @@ from api.settings import settings
 
 manager = Blueprint("system", __name__)
 
-ADMIN_VERSION = "0.1.0"
-
 
 def mask_api_key(api_key: str) -> str:
     """Mask API key for display, showing only first 8 and last 4 characters."""
@@ -32,12 +30,11 @@ async def get_status():
         description: System status
     """
     ragflow_status = "unknown"
-    ragflow_version = None
     error_message = None
     
     try:
         async with httpx.AsyncClient() as client:
-            # Try to verify connection using datasets API
+            # Verify connection using datasets API
             response = await client.get(
                 f"{settings.ragflow_base_url}/api/v1/datasets",
                 params={"page": 1, "page_size": 1},
@@ -54,20 +51,6 @@ async def get_status():
             else:
                 ragflow_status = "error"
                 error_message = f"HTTP {response.status_code}"
-            
-            # Try to get version info (optional)
-            try:
-                ver_response = await client.get(
-                    f"{settings.ragflow_base_url}/api/v1/system/version",
-                    headers={"Authorization": f"Bearer {settings.ragflow_api_key}"},
-                    timeout=5
-                )
-                if ver_response.status_code == 200:
-                    ver_data = ver_response.json()
-                    if ver_data.get("code") == 0:
-                        ragflow_version = ver_data.get("data", {}).get("version")
-            except:
-                pass  # Version info is optional
     except httpx.ConnectError:
         ragflow_status = "disconnected"
         error_message = "Cannot connect to RAGFlow server"
@@ -81,13 +64,9 @@ async def get_status():
     return jsonify({
         "code": 0,
         "data": {
-            "admin_version": ADMIN_VERSION,
             "ragflow_url": settings.ragflow_base_url,
             "ragflow_status": ragflow_status,
-            "ragflow_version": ragflow_version,
             "api_key_masked": mask_api_key(settings.ragflow_api_key),
-            "server_port": settings.server_port,
-            "debug": settings.debug,
             "error_message": error_message
         }
     })

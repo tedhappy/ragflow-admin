@@ -12,12 +12,12 @@ const { Title } = Typography;
 
 const Datasets: React.FC = () => {
   const [searchName, setSearchName] = useState('');
-  const [initialLoading, setInitialLoading] = useState(true);
 
   const {
     data,
     total,
     loading,
+    initialLoading,
     page,
     pageSize,
     selectedRowKeys,
@@ -27,11 +27,7 @@ const Datasets: React.FC = () => {
     handlePageChange,
     handleSearch: triggerSearch,
   } = useTableList<Dataset>({
-    fetchFn: async (params) => {
-      const result = await datasetApi.list(params);
-      setInitialLoading(false);
-      return result;
-    },
+    fetchFn: (params) => datasetApi.list(params),
     defaultPageSize: 10,
   });
 

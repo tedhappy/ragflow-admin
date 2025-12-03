@@ -97,9 +97,6 @@ const Settings: React.FC = () => {
           }
         >
           <Descriptions bordered column={1}>
-            <Descriptions.Item label="RAGFlow URL">
-              {status?.ragflow_url || '-'}
-            </Descriptions.Item>
             <Descriptions.Item label="Connection Status">
               {getStatusTag()}
               {status?.error_message && (
@@ -108,22 +105,11 @@ const Settings: React.FC = () => {
                 </span>
               )}
             </Descriptions.Item>
+            <Descriptions.Item label="RAGFlow URL">
+              {status?.ragflow_url || '-'}
+            </Descriptions.Item>
             <Descriptions.Item label="API Key">
               <code>{status?.api_key_masked || '-'}</code>
-            </Descriptions.Item>
-            <Descriptions.Item label="Admin Version">
-              v{status?.admin_version || '-'}
-            </Descriptions.Item>
-            <Descriptions.Item label="RAGFlow Version">
-              {status?.ragflow_version ? `v${status.ragflow_version}` : '-'}
-            </Descriptions.Item>
-            <Descriptions.Item label="Server Port">
-              {status?.server_port || '-'}
-            </Descriptions.Item>
-            <Descriptions.Item label="Debug Mode">
-              <Tag color={status?.debug ? 'orange' : 'green'}>
-                {status?.debug ? 'Enabled' : 'Disabled'}
-              </Tag>
             </Descriptions.Item>
           </Descriptions>
         </Card>

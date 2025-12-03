@@ -12,12 +12,12 @@ const { Title } = Typography;
 
 const Agents: React.FC = () => {
   const [searchTitle, setSearchTitle] = useState('');
-  const [initialLoading, setInitialLoading] = useState(true);
 
   const {
     data,
     total,
     loading,
+    initialLoading,
     page,
     pageSize,
     setParams,
@@ -25,11 +25,7 @@ const Agents: React.FC = () => {
     handlePageChange,
     handleSearch: triggerSearch,
   } = useTableList<Agent>({
-    fetchFn: async (params) => {
-      const result = await agentApi.list(params);
-      setInitialLoading(false);
-      return result;
-    },
+    fetchFn: (params) => agentApi.list(params),
     defaultPageSize: 10,
   });
 

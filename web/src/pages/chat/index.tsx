@@ -12,12 +12,12 @@ const { Title } = Typography;
 
 const ChatPage: React.FC = () => {
   const [searchName, setSearchName] = useState('');
-  const [initialLoading, setInitialLoading] = useState(true);
 
   const {
     data,
     total,
     loading,
+    initialLoading,
     page,
     pageSize,
     selectedRowKeys,
@@ -27,11 +27,7 @@ const ChatPage: React.FC = () => {
     handlePageChange,
     handleSearch: triggerSearch,
   } = useTableList<Chat>({
-    fetchFn: async (params) => {
-      const result = await chatApi.list(params);
-      setInitialLoading(false);
-      return result;
-    },
+    fetchFn: (params) => chatApi.list(params),
     defaultPageSize: 10,
   });
 
