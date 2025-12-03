@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useState } from 'react';
-import { Card, Row, Col, Statistic, Typography, Spin, message } from 'antd';
+import { Card, Row, Col, Statistic, Typography, Skeleton, message } from 'antd';
 import { 
   DatabaseOutlined, 
   MessageOutlined, 
@@ -7,6 +7,7 @@ import {
   FileOutlined,
 } from '@ant-design/icons';
 import { dashboardApi } from '@/services/api';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 const { Title } = Typography;
 
@@ -48,26 +49,45 @@ const Dashboard: React.FC = () => {
     { title: 'Agents', value: stats.agent_count, icon: <RobotOutlined />, color: '#fa8c16' },
   ];
 
+  // Show skeleton on initial load
+  if (loading) {
+    return (
+      <div>
+        <Title level={4} style={{ marginBottom: 24 }}>Dashboard Overview</Title>
+        <Row gutter={[16, 16]}>
+          {[1, 2, 3, 4].map((i) => (
+            <Col xs={24} sm={12} md={8} lg={6} key={i}>
+              <Card>
+                <Skeleton active paragraph={{ rows: 1 }} />
+              </Card>
+            </Col>
+          ))}
+        </Row>
+      </div>
+    );
+  }
+
   return (
-    <Spin spinning={loading}>
-      <Title level={4} style={{ marginBottom: 24 }}>Dashboard Overview</Title>
-      
-      <Row gutter={[16, 16]}>
-        {statisticsData.map((item) => (
-          <Col xs={24} sm={12} md={8} lg={6} key={item.title}>
-            <Card hoverable>
-              <Statistic
-                title={item.title}
-                value={item.value}
-                prefix={React.cloneElement(item.icon as React.ReactElement, {
-                  style: { color: item.color, fontSize: 24 },
-                })}
-              />
-            </Card>
-          </Col>
-        ))}
-      </Row>
-    </Spin>
+    <ErrorBoundary>
+      <div>
+        <Title level={4} style={{ marginBottom: 24 }}>Dashboard Overview</Title>
+        <Row gutter={[16, 16]}>
+          {statisticsData.map((item) => (
+            <Col xs={24} sm={12} md={8} lg={6} key={item.title}>
+              <Card hoverable>
+                <Statistic
+                  title={item.title}
+                  value={item.value}
+                  prefix={React.cloneElement(item.icon as React.ReactElement, {
+                    style: { color: item.color, fontSize: 24 },
+                  })}
+                />
+              </Card>
+            </Col>
+          ))}
+        </Row>
+      </div>
+    </ErrorBoundary>
   );
 };
 

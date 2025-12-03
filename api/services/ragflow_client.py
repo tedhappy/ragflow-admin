@@ -8,7 +8,6 @@ import time
 import logging
 import httpx
 from typing import Optional, Any
-from ragflow_sdk import RAGFlow
 from api.settings import settings
 
 
@@ -82,7 +81,7 @@ class RAGFlowClient:
     """Async HTTP client for RAGFlow API with connection pooling."""
     
     _instance = None
-    _client = None
+    _initialized = False
     _http_client: Optional[httpx.AsyncClient] = None
 
     def __new__(cls):
@@ -91,20 +90,13 @@ class RAGFlowClient:
         return cls._instance
 
     def __init__(self):
-        if self._client is None:
-            self._client = RAGFlow(
-                api_key=settings.ragflow_api_key,
-                base_url=settings.ragflow_base_url
-            )
+        if not self._initialized:
             self._api_url = f"{settings.ragflow_base_url}/api/v1"
             self._headers = {
                 "Authorization": f"Bearer {settings.ragflow_api_key}",
                 "Content-Type": "application/json"
             }
-
-    @property
-    def client(self) -> RAGFlow:
-        return self._client
+            self._initialized = True
 
     def _get_http_client(self) -> httpx.AsyncClient:
         """Get or create async HTTP client with connection pooling."""
@@ -209,7 +201,7 @@ class RAGFlowClient:
     async def delete_datasets(self, ids: list):
         """Delete datasets by IDs."""
         result = await self._delete("/datasets", json={"ids": ids})
-        _total_cache.invalidate("datasets:")  # Invalidate datasets cache
+        _total_cache.invalidate()  # Invalidate all cache after delete
         if result.get("code") != 0:
             raise RAGFlowAPIError(result.get("message", "Failed to delete datasets"))
         return result
@@ -252,7 +244,7 @@ class RAGFlowClient:
     async def delete_chats(self, ids: list):
         """Delete chats by IDs."""
         result = await self._delete("/chats", json={"ids": ids})
-        _total_cache.invalidate("chats:")  # Invalidate chats cache
+        _total_cache.invalidate()  # Invalidate all cache after delete
         if result.get("code") != 0:
             raise RAGFlowAPIError(result.get("message", "Failed to delete chats"))
         return result

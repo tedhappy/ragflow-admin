@@ -74,9 +74,16 @@ export function useTableList<T, P extends ListParams = ListParams>(
     }
   }, [fetchFn]);
 
+  // Initial fetch on mount
   useEffect(() => {
-    fetchData(params);
-  }, []);
+    const initialParams = {
+      page: 1,
+      page_size: defaultPageSize,
+      ...defaultParams,
+    } as P;
+    fetchData(initialParams);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchData]);
 
   const setParams = useCallback((newParams: Partial<P>) => {
     setParamsState(prev => ({ ...prev, ...newParams }));

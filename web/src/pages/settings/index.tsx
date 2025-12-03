@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useState } from 'react';
-import { Card, Descriptions, Tag, Button, Spin, message, Typography } from 'antd';
+import { Card, Descriptions, Tag, Button, Skeleton, message, Typography } from 'antd';
 import { 
   CheckCircleOutlined, 
   CloseCircleOutlined, 
@@ -8,6 +8,7 @@ import {
   LoadingOutlined 
 } from '@ant-design/icons';
 import { systemApi, SystemStatus } from '@/services/api';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 const { Title } = Typography;
 
@@ -68,52 +69,66 @@ const Settings: React.FC = () => {
     }
   };
 
+  // Show skeleton on initial load
+  if (loading && !status) {
+    return (
+      <div>
+        <Title level={4} style={{ marginBottom: 24 }}>System Settings</Title>
+        <Card>
+          <Skeleton active paragraph={{ rows: 6 }} />
+        </Card>
+      </div>
+    );
+  }
+
   return (
-    <Spin spinning={loading}>
-      <Title level={4} style={{ marginBottom: 24 }}>System Settings</Title>
-      <Card
-        extra={
-          <Button 
-            icon={<ReloadOutlined />} 
-            onClick={fetchStatus}
-            loading={loading}
-          >
-            Refresh
-          </Button>
-        }
-      >
-        <Descriptions bordered column={1}>
-          <Descriptions.Item label="RAGFlow URL">
-            {status?.ragflow_url || '-'}
-          </Descriptions.Item>
-          <Descriptions.Item label="Connection Status">
-            {getStatusTag()}
-            {status?.error_message && (
-              <span style={{ marginLeft: 8, color: '#ff4d4f' }}>
-                {status.error_message}
-              </span>
-            )}
-          </Descriptions.Item>
-          <Descriptions.Item label="API Key">
-            <code>{status?.api_key_masked || '-'}</code>
-          </Descriptions.Item>
-          <Descriptions.Item label="Admin Version">
-            v{status?.admin_version || '-'}
-          </Descriptions.Item>
-          <Descriptions.Item label="RAGFlow Version">
-            {status?.ragflow_version ? `v${status.ragflow_version}` : '-'}
-          </Descriptions.Item>
-          <Descriptions.Item label="Server Port">
-            {status?.server_port || '-'}
-          </Descriptions.Item>
-          <Descriptions.Item label="Debug Mode">
-            <Tag color={status?.debug ? 'orange' : 'green'}>
-              {status?.debug ? 'Enabled' : 'Disabled'}
-            </Tag>
-          </Descriptions.Item>
-        </Descriptions>
-      </Card>
-    </Spin>
+    <ErrorBoundary>
+      <div>
+        <Title level={4} style={{ marginBottom: 24 }}>System Settings</Title>
+        <Card
+          extra={
+            <Button 
+              icon={<ReloadOutlined />} 
+              onClick={fetchStatus}
+              loading={loading}
+            >
+              Refresh
+            </Button>
+          }
+        >
+          <Descriptions bordered column={1}>
+            <Descriptions.Item label="RAGFlow URL">
+              {status?.ragflow_url || '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label="Connection Status">
+              {getStatusTag()}
+              {status?.error_message && (
+                <span style={{ marginLeft: 8, color: '#ff4d4f' }}>
+                  {status.error_message}
+                </span>
+              )}
+            </Descriptions.Item>
+            <Descriptions.Item label="API Key">
+              <code>{status?.api_key_masked || '-'}</code>
+            </Descriptions.Item>
+            <Descriptions.Item label="Admin Version">
+              v{status?.admin_version || '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label="RAGFlow Version">
+              {status?.ragflow_version ? `v${status.ragflow_version}` : '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label="Server Port">
+              {status?.server_port || '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label="Debug Mode">
+              <Tag color={status?.debug ? 'orange' : 'green'}>
+                {status?.debug ? 'Enabled' : 'Disabled'}
+              </Tag>
+            </Descriptions.Item>
+          </Descriptions>
+        </Card>
+      </div>
+    </ErrorBoundary>
   );
 };
 
