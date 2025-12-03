@@ -2,15 +2,18 @@
 import { Table, Button, Space, Card, message, Input, Typography, Spin } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { DeleteOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { datasetApi, Dataset } from '@/services/api';
 import { useTableList } from '@/hooks/useTableList';
 import { useConnectionCheck } from '@/hooks/useConnectionCheck';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { translateErrorMessage } from '@/utils/i18n';
 import dayjs from 'dayjs';
 
 const { Title } = Typography;
 
 const Datasets: React.FC = () => {
+  const { t } = useTranslation();
   const { checking, connected } = useConnectionCheck();
   const [searchName, setSearchName] = useState('');
 
@@ -41,50 +44,50 @@ const Datasets: React.FC = () => {
   const handleDelete = async (ids: string[]) => {
     try {
       await datasetApi.batchDelete(ids);
-      message.success('Deleted successfully');
+      message.success(t('common.deletedSuccess'));
       setSelectedRowKeys([]);
       refresh();
     } catch (error: any) {
-      message.error(error.message || 'Failed to delete');
+      message.error(translateErrorMessage(error.message, t) || t('common.deleteFailed'));
     }
   };
 
   const columns: ColumnsType<Dataset> = [
     { 
-      title: 'Name', 
+      title: t('common.name'), 
       dataIndex: 'name', 
       key: 'name',
       width: 200,
     },
     { 
-      title: 'Description', 
+      title: t('common.description'), 
       dataIndex: 'description', 
       key: 'description',
       ellipsis: true,
     },
     { 
-      title: 'Documents', 
+      title: t('datasets.documents'), 
       dataIndex: 'document_count', 
       key: 'document_count',
       width: 100,
       render: (val) => val || 0,
     },
     { 
-      title: 'Chunks', 
+      title: t('datasets.chunks'), 
       dataIndex: 'chunk_count', 
       key: 'chunk_count',
       width: 100,
       render: (val) => val || 0,
     },
     { 
-      title: 'Created', 
+      title: t('common.created'), 
       dataIndex: 'create_time', 
       key: 'create_time',
       width: 180,
       render: (val) => val ? dayjs(val).format('YYYY-MM-DD HH:mm') : '-',
     },
     {
-      title: 'Actions',
+      title: t('common.actions'),
       key: 'action',
       width: 120,
       render: (_, record) => (
@@ -94,7 +97,7 @@ const Datasets: React.FC = () => {
           danger
           onClick={() => handleDelete([record.id])}
         >
-          Delete
+          {t('common.delete')}
         </Button>
       ),
     },
@@ -106,29 +109,29 @@ const Datasets: React.FC = () => {
     <ErrorBoundary>
       <Spin spinning={isLoading} size="large">
         <div style={{ minHeight: isLoading ? 400 : 'auto', visibility: isLoading ? 'hidden' : 'visible' }}>
-          <Title level={4} style={{ marginBottom: 24 }}>Datasets</Title>
+          <Title level={4} style={{ marginBottom: 24 }}>{t('datasets.title')}</Title>
           <Card>
             <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
               <Space>
                 <Input
-                  placeholder="Search by name"
+                  placeholder={t('datasets.searchPlaceholder')}
                   prefix={<SearchOutlined />}
                   value={searchName}
                   onChange={(e) => setSearchName(e.target.value)}
                   onPressEnter={handleSearch}
                   style={{ width: 200 }}
                 />
-                <Button icon={<SearchOutlined />} onClick={handleSearch}>Search</Button>
+                <Button icon={<SearchOutlined />} onClick={handleSearch}>{t('common.search')}</Button>
               </Space>
               <Space>
-                <Button icon={<ReloadOutlined />} onClick={refresh}>Refresh</Button>
+                <Button icon={<ReloadOutlined />} onClick={refresh}>{t('common.refresh')}</Button>
                 <Button 
                   danger 
                   icon={<DeleteOutlined />}
                   disabled={selectedRowKeys.length === 0}
                   onClick={() => handleDelete(selectedRowKeys as string[])}
                 >
-                  Delete Selected ({selectedRowKeys.length})
+                  {t('common.deleteSelected', { count: selectedRowKeys.length })}
                 </Button>
               </Space>
             </div>
@@ -147,7 +150,7 @@ const Datasets: React.FC = () => {
                 total: total,
                 showSizeChanger: true,
                 showQuickJumper: true,
-                showTotal: (t) => `Total ${t} items`,
+                showTotal: (total) => t('common.total', { count: total }),
                 onChange: handlePageChange,
               }}
             />

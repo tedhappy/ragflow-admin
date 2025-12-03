@@ -6,6 +6,7 @@
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Result, Button } from 'antd';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   children: ReactNode;
@@ -16,6 +17,30 @@ interface State {
   hasError: boolean;
   error: Error | null;
 }
+
+// Error fallback component with i18n support
+const ErrorFallback: React.FC<{
+  error: Error | null;
+  onReset: () => void;
+}> = ({ error, onReset }) => {
+  const { t } = useTranslation();
+
+  return (
+    <Result
+      status="error"
+      title={t('error.title')}
+      subTitle={error?.message || t('error.subtitle')}
+      extra={[
+        <Button type="primary" key="reload" onClick={() => window.location.reload()}>
+          {t('error.reload')}
+        </Button>,
+        <Button key="retry" onClick={onReset}>
+          {t('error.retry')}
+        </Button>,
+      ]}
+    />
+  );
+};
 
 /**
  * Error Boundary component to catch JavaScript errors in child components.
@@ -31,7 +56,10 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    // Log error to console in development
+    if (process.env.NODE_ENV === 'development') {
+      console.error('ErrorBoundary caught an error:', error, errorInfo);
+    }
   }
 
   handleReset = () => {
@@ -45,18 +73,9 @@ class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <Result
-          status="error"
-          title="Something went wrong"
-          subTitle={this.state.error?.message || 'An unexpected error occurred'}
-          extra={[
-            <Button type="primary" key="reload" onClick={() => window.location.reload()}>
-              Reload Page
-            </Button>,
-            <Button key="retry" onClick={this.handleReset}>
-              Try Again
-            </Button>,
-          ]}
+        <ErrorFallback
+          error={this.state.error}
+          onReset={this.handleReset}
         />
       );
     }

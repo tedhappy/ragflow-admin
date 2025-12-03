@@ -6,9 +6,11 @@ import {
   RobotOutlined, 
   FileOutlined,
 } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { dashboardApi } from '@/services/api';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { useConnectionCheck } from '@/hooks/useConnectionCheck';
+import { translateErrorMessage } from '@/utils/i18n';
 
 const { Title } = Typography;
 
@@ -20,6 +22,7 @@ interface Stats {
 }
 
 const Dashboard: React.FC = () => {
+  const { t } = useTranslation();
   const { checking, connected } = useConnectionCheck();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<Stats>({
@@ -38,19 +41,19 @@ const Dashboard: React.FC = () => {
         const data = await dashboardApi.getStats();
         setStats(data);
       } catch (error: any) {
-        message.error(error.message || 'Failed to fetch statistics');
+        message.error(translateErrorMessage(error.message, t) || t('dashboard.fetchFailed'));
       } finally {
         setLoading(false);
       }
     };
     fetchStats();
-  }, [connected]);
+  }, [connected, t]);
 
   const statisticsData = [
-    { title: 'Datasets', value: stats.dataset_count, icon: <DatabaseOutlined />, color: '#1677ff' },
-    { title: 'Documents', value: stats.document_count, icon: <FileOutlined />, color: '#52c41a' },
-    { title: 'Chats', value: stats.chat_count, icon: <MessageOutlined />, color: '#722ed1' },
-    { title: 'Agents', value: stats.agent_count, icon: <RobotOutlined />, color: '#fa8c16' },
+    { title: t('dashboard.datasets'), value: stats.dataset_count, icon: <DatabaseOutlined />, color: '#1677ff' },
+    { title: t('dashboard.documents'), value: stats.document_count, icon: <FileOutlined />, color: '#52c41a' },
+    { title: t('dashboard.chats'), value: stats.chat_count, icon: <MessageOutlined />, color: '#722ed1' },
+    { title: t('dashboard.agents'), value: stats.agent_count, icon: <RobotOutlined />, color: '#fa8c16' },
   ];
 
   const isLoading = checking || loading;
@@ -59,7 +62,7 @@ const Dashboard: React.FC = () => {
     <ErrorBoundary>
       <Spin spinning={isLoading} size="large">
         <div style={{ minHeight: isLoading ? 300 : 'auto', visibility: isLoading ? 'hidden' : 'visible' }}>
-          <Title level={4} style={{ marginBottom: 24 }}>Dashboard Overview</Title>
+          <Title level={4} style={{ marginBottom: 24 }}>{t('dashboard.title')}</Title>
           <Row gutter={[16, 16]}>
             {statisticsData.map((item) => (
               <Col xs={24} sm={12} md={8} lg={6} key={item.title}>

@@ -10,8 +10,10 @@ import {
   KeyOutlined,
   LoadingOutlined
 } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { systemApi } from '@/services/api';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { translateErrorMessage } from '@/utils/i18n';
 
 const { Title, Text } = Typography;
 
@@ -29,6 +31,7 @@ interface ConnectionStatus {
 }
 
 const Settings: React.FC = () => {
+  const { t } = useTranslation();
   const [form] = Form.useForm<SettingsForm>();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -41,14 +44,14 @@ const Settings: React.FC = () => {
     const reason = params.get('reason');
     
     if (reason === 'not_connected') {
-      message.warning('RAGFlow is not connected. Please configure your connection settings.');
+      message.warning(t('connection.notConnected'));
       // Clean URL
       window.history.replaceState({}, '', '/settings');
     } else if (reason === 'connection_failed') {
-      message.error('Failed to connect to RAGFlow server. Please check your settings.');
+      message.error(t('connection.failed'));
       window.history.replaceState({}, '', '/settings');
     }
-  }, []);
+  }, [t]);
 
   // Load settings from localStorage or backend on mount
   useEffect(() => {
@@ -100,22 +103,25 @@ const Settings: React.FC = () => {
         api_key: values.api_key,
       });
 
+      const translatedError = translateErrorMessage(result.error_message || undefined, t);
+      
       setConnectionStatus({
         status: result.ragflow_status,
-        message: result.error_message || undefined,
+        message: translatedError || undefined,
       });
 
       if (result.ragflow_status === 'connected') {
-        message.success('Connection successful!');
+        message.success(t('common.success'));
       } else {
-        message.error(result.error_message || 'Connection failed');
+        message.error(translatedError || t('common.error'));
       }
     } catch (error: any) {
+      const translatedError = translateErrorMessage(error.message, t);
       setConnectionStatus({
         status: 'error',
-        message: error.message,
+        message: translatedError,
       });
-      message.error(error.message || 'Connection test failed');
+      message.error(translatedError || t('common.error'));
     } finally {
       setTesting(false);
     }
@@ -125,7 +131,7 @@ const Settings: React.FC = () => {
   const handleSave = async () => {
     // Must test connection first
     if (connectionStatus.status !== 'connected') {
-      message.warning('Please test the connection first before saving');
+      message.warning(t('settings.testConnectionFirst'));
       return;
     }
     
@@ -142,9 +148,9 @@ const Settings: React.FC = () => {
       // Also save to localStorage for form persistence
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(values));
       
-      message.success('Settings saved successfully!');
+      message.success(t('settings.saveSuccess'));
     } catch (error: any) {
-      message.error(error.message || 'Failed to save settings');
+      message.error(error.message || t('settings.saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -155,22 +161,23 @@ const Settings: React.FC = () => {
     const { status, message: msg } = connectionStatus;
     
     const statusConfig = {
-      connected: { icon: <CheckCircleOutlined />, color: 'success', text: 'Connected' },
-      disconnected: { icon: <CloseCircleOutlined />, color: 'error', text: 'Disconnected' },
-      error: { icon: <CloseCircleOutlined />, color: 'error', text: 'Error' },
-      timeout: { icon: <ExclamationCircleOutlined />, color: 'warning', text: 'Timeout' },
-      unknown: { icon: <LoadingOutlined />, color: 'default', text: 'Unknown' },
-      untested: { icon: <ApiOutlined />, color: 'default', text: 'Not Tested' },
+      connected: { icon: <CheckCircleOutlined />, color: 'success', text: t('settings.status.connected') },
+      disconnected: { icon: <CloseCircleOutlined />, color: 'error', text: t('settings.status.disconnected') },
+      error: { icon: <CloseCircleOutlined />, color: 'error', text: t('settings.status.error') },
+      timeout: { icon: <ExclamationCircleOutlined />, color: 'warning', text: t('settings.status.timeout') },
+      unknown: { icon: <LoadingOutlined />, color: 'default', text: t('settings.status.unknown') },
+      untested: { icon: <ApiOutlined />, color: 'default', text: t('settings.status.untested') },
     };
 
     const config = statusConfig[status] || statusConfig.unknown;
+    const translatedMsg = translateErrorMessage(msg, t);
     
     return (
       <Space>
         <Tag icon={config.icon} color={config.color}>
           {config.text}
         </Tag>
-        {msg && <Text type="danger">{msg}</Text>}
+        {translatedMsg && <Text type="danger">{translatedMsg}</Text>}
       </Space>
     );
   };
@@ -179,9 +186,9 @@ const Settings: React.FC = () => {
     <ErrorBoundary>
       <Spin spinning={loading} size="large">
         <div style={{ minHeight: loading ? 400 : 'auto', visibility: loading ? 'hidden' : 'visible' }}>
-          <Title level={4} style={{ marginBottom: 8 }}>System Settings</Title>
+          <Title level={4} style={{ marginBottom: 8 }}>{t('settings.title')}</Title>
           <Text type="secondary" style={{ display: 'block', marginBottom: 24 }}>
-            Configure your RAGFlow connection settings
+            {t('settings.subtitle')}
           </Text>
 
           <Card>
@@ -192,7 +199,7 @@ const Settings: React.FC = () => {
               style={{ maxWidth: 480 }}
             >
               {/* Connection Status */}
-              <Form.Item label="Connection Status" style={{ marginBottom: 24 }}>
+              <Form.Item label={t('settings.connectionStatus')} style={{ marginBottom: 24 }}>
                 {renderStatusTag()}
               </Form.Item>
 
@@ -201,17 +208,17 @@ const Settings: React.FC = () => {
               {/* RAGFlow URL */}
               <Form.Item
                 name="ragflow_url"
-                label="RAGFlow URL"
+                label={t('settings.ragflowUrl')}
                 rules={[
-                  { required: true, message: 'Please enter RAGFlow URL' },
-                  { type: 'url', message: 'Please enter a valid URL' },
+                  { required: true, message: t('settings.ragflowUrlRequired') },
+                  { type: 'url', message: t('settings.ragflowUrlInvalid') },
                 ]}
-                tooltip="The base URL of your RAGFlow server"
+                tooltip={t('settings.ragflowUrlTooltip')}
                 style={{ marginBottom: 20 }}
               >
                 <Input 
                   prefix={<LinkOutlined style={{ color: '#bfbfbf' }} />}
-                  placeholder="http://localhost:9380"
+                  placeholder={t('settings.ragflowUrlPlaceholder')}
                   onChange={() => setConnectionStatus({ status: 'untested' })}
                 />
               </Form.Item>
@@ -219,16 +226,16 @@ const Settings: React.FC = () => {
               {/* API Key */}
               <Form.Item
                 name="api_key"
-                label="API Key"
+                label={t('settings.apiKey')}
                 rules={[
-                  { required: true, message: 'Please enter API Key' },
+                  { required: true, message: t('settings.apiKeyRequired') },
                 ]}
-                tooltip="Your RAGFlow API key for authentication"
+                tooltip={t('settings.apiKeyTooltip')}
                 style={{ marginBottom: 24 }}
               >
                 <Input.Password 
                   prefix={<KeyOutlined style={{ color: '#bfbfbf' }} />}
-                  placeholder="ragflow-xxxxxxxx"
+                  placeholder={t('settings.apiKeyPlaceholder')}
                   onChange={() => setConnectionStatus({ status: 'untested' })}
                 />
               </Form.Item>
@@ -243,7 +250,7 @@ const Settings: React.FC = () => {
                     onClick={handleTestConnection}
                     loading={testing}
                   >
-                    Test Connection
+                    {t('settings.testConnection')}
                   </Button>
                   <Button
                     type="primary"
@@ -251,9 +258,9 @@ const Settings: React.FC = () => {
                     onClick={handleSave}
                     loading={saving}
                     disabled={connectionStatus.status !== 'connected'}
-                    title={connectionStatus.status !== 'connected' ? 'Please test connection first' : ''}
+                    title={connectionStatus.status !== 'connected' ? t('settings.testConnectionFirst') : ''}
                   >
-                    Save Settings
+                    {t('settings.saveSettings')}
                   </Button>
                 </Space>
               </Form.Item>

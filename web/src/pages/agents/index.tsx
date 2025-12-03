@@ -2,6 +2,7 @@
 import { Table, Button, Space, Card, message, Input, Typography, Spin } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { agentApi, Agent } from '@/services/api';
 import { useTableList } from '@/hooks/useTableList';
 import { useConnectionCheck } from '@/hooks/useConnectionCheck';
@@ -11,6 +12,7 @@ import dayjs from 'dayjs';
 const { Title } = Typography;
 
 const Agents: React.FC = () => {
+  const { t } = useTranslation();
   const { checking, connected } = useConnectionCheck();
   const [searchTitle, setSearchTitle] = useState('');
 
@@ -38,26 +40,26 @@ const Agents: React.FC = () => {
 
   const columns: ColumnsType<Agent> = [
     { 
-      title: 'Title', 
+      title: t('common.name'), 
       dataIndex: 'title', 
       key: 'title',
       width: 200,
     },
     { 
-      title: 'Description', 
+      title: t('common.description'), 
       dataIndex: 'description', 
       key: 'description',
       ellipsis: true,
     },
     { 
-      title: 'Created', 
+      title: t('common.created'), 
       dataIndex: 'create_time', 
       key: 'create_time',
       width: 180,
       render: (val) => val ? dayjs(val).format('YYYY-MM-DD HH:mm') : '-',
     },
     { 
-      title: 'Updated', 
+      title: t('common.updated'), 
       dataIndex: 'update_time', 
       key: 'update_time',
       width: 180,
@@ -71,21 +73,21 @@ const Agents: React.FC = () => {
     <ErrorBoundary>
       <Spin spinning={isLoading} size="large">
         <div style={{ minHeight: isLoading ? 400 : 'auto', visibility: isLoading ? 'hidden' : 'visible' }}>
-          <Title level={4} style={{ marginBottom: 24 }}>Agents</Title>
+          <Title level={4} style={{ marginBottom: 24 }}>{t('agents.title')}</Title>
           <Card>
             <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
               <Space>
                 <Input
-                  placeholder="Search by title"
+                  placeholder={t('agents.searchPlaceholder')}
                   prefix={<SearchOutlined />}
                   value={searchTitle}
                   onChange={(e) => setSearchTitle(e.target.value)}
                   onPressEnter={handleSearch}
                   style={{ width: 200 }}
                 />
-                <Button icon={<SearchOutlined />} onClick={handleSearch}>Search</Button>
+                <Button icon={<SearchOutlined />} onClick={handleSearch}>{t('common.search')}</Button>
               </Space>
-              <Button icon={<ReloadOutlined />} onClick={refresh}>Refresh</Button>
+              <Button icon={<ReloadOutlined />} onClick={refresh}>{t('common.refresh')}</Button>
             </div>
             <Table 
               columns={columns} 
@@ -98,7 +100,7 @@ const Agents: React.FC = () => {
                 total: total,
                 showSizeChanger: true,
                 showQuickJumper: true,
-                showTotal: (t) => `Total ${t} items`,
+                showTotal: (total) => t('common.total', { count: total }),
                 onChange: handlePageChange,
               }}
             />
