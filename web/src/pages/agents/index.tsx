@@ -10,17 +10,21 @@ const { Title } = Typography;
 const Agents: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<Agent[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [searchTitle, setSearchTitle] = useState('');
 
-  const fetchData = async () => {
+  const fetchData = async (p = page, ps = pageSize) => {
     try {
       setLoading(true);
-      const params: any = { page: 1, page_size: 100 };
+      const params: any = { page: p, page_size: ps };
       if (searchTitle) {
         params.title = searchTitle;
       }
       const result = await agentApi.list(params);
       setData(result.items || []);
+      setTotal(result.total || 0);
     } catch (error: any) {
       message.error(error.message || 'Failed to fetch agents');
     } finally {
@@ -29,8 +33,19 @@ const Agents: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchData();
+    fetchData(1, pageSize);
   }, []);
+
+  const handleSearch = () => {
+    setPage(1);
+    fetchData(1, pageSize);
+  };
+
+  const handlePageChange = (p: number, ps: number) => {
+    setPage(p);
+    setPageSize(ps);
+    fetchData(p, ps);
+  };
 
   const columns: ColumnsType<Agent> = [
     { 
@@ -72,12 +87,12 @@ const Agents: React.FC = () => {
               prefix={<SearchOutlined />}
               value={searchTitle}
               onChange={(e) => setSearchTitle(e.target.value)}
-              onPressEnter={fetchData}
+              onPressEnter={handleSearch}
               style={{ width: 200 }}
             />
-            <Button icon={<SearchOutlined />} onClick={fetchData}>Search</Button>
+            <Button icon={<SearchOutlined />} onClick={handleSearch}>Search</Button>
           </Space>
-          <Button icon={<ReloadOutlined />} onClick={fetchData}>Refresh</Button>
+          <Button icon={<ReloadOutlined />} onClick={handleSearch}>Refresh</Button>
         </div>
         <Table 
           columns={columns} 
@@ -85,9 +100,13 @@ const Agents: React.FC = () => {
           rowKey="id"
           loading={loading}
           pagination={{
+            current: page,
+            pageSize: pageSize,
+            total: total,
             showSizeChanger: true,
             showQuickJumper: true,
-            showTotal: (total) => `Total ${total} items`,
+            showTotal: (t) => `Total ${t} items`,
+            onChange: handlePageChange,
           }}
         />
       </Card>

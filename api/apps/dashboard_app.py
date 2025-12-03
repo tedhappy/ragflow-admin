@@ -22,18 +22,23 @@ async def get_stats():
         description: Dashboard statistics
     """
     try:
-        # Fetch counts from RAGFlow
-        datasets = ragflow_client.list_datasets(page=1, page_size=1)
-        chats = ragflow_client.list_chats(page=1, page_size=1)
-        agents = ragflow_client.list_agents(page=1, page_size=1)
+        # Fetch all items to get accurate counts
+        datasets = ragflow_client.list_datasets(page=1, page_size=1000)
+        chats = ragflow_client.list_chats(page=1, page_size=1000)
+        agents = ragflow_client.list_agents(page=1, page_size=1000)
+        
+        # Calculate document count from all datasets
+        document_count = 0
+        for ds in datasets.get("items", []):
+            document_count += ds.get("document_count", 0) or 0
         
         return jsonify({
             "code": 0,
             "data": {
-                "dataset_count": datasets.get("total", 0),
-                "document_count": 0,  # TODO: implement document count
-                "chat_count": chats.get("total", 0),
-                "agent_count": agents.get("total", 0),
+                "dataset_count": len(datasets.get("items", [])),
+                "document_count": document_count,
+                "chat_count": len(chats.get("items", [])),
+                "agent_count": len(agents.get("items", [])),
             }
         })
     except Exception as e:

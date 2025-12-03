@@ -2,6 +2,8 @@
 
 export default defineConfig({
   title: 'RAGFlow Admin',
+  // Disable Umi UI plugins
+  mfsu: false,
   routes: [
     { path: '/', redirect: '/dashboard' },
     { path: '/dashboard', component: '@/pages/dashboard' },
