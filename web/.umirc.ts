@@ -11,6 +11,19 @@ export default defineConfig({
     { path: '/settings', component: '@/pages/settings' },
   ],
   npmClient: 'npm',
+  hash: true,
+  history: {
+    type: 'browser',
+  },
+  lessLoader: {
+    modifyVars: {
+      hack: `true; @import "~@/less/index.less";`,
+    },
+  },
+  theme: {
+    'primary-color': '#1677ff',
+    'border-radius-base': '6px',
+  },
   proxy: {
     '/api': {
       target: 'http://localhost:8080',

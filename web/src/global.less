@@ -1,0 +1,62 @@
+﻿@import './less/variable.less';
+
+html {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: @font-family;
+  font-size: @font-size-base;
+  color: @text-color;
+  margin: 0;
+  height: 100%;
+  background-color: @layout-bg;
+}
+
+#root {
+  height: 100%;
+}
+
+.ant-app {
+  height: 100%;
+  width: 100%;
+}
+
+// Scrollbar styles - consistent with RAGFlow
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+// Ant Design overrides for RAGFlow Admin style
+.ant-layout {
+  background: @layout-bg;
+}
+
+.ant-layout-sider {
+  background: @bg-color !important;
+}
+
+.ant-menu-light {
+  background: transparent;
+}
+
+.ant-card {
+  border-radius: @border-radius-lg;
+  box-shadow: @box-shadow-card;
+}
