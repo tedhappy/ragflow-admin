@@ -1,27 +1,27 @@
-﻿# RAGFlow Admin 配置文件
-# 复制此文件为 config.yaml 并修改配置
+﻿# RAGFlow Admin Configuration File
+# Copy this file to config.yaml and modify the settings
 
-# RAGFlow 连接配置
+# RAGFlow connection settings (optional, can be configured via frontend settings page)
 ragflow:
-  # RAGFlow 服务地址
-  base_url: "http://localhost:9380"
-  # API Key (在RAGFlow用户设置中获取)
-  api_key: "ragflow-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  # RAGFlow server URL (leave empty to configure via frontend)
+  base_url: ""
+  # API Key (leave empty to configure via frontend, get it from RAGFlow user settings)
+  api_key: ""
 
-# 管理后台服务配置
+# Admin server settings
 server:
-  # 服务监听地址
+  # Server listen address
   host: "0.0.0.0"
-  # 服务端口
+  # Server port
   port: 8080
-  # 调试模式
+  # Debug mode
   debug: true
-  # 密钥 (用于session加密，请修改为随机字符串)
+  # Secret key (used for session encryption, please change to a random string)
   secret_key: "change-me-to-random-string"
 
-# 管理员账号配置
+# Administrator account settings
 admin:
-  # 用户名
+  # Username
   username: "admin"
-  # 密码 (请修改为安全密码)
+  # Password (please change to a secure password)
   password: "admin123"

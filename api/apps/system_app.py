@@ -33,6 +33,18 @@ async def get_status():
     ragflow_status = "unknown"
     error_message = None
     
+    # Check if RAGFlow is configured
+    if not settings.is_ragflow_configured:
+        return jsonify({
+            "code": 0,
+            "data": {
+                "ragflow_url": settings.ragflow_base_url or "",
+                "ragflow_status": "not_configured",
+                "api_key_masked": "",
+                "error_message": "RAGFlow connection not configured"
+            }
+        })
+    
     try:
         async with httpx.AsyncClient() as client:
             # Verify connection using datasets API

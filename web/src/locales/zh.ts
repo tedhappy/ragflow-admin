@@ -89,6 +89,7 @@ export default {
         timeout: '超时',
         untested: '未测试',
         unknown: '未知',
+        notConfigured: '未配置',
       },
     },
     connection: {
@@ -118,6 +119,7 @@ export default {
       configSaveFailed: '配置保存失败',
       nameRequired: '名称不能为空',
       idsRequired: 'ID 列表不能为空',
+      ragflowNotConfigured: 'RAGFlow 连接未配置',
     },
   },
 };

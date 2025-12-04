@@ -89,6 +89,7 @@ export default {
         timeout: 'Timeout',
         untested: 'Not Tested',
         unknown: 'Unknown',
+        notConfigured: 'Not Configured',
       },
     },
     connection: {
@@ -118,6 +119,7 @@ export default {
       configSaveFailed: 'Failed to save configuration',
       nameRequired: 'name is required',
       idsRequired: 'ids is required',
+      ragflowNotConfigured: 'RAGFlow connection not configured',
     },
   },
 };

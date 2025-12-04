@@ -35,6 +35,7 @@ export const translateErrorMessage = (
     'Failed to save configuration': t('error.configSaveFailed'),
     'name is required': t('error.nameRequired'),
     'ids is required': t('error.idsRequired'),
+    'RAGFlow connection not configured': t('error.ragflowNotConfigured'),
   };
   
   // Exact match first

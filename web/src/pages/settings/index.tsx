@@ -26,7 +26,7 @@ interface SettingsForm {
 }
 
 interface ConnectionStatus {
-  status: 'connected' | 'disconnected' | 'error' | 'timeout' | 'unknown' | 'untested';
+  status: 'connected' | 'disconnected' | 'error' | 'timeout' | 'unknown' | 'untested' | 'not_configured';
   message?: string;
 }
 
@@ -59,31 +59,37 @@ const Settings: React.FC = () => {
       try {
         setLoading(true);
         
-        // First try localStorage
+        // First try localStorage for form values
         const saved = localStorage.getItem(SETTINGS_KEY);
         if (saved) {
           const settings = JSON.parse(saved);
           form.setFieldsValue(settings);
-        } else {
-          // If localStorage is empty, try to get URL from backend
-          try {
-            const status = await systemApi.getStatus();
-            if (status.ragflow_url) {
-              form.setFieldsValue({
-                ragflow_url: status.ragflow_url,
-                api_key: '', // Don't fill API key for security
-              });
-              // If backend is connected, show status
-              if (status.ragflow_status === 'connected') {
-                setConnectionStatus({
-                  status: 'connected',
-                  message: undefined,
-                });
-              }
-            }
-          } catch {
-            // Backend not available, leave form empty
+        }
+        
+        // Always check backend status to show actual connection state
+        try {
+          const status = await systemApi.getStatus();
+          
+          // If localStorage is empty, use backend URL
+          if (!saved && status.ragflow_url) {
+            form.setFieldsValue({
+              ragflow_url: status.ragflow_url,
+              api_key: '', // Don't fill API key for security
+            });
           }
+          
+          // Show actual connection status from backend
+          const validStatuses = ['connected', 'disconnected', 'error', 'timeout', 'not_configured'] as const;
+          type ValidStatus = typeof validStatuses[number];
+          
+          if (status.ragflow_status && validStatuses.includes(status.ragflow_status as ValidStatus)) {
+            setConnectionStatus({
+              status: status.ragflow_status as ConnectionStatus['status'],
+              message: status.error_message || undefined,
+            });
+          }
+        } catch {
+          // Backend not available, keep untested status
         }
       } finally {
         setLoading(false);
@@ -167,6 +173,7 @@ const Settings: React.FC = () => {
       timeout: { icon: <ExclamationCircleOutlined />, color: 'warning', text: t('settings.status.timeout') },
       unknown: { icon: <LoadingOutlined />, color: 'default', text: t('settings.status.unknown') },
       untested: { icon: <ApiOutlined />, color: 'default', text: t('settings.status.untested') },
+      not_configured: { icon: <ExclamationCircleOutlined />, color: 'warning', text: t('settings.status.notConfigured') },
     };
 
     const config = statusConfig[status] || statusConfig.unknown;

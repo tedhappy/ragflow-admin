@@ -2,6 +2,9 @@
 
 export default defineConfig({
   title: 'RAGFlow Admin',
+  links: [
+    { rel: 'icon', href: '/logo.svg', type: 'image/svg+xml' },
+  ],
   // Disable Umi UI plugins
   mfsu: false,
   routes: [

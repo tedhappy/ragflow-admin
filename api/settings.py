@@ -40,6 +40,10 @@ class Settings:
     def update_ragflow_config(self, base_url: str, api_key: str) -> bool:
         """Update RAGFlow configuration and save to config.yaml."""
         try:
+            # Ensure ragflow section exists
+            if "ragflow" not in self._config:
+                self._config["ragflow"] = {}
+            
             # Update in memory
             self._config["ragflow"]["base_url"] = base_url
             self._config["ragflow"]["api_key"] = api_key
@@ -73,11 +77,26 @@ class Settings:
 
     @property
     def ragflow_base_url(self) -> str:
-        return os.getenv("RAGFLOW_BASE_URL", self._config["ragflow"]["base_url"])
+        """Get RAGFlow base URL. Returns empty string if not configured."""
+        env_url = os.getenv("RAGFLOW_BASE_URL")
+        if env_url:
+            return env_url
+        ragflow_config = self._config.get("ragflow", {})
+        return ragflow_config.get("base_url", "") or ""
 
     @property
     def ragflow_api_key(self) -> str:
-        return os.getenv("RAGFLOW_API_KEY", self._config["ragflow"]["api_key"])
+        """Get RAGFlow API key. Returns empty string if not configured."""
+        env_key = os.getenv("RAGFLOW_API_KEY")
+        if env_key:
+            return env_key
+        ragflow_config = self._config.get("ragflow", {})
+        return ragflow_config.get("api_key", "") or ""
+
+    @property
+    def is_ragflow_configured(self) -> bool:
+        """Check if RAGFlow connection is configured."""
+        return bool(self.ragflow_base_url and self.ragflow_api_key)
 
     @property
     def server_host(self) -> str:
