@@ -1,5 +1,5 @@
 ﻿import React, { useState } from 'react';
-import { Table, Button, Space, Card, message, Input, Typography, Spin, Tooltip } from 'antd';
+import { Table, Button, Space, Card, message, Input, Typography, Spin, Tooltip, Select } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { ReloadOutlined, SearchOutlined, FileTextOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
@@ -19,6 +19,22 @@ const Datasets: React.FC = () => {
   const navigate = useNavigate();
   const { checking, connected } = useConnectionCheck();
   const [searchName, setSearchName] = useState('');
+  const [filterChunkMethod, setFilterChunkMethod] = useState<string | undefined>(undefined);
+
+  // Chunk method options
+  const chunkMethodOptions = [
+    { value: 'naive', label: t('datasets.chunkMethods.naive') },
+    { value: 'manual', label: t('datasets.chunkMethods.manual') },
+    { value: 'qa', label: t('datasets.chunkMethods.qa') },
+    { value: 'table', label: t('datasets.chunkMethods.table') },
+    { value: 'paper', label: t('datasets.chunkMethods.paper') },
+    { value: 'book', label: t('datasets.chunkMethods.book') },
+    { value: 'laws', label: t('datasets.chunkMethods.laws') },
+    { value: 'presentation', label: t('datasets.chunkMethods.presentation') },
+    { value: 'picture', label: t('datasets.chunkMethods.picture') },
+    { value: 'one', label: t('datasets.chunkMethods.one') },
+    { value: 'email', label: t('datasets.chunkMethods.email') },
+  ];
 
   const {
     data,
@@ -41,6 +57,18 @@ const Datasets: React.FC = () => {
   const onSearch = () => {
     handleSearch({ name: searchName || undefined });
   };
+
+  const onFilterChange = (chunkMethod?: string) => {
+    setFilterChunkMethod(chunkMethod);
+  };
+
+  // Sort by create_time descending, then filter by chunk_method
+  const sortedData = [...data].sort((a, b) => 
+    new Date(b.create_time || 0).getTime() - new Date(a.create_time || 0).getTime()
+  );
+  const filteredData = filterChunkMethod 
+    ? sortedData.filter(item => item.chunk_method === filterChunkMethod)
+    : sortedData;
 
   const handleDelete = async (ids: string[]) => {
     try {
@@ -67,7 +95,10 @@ const Datasets: React.FC = () => {
       key: 'chunk_method',
       width: 100,
       align: 'center',
-      render: (val) => val || 'naive',
+      render: (val) => {
+        const method = val || 'naive';
+        return t(`datasets.chunkMethods.${method}`) as string || method;
+      },
     },
     { 
       title: t('datasets.embeddingModel'), 
@@ -83,6 +114,8 @@ const Datasets: React.FC = () => {
       key: 'document_count',
       width: 70,
       align: 'center',
+      sorter: (a, b) => (a.document_count || 0) - (b.document_count || 0),
+      showSorterTooltip: false,
       render: (val) => val || 0,
     },
     { 
@@ -91,6 +124,8 @@ const Datasets: React.FC = () => {
       key: 'chunk_count',
       width: 70,
       align: 'center',
+      sorter: (a, b) => (a.chunk_count || 0) - (b.chunk_count || 0),
+      showSorterTooltip: false,
       render: (val) => val?.toLocaleString() || 0,
     },
     { 
@@ -99,6 +134,8 @@ const Datasets: React.FC = () => {
       key: 'create_time',
       width: 140,
       align: 'center',
+      sorter: (a, b) => new Date(a.create_time || 0).getTime() - new Date(b.create_time || 0).getTime(),
+      showSorterTooltip: false,
       render: (val) => val ? dayjs(val).format('YYYY-MM-DD HH:mm') : '-',
     },
     {
@@ -125,17 +162,28 @@ const Datasets: React.FC = () => {
     <ErrorBoundary>
       <Spin spinning={isLoading} size="large">
         <div style={{ minHeight: isLoading ? 400 : 'auto', visibility: isLoading ? 'hidden' : 'visible' }}>
-          <Title level={4} style={{ marginBottom: 24 }}>{t('datasets.title')}</Title>
+          <div style={{ marginBottom: 16 }}>
+            <Title level={4} style={{ margin: 0 }}>{t('datasets.title')}</Title>
+          </div>
           <Card>
-            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
-              <Space>
+            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+              <Space wrap>
                 <Input
                   placeholder={t('datasets.searchPlaceholder')}
                   prefix={<SearchOutlined />}
+                  allowClear
                   value={searchName}
                   onChange={(e) => setSearchName(e.target.value)}
                   onPressEnter={onSearch}
-                  style={{ width: 200 }}
+                  style={{ width: 180 }}
+                />
+                <Select
+                  placeholder={t('datasets.filterByChunkMethod')}
+                  allowClear
+                  value={filterChunkMethod}
+                  onChange={onFilterChange}
+                  options={chunkMethodOptions}
+                  style={{ width: 140 }}
                 />
                 <Button icon={<SearchOutlined />} onClick={onSearch}>{t('common.search')}</Button>
               </Space>
@@ -152,7 +200,7 @@ const Datasets: React.FC = () => {
             </div>
             <Table 
               columns={columns} 
-              dataSource={data} 
+              dataSource={filteredData} 
               rowKey="id"
               loading={!initialLoading && loading}
               rowSelection={{

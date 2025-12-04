@@ -40,6 +40,11 @@ const ChatPage: React.FC = () => {
     handleSearch({ name: searchName || undefined });
   };
 
+  // Sort by create_time descending
+  const sortedData = [...data].sort((a, b) => 
+    new Date(b.create_time || 0).getTime() - new Date(a.create_time || 0).getTime()
+  );
+
   const handleDelete = async (ids: string[]) => {
     try {
       await chatApi.batchDelete(ids);
@@ -90,6 +95,8 @@ const ChatPage: React.FC = () => {
       key: 'create_time',
       width: 150,
       align: 'center',
+      sorter: (a, b) => new Date(a.create_time || 0).getTime() - new Date(b.create_time || 0).getTime(),
+      showSorterTooltip: false,
       render: (val) => val ? dayjs(val).format('YYYY-MM-DD HH:mm') : '-',
     },
     {
@@ -109,13 +116,16 @@ const ChatPage: React.FC = () => {
     <ErrorBoundary>
       <Spin spinning={isLoading} size="large">
         <div style={{ minHeight: isLoading ? 400 : 'auto', visibility: isLoading ? 'hidden' : 'visible' }}>
-          <Title level={4} style={{ marginBottom: 24 }}>{t('chat.title')}</Title>
+          <div style={{ marginBottom: 16 }}>
+            <Title level={4} style={{ margin: 0 }}>{t('chat.title')}</Title>
+          </div>
           <Card>
             <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
               <Space>
                 <Input
                   placeholder={t('chat.searchPlaceholder')}
                   prefix={<SearchOutlined />}
+                  allowClear
                   value={searchName}
                   onChange={(e) => setSearchName(e.target.value)}
                   onPressEnter={onSearch}
@@ -136,7 +146,7 @@ const ChatPage: React.FC = () => {
             </div>
             <Table 
               columns={columns} 
-              dataSource={data} 
+              dataSource={sortedData} 
               rowKey="id"
               loading={!initialLoading && loading}
               rowSelection={{

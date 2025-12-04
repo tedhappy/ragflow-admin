@@ -36,6 +36,11 @@ const Agents: React.FC = () => {
     handleSearch({ title: searchTitle || undefined });
   };
 
+  // Sort by create_time descending
+  const sortedData = [...data].sort((a, b) => 
+    new Date(b.create_time || 0).getTime() - new Date(a.create_time || 0).getTime()
+  );
+
   const columns: ColumnsType<Agent> = [
     { 
       title: t('common.name'), 
@@ -57,6 +62,8 @@ const Agents: React.FC = () => {
       key: 'create_time',
       width: 150,
       align: 'center',
+      sorter: (a, b) => new Date(a.create_time || 0).getTime() - new Date(b.create_time || 0).getTime(),
+      showSorterTooltip: false,
       render: (val) => val ? dayjs(val).format('YYYY-MM-DD HH:mm') : '-',
     },
     { 
@@ -65,6 +72,8 @@ const Agents: React.FC = () => {
       key: 'update_time',
       width: 150,
       align: 'center',
+      sorter: (a, b) => new Date(a.update_time || 0).getTime() - new Date(b.update_time || 0).getTime(),
+      showSorterTooltip: false,
       render: (val) => val ? dayjs(val).format('YYYY-MM-DD HH:mm') : '-',
     },
   ];
@@ -75,13 +84,16 @@ const Agents: React.FC = () => {
     <ErrorBoundary>
       <Spin spinning={isLoading} size="large">
         <div style={{ minHeight: isLoading ? 400 : 'auto', visibility: isLoading ? 'hidden' : 'visible' }}>
-          <Title level={4} style={{ marginBottom: 24 }}>{t('agents.title')}</Title>
+          <div style={{ marginBottom: 16 }}>
+            <Title level={4} style={{ margin: 0 }}>{t('agents.title')}</Title>
+          </div>
           <Card>
             <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
               <Space>
                 <Input
                   placeholder={t('agents.searchPlaceholder')}
                   prefix={<SearchOutlined />}
+                  allowClear
                   value={searchTitle}
                   onChange={(e) => setSearchTitle(e.target.value)}
                   onPressEnter={onSearch}
@@ -93,7 +105,7 @@ const Agents: React.FC = () => {
             </div>
             <Table 
               columns={columns} 
-              dataSource={data} 
+              dataSource={sortedData} 
               rowKey="id"
               loading={!initialLoading && loading}
               pagination={{

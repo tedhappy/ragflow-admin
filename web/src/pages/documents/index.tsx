@@ -5,7 +5,7 @@
 //
 
 import React, { useState } from 'react';
-import { Table, Button, Space, Card, message, Input, Typography, Spin, Tag, Progress, Breadcrumb } from 'antd';
+import { Table, Button, Space, Card, message, Input, Typography, Spin, Tag, Progress, Select } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { ReloadOutlined, SearchOutlined, ArrowLeftOutlined, FileOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
@@ -51,6 +51,16 @@ const Documents: React.FC = () => {
   const datasetName = searchParams.get('name') || datasetId;
   const { checking, connected } = useConnectionCheck();
   const [searchKeywords, setSearchKeywords] = useState('');
+  const [filterStatus, setFilterStatus] = useState<string | undefined>(undefined);
+
+  // Status options for filter
+  const statusOptions = [
+    { value: 'DONE', label: t('documents.status.done') },
+    { value: 'RUNNING', label: t('documents.status.running') },
+    { value: 'UNSTART', label: t('documents.status.unstart') },
+    { value: 'FAIL', label: t('documents.status.fail') },
+    { value: 'CANCEL', label: t('documents.status.cancel') },
+  ];
 
   const {
     data,
@@ -73,6 +83,14 @@ const Documents: React.FC = () => {
   const onSearch = () => {
     handleSearch({ keywords: searchKeywords || undefined });
   };
+
+  // Sort by create_time descending, then filter by status
+  const sortedData = [...data].sort((a, b) => 
+    new Date(b.create_time || 0).getTime() - new Date(a.create_time || 0).getTime()
+  );
+  const filteredData = filterStatus
+    ? sortedData.filter(item => item.run === filterStatus)
+    : sortedData;
 
   const handleDelete = async (ids: string[]) => {
     try {
@@ -99,6 +117,8 @@ const Documents: React.FC = () => {
       key: 'size',
       width: 80,
       align: 'center',
+      sorter: (a, b) => (a.size || 0) - (b.size || 0),
+      showSorterTooltip: false,
       render: (val) => formatSize(val),
     },
     { 
@@ -107,6 +127,8 @@ const Documents: React.FC = () => {
       key: 'chunk_count',
       width: 70,
       align: 'center',
+      sorter: (a, b) => (a.chunk_count || 0) - (b.chunk_count || 0),
+      showSorterTooltip: false,
       render: (val) => val || 0,
     },
     { 
@@ -115,6 +137,8 @@ const Documents: React.FC = () => {
       key: 'token_count',
       width: 80,
       align: 'center',
+      sorter: (a, b) => (a.token_count || 0) - (b.token_count || 0),
+      showSorterTooltip: false,
       render: (val) => val?.toLocaleString() || 0,
     },
     { 
@@ -145,6 +169,8 @@ const Documents: React.FC = () => {
       key: 'create_time',
       width: 140,
       align: 'center',
+      sorter: (a, b) => new Date(a.create_time || 0).getTime() - new Date(b.create_time || 0).getTime(),
+      showSorterTooltip: false,
       render: (val) => val ? dayjs(val).format('YYYY-MM-DD HH:mm') : '-',
     },
     {
@@ -164,32 +190,32 @@ const Documents: React.FC = () => {
     <ErrorBoundary>
       <Spin spinning={isLoading} size="large">
         <div style={{ minHeight: isLoading ? 400 : 'auto', visibility: isLoading ? 'hidden' : 'visible' }}>
-          <Breadcrumb style={{ marginBottom: 16 }}>
-            <Breadcrumb.Item>
-              <Link to="/datasets">{t('datasets.title')}</Link>
-            </Breadcrumb.Item>
-            <Breadcrumb.Item>{datasetName}</Breadcrumb.Item>
-          </Breadcrumb>
-          
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
             <Link to="/datasets">
-              <Button icon={<ArrowLeftOutlined />} style={{ marginRight: 16 }} />
+              <Button type="text" icon={<ArrowLeftOutlined />} style={{ marginRight: 8 }} />
             </Link>
-            <Title level={4} style={{ margin: 0 }}>
-              {t('documents.title')} - {datasetName}
-            </Title>
+            <Title level={4} style={{ margin: 0 }}>{datasetName}</Title>
           </div>
           
           <Card>
-            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
-              <Space>
+            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+              <Space wrap>
                 <Input
                   placeholder={t('documents.searchPlaceholder')}
                   prefix={<SearchOutlined />}
+                  allowClear
                   value={searchKeywords}
                   onChange={(e) => setSearchKeywords(e.target.value)}
                   onPressEnter={onSearch}
-                  style={{ width: 200 }}
+                  style={{ width: 180 }}
+                />
+                <Select
+                  placeholder={t('documents.filterByStatus')}
+                  allowClear
+                  value={filterStatus}
+                  onChange={setFilterStatus}
+                  options={statusOptions}
+                  style={{ width: 120 }}
                 />
                 <Button icon={<SearchOutlined />} onClick={onSearch}>{t('common.search')}</Button>
               </Space>
@@ -206,7 +232,7 @@ const Documents: React.FC = () => {
             </div>
             <Table 
               columns={columns} 
-              dataSource={data} 
+              dataSource={filteredData} 
               rowKey="id"
               loading={!initialLoading && loading}
               rowSelection={{
