@@ -4,10 +4,11 @@
 // Licensed under the Apache License, Version 2.0
 //
 
-import React, { useState } from 'react';
-import { Table, Button, Space, Card, message, Input, Typography, Spin, Tag, Progress, Select } from 'antd';
+import React, { useState, useEffect, useRef } from 'react';
+import { Table, Button, Space, Card, message, Input, Typography, Spin, Tag, Progress, Select, Upload, Modal } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { ReloadOutlined, SearchOutlined, ArrowLeftOutlined, FileOutlined } from '@ant-design/icons';
+import type { UploadFile, UploadProps } from 'antd/es/upload';
+import { ReloadOutlined, SearchOutlined, ArrowLeftOutlined, UploadOutlined, PlayCircleOutlined, PauseCircleOutlined, InboxOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'umi';
 import { useParams, useSearchParams } from 'react-router-dom';
@@ -44,6 +45,8 @@ const StatusTag: React.FC<{ status?: string }> = ({ status }) => {
   return <Tag color={info.color}>{info.text}</Tag>;
 };
 
+const { Dragger } = Upload;
+
 const Documents: React.FC = () => {
   const { t } = useTranslation();
   const { datasetId } = useParams<{ datasetId: string }>();
@@ -52,6 +55,17 @@ const Documents: React.FC = () => {
   const { checking, connected } = useConnectionCheck();
   const [searchKeywords, setSearchKeywords] = useState('');
   const [filterStatus, setFilterStatus] = useState<string | undefined>(undefined);
+  
+  // Upload modal state
+  const [uploadModalVisible, setUploadModalVisible] = useState(false);
+  const [uploadFileList, setUploadFileList] = useState<UploadFile[]>([]);
+  const [uploading, setUploading] = useState(false);
+  
+  // Parse state
+  const [parsing, setParsing] = useState(false);
+  
+  // Auto-refresh interval ref
+  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Status options for filter
   const statusOptions = [
@@ -80,17 +94,52 @@ const Documents: React.FC = () => {
     enabled: connected && !!datasetId,
   });
 
+  // Auto-refresh when there are RUNNING documents
+  useEffect(() => {
+    const hasRunningDocs = data.some((doc) => doc.run === 'RUNNING');
+    
+    // Clear existing interval first (to handle refresh function changes)
+    if (refreshIntervalRef.current) {
+      clearInterval(refreshIntervalRef.current);
+      refreshIntervalRef.current = null;
+    }
+    
+    // Start new interval if there are running docs
+    if (hasRunningDocs) {
+      refreshIntervalRef.current = setInterval(() => {
+        refresh();
+      }, 3000);
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
+    };
+  }, [data, refresh]);
+
   const onSearch = () => {
-    handleSearch({ keywords: searchKeywords || undefined });
+    handleSearch({ 
+      keywords: searchKeywords || undefined,
+      run: filterStatus || undefined,
+    });
   };
 
-  // Sort by create_time descending, then filter by status
+  // Handle status filter change - trigger search immediately
+  const onFilterStatusChange = (value: string | undefined) => {
+    setFilterStatus(value);
+    handleSearch({ 
+      keywords: searchKeywords || undefined,
+      run: value || undefined,
+    });
+  };
+
+  // Sort by create_time descending (server already filters by status)
   const sortedData = [...data].sort((a, b) => 
     new Date(b.create_time || 0).getTime() - new Date(a.create_time || 0).getTime()
   );
-  const filteredData = filterStatus
-    ? sortedData.filter(item => item.run === filterStatus)
-    : sortedData;
 
   const handleDelete = async (ids: string[]) => {
     try {
@@ -101,6 +150,118 @@ const Documents: React.FC = () => {
     } catch (error: any) {
       message.error(translateErrorMessage(error.message, t) || t('common.deleteFailed'));
     }
+  };
+
+  // Upload handlers
+  const handleUpload = async () => {
+    if (uploadFileList.length === 0) {
+      message.warning(t('documents.upload.noFiles'));
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      uploadFileList.forEach((file) => {
+        if (file.originFileObj) {
+          formData.append('file', file.originFileObj);
+        }
+      });
+
+      await documentApi.upload(datasetId!, formData);
+      message.success(t('documents.upload.success'));
+      setUploadModalVisible(false);
+      setUploadFileList([]);
+      refresh();
+    } catch (error: any) {
+      message.error(translateErrorMessage(error.message, t) || t('documents.upload.failed'));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const uploadProps: UploadProps = {
+    multiple: true,
+    fileList: uploadFileList,
+    beforeUpload: (file) => {
+      // Create UploadFile object with originFileObj properly set
+      const uploadFile: UploadFile = {
+        uid: file.uid,
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        originFileObj: file as any,
+      };
+      setUploadFileList((prev) => [...prev, uploadFile]);
+      return false; // Prevent auto upload
+    },
+    onRemove: (file) => {
+      setUploadFileList((prev) => prev.filter((f) => f.uid !== file.uid));
+    },
+  };
+
+  // Parse handlers
+  const handleParse = async (ids: string[]) => {
+    if (ids.length === 0) {
+      message.warning(t('documents.parse.noDocuments'));
+      return;
+    }
+
+    setParsing(true);
+    try {
+      await documentApi.parse(datasetId!, ids);
+      message.success(t('documents.parse.started'));
+      setSelectedRowKeys([]);
+      refresh();
+    } catch (error: any) {
+      message.error(translateErrorMessage(error.message, t) || t('documents.parse.failed'));
+    } finally {
+      setParsing(false);
+    }
+  };
+
+  const handleStopParse = async (ids: string[]) => {
+    if (ids.length === 0) return;
+
+    try {
+      await documentApi.stopParse(datasetId!, ids);
+      message.success(t('documents.parse.stopped'));
+      setSelectedRowKeys([]);
+      refresh();
+    } catch (error: any) {
+      // If document already finished parsing, show info instead of error
+      const errorMsg = error.message || '';
+      if (errorMsg.includes('progress at 0 or 1') || errorMsg.includes('already')) {
+        message.info(t('documents.parse.alreadyCompleted'));
+      } else {
+        message.error(translateErrorMessage(errorMsg, t) || t('documents.parse.stopFailed'));
+      }
+      refresh();
+    }
+  };
+
+  // Get parseable documents (UNSTART or FAIL status)
+  // Note: CANCEL documents with partial progress (0 < progress < 1) cannot be re-parsed due to RAGFlow API limitation
+  const getParseableDocuments = () => {
+    return sortedData.filter(
+      (doc) => doc.run === 'UNSTART' || doc.run === 'FAIL'
+    );
+  };
+
+  // Get selected parseable documents
+  const getSelectedParseableIds = () => {
+    return selectedRowKeys.filter((id) => {
+      const doc = data.find((d) => d.id === id);
+      return doc && (doc.run === 'UNSTART' || doc.run === 'FAIL');
+    }) as string[];
+  };
+
+  // Get running documents for stop parsing
+  const getRunningDocumentIds = () => {
+    return selectedRowKeys.filter((id) => {
+      const doc = data.find((d) => d.id === id);
+      return doc && doc.run === 'RUNNING';
+    }) as string[];
   };
 
   const columns: ColumnsType<Document> = [
@@ -213,13 +374,35 @@ const Documents: React.FC = () => {
                   placeholder={t('documents.filterByStatus')}
                   allowClear
                   value={filterStatus}
-                  onChange={setFilterStatus}
+                  onChange={onFilterStatusChange}
                   options={statusOptions}
                   style={{ width: 120 }}
                 />
                 <Button icon={<SearchOutlined />} onClick={onSearch}>{t('common.search')}</Button>
               </Space>
-              <Space>
+              <Space wrap>
+                <Button 
+                  type="primary" 
+                  icon={<UploadOutlined />} 
+                  onClick={() => setUploadModalVisible(true)}
+                >
+                  {t('documents.upload.button')}
+                </Button>
+                <Button
+                  icon={<PlayCircleOutlined />}
+                  onClick={() => handleParse(getSelectedParseableIds())}
+                  disabled={getSelectedParseableIds().length === 0}
+                  loading={parsing}
+                >
+                  {t('documents.parse.selected', { count: getSelectedParseableIds().length })}
+                </Button>
+                <Button
+                  icon={<PauseCircleOutlined />}
+                  onClick={() => handleStopParse(getRunningDocumentIds())}
+                  disabled={getRunningDocumentIds().length === 0}
+                >
+                  {t('documents.parse.stop')}
+                </Button>
                 <Button icon={<ReloadOutlined />} onClick={refresh}>{t('common.refresh')}</Button>
                 <ConfirmDelete
                   onConfirm={() => handleDelete(selectedRowKeys as string[])}
@@ -232,7 +415,7 @@ const Documents: React.FC = () => {
             </div>
             <Table 
               columns={columns} 
-              dataSource={filteredData} 
+              dataSource={sortedData} 
               rowKey="id"
               loading={!initialLoading && loading}
               rowSelection={{
@@ -252,6 +435,30 @@ const Documents: React.FC = () => {
           </Card>
         </div>
       </Spin>
+
+      {/* Upload Modal */}
+      <Modal
+        title={t('documents.upload.title')}
+        open={uploadModalVisible}
+        onOk={handleUpload}
+        onCancel={() => {
+          setUploadModalVisible(false);
+          setUploadFileList([]);
+        }}
+        okText={t('documents.upload.confirm')}
+        cancelText={t('common.cancel')}
+        confirmLoading={uploading}
+        okButtonProps={{ disabled: uploadFileList.length === 0 }}
+        width={600}
+      >
+        <Dragger {...uploadProps} style={{ padding: '20px 0' }}>
+          <p className="ant-upload-drag-icon">
+            <InboxOutlined />
+          </p>
+          <p className="ant-upload-text">{t('documents.upload.dragText')}</p>
+          <p className="ant-upload-hint">{t('documents.upload.hint')}</p>
+        </Dragger>
+      </Modal>
     </ErrorBoundary>
   );
 };

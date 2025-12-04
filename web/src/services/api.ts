@@ -148,11 +148,20 @@ export interface Document {
 }
 
 export const documentApi = {
-  list: (datasetId: string, params?: PaginationParams & { keywords?: string }) =>
+  list: (datasetId: string, params?: PaginationParams & { keywords?: string; run?: string }) =>
     request.get<any, ListResponse<Document>>(`/datasets/${datasetId}/documents`, { params }),
   
   batchDelete: (datasetId: string, ids: string[]) =>
     request.post(`/datasets/${datasetId}/documents/batch-delete`, { ids }),
+  
+  upload: (datasetId: string, formData: FormData) =>
+    request.post(`/datasets/${datasetId}/documents/upload`, formData),
+  
+  parse: (datasetId: string, documentIds: string[]) =>
+    request.post(`/datasets/${datasetId}/documents/parse`, { document_ids: documentIds }),
+  
+  stopParse: (datasetId: string, documentIds: string[]) =>
+    request.post(`/datasets/${datasetId}/documents/stop-parse`, { document_ids: documentIds }),
 };
 
 // Chat API

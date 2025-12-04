@@ -394,20 +394,29 @@ class RAGFlowClient:
         """
         List documents in a dataset with pagination and filtering.
         
-        RAGFlow API: Dataset.list_documents(id, keywords, page, page_size, order_by, desc)
+        RAGFlow API: Dataset.list_documents(id, keywords, page, page_size, order_by, desc, run)
         """
         keywords_filter = kwargs.get("keywords", "")
+        run_filter = kwargs.get("run", "")
+        
+        # Build base params
+        base_params = {
+            "orderby": kwargs.get("orderby", "create_time"),
+            "desc": kwargs.get("desc", True),
+        }
+        if kwargs.get("id"):
+            base_params["id"] = kwargs["id"]
+        # Add run filter (server-side filtering)
+        if run_filter:
+            base_params["run"] = run_filter
         
         # If searching by keywords, fetch all and filter locally
         if keywords_filter:
             params = {
+                **base_params,
                 "page": 1,
                 "page_size": MAX_PAGE_SIZE,
-                "orderby": kwargs.get("orderby", "create_time"),
-                "desc": kwargs.get("desc", True),
             }
-            if kwargs.get("id"):
-                params["id"] = kwargs["id"]
             
             result = await self._get(f"/datasets/{dataset_id}/documents", params=params)
             if result.get("code") == 0:
@@ -429,15 +438,12 @@ class RAGFlowClient:
                 }
             raise RAGFlowAPIError(result.get("message", "Failed to list documents"))
         
-        # No filter - use RAGFlow's pagination directly
+        # No keywords filter - use RAGFlow's pagination directly
         params = {
+            **base_params,
             "page": page,
             "page_size": page_size,
-            "orderby": kwargs.get("orderby", "create_time"),
-            "desc": kwargs.get("desc", True),
         }
-        if kwargs.get("id"):
-            params["id"] = kwargs["id"]
         
         result = await self._get(f"/datasets/{dataset_id}/documents", params=params)
         if result.get("code") == 0:
@@ -455,6 +461,90 @@ class RAGFlowClient:
         if result.get("code") != 0:
             raise RAGFlowAPIError(result.get("message", "Failed to delete documents"))
         return result
+
+    async def upload_documents(self, dataset_id: str, files: list) -> dict:
+        """
+        Upload documents to a dataset.
+        
+        Args:
+            dataset_id: The ID of the dataset
+            files: List of tuples (filename, file_content, content_type)
+        
+        Returns:
+            dict with uploaded document info
+        """
+        client = self._get_http_client()
+        try:
+            # Build multipart form data
+            files_data = []
+            for filename, content, content_type in files:
+                files_data.append(('file', (filename, content, content_type)))
+            
+            # Need to create a new client without default Content-Type header for multipart
+            headers = {"Authorization": f"Bearer {settings.ragflow_api_key}"}
+            
+            async with httpx.AsyncClient(
+                base_url=self._api_url,
+                headers=headers,
+                timeout=HTTP_TIMEOUT * 3  # Longer timeout for file uploads
+            ) as upload_client:
+                start_time = time.time()
+                resp = await upload_client.post(
+                    f"/datasets/{dataset_id}/documents",
+                    files=files_data
+                )
+                elapsed = time.time() - start_time
+                logger.debug(f"Upload documents completed in {elapsed:.3f}s, status={resp.status_code}")
+                resp.raise_for_status()
+                result = resp.json()
+                
+            if result.get("code") == 0:
+                return result.get("data", [])
+            raise RAGFlowAPIError(result.get("message", "Failed to upload documents"))
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error on upload: {e.response.status_code}")
+            raise RAGFlowAPIError(f"HTTP {e.response.status_code}", code=e.response.status_code)
+        except httpx.RequestError as e:
+            logger.error(f"Request error on upload: {str(e)}")
+            raise RAGFlowAPIError(f"Request failed: {str(e)}")
+
+    async def parse_documents(self, dataset_id: str, document_ids: list) -> dict:
+        """
+        Parse (chunk) documents in a dataset.
+        
+        Args:
+            dataset_id: The ID of the dataset
+            document_ids: List of document IDs to parse
+        
+        Returns:
+            dict with parse result
+        """
+        result = await self._post(
+            f"/datasets/{dataset_id}/chunks",
+            json={"document_ids": document_ids}
+        )
+        if result.get("code") == 0:
+            return result
+        raise RAGFlowAPIError(result.get("message", "Failed to parse documents"))
+
+    async def stop_parsing_documents(self, dataset_id: str, document_ids: list) -> dict:
+        """
+        Stop parsing documents in a dataset.
+        
+        Args:
+            dataset_id: The ID of the dataset
+            document_ids: List of document IDs to stop parsing
+        
+        Returns:
+            dict with result
+        """
+        result = await self._delete(
+            f"/datasets/{dataset_id}/chunks",
+            json={"document_ids": document_ids}
+        )
+        if result.get("code") == 0:
+            return result
+        raise RAGFlowAPIError(result.get("message", "Failed to stop parsing documents"))
 
 
 ragflow_client = RAGFlowClient()

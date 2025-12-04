@@ -1,9 +1,9 @@
 ﻿import React, { useState } from 'react';
-import { Table, Button, Space, Card, message, Input, Typography, Spin, Tooltip, Select } from 'antd';
+import { Table, Button, Space, Card, message, Input, Typography, Spin, Select } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { ReloadOutlined, SearchOutlined, FileTextOutlined } from '@ant-design/icons';
+import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'umi';
+import { useNavigate } from 'umi';
 import { datasetApi, Dataset } from '@/services/api';
 import { useTableList } from '@/hooks/useTableList';
 import { useConnectionCheck } from '@/hooks/useConnectionCheck';
@@ -141,17 +141,10 @@ const Datasets: React.FC = () => {
     {
       title: t('common.actions'),
       key: 'action',
-      width: 100,
+      width: 70,
       align: 'center',
       render: (_, record) => (
-        <Space size="small">
-          <Tooltip title={t('datasets.viewDocuments')}>
-            <Link to={`/datasets/${record.id}/documents?name=${encodeURIComponent(record.name)}`}>
-              <Button type="link" size="small" icon={<FileTextOutlined />} />
-            </Link>
-          </Tooltip>
-          <ConfirmDelete onConfirm={() => handleDelete([record.id])} />
-        </Space>
+        <ConfirmDelete onConfirm={() => handleDelete([record.id])} />
       ),
     },
   ];
