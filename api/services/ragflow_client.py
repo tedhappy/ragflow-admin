@@ -389,5 +389,72 @@ class RAGFlowClient:
         else:
             _total_cache.invalidate()
 
+    # Document operations within a dataset
+    async def list_documents(self, dataset_id: str, page: int = 1, page_size: int = 20, **kwargs) -> dict:
+        """
+        List documents in a dataset with pagination and filtering.
+        
+        RAGFlow API: Dataset.list_documents(id, keywords, page, page_size, order_by, desc)
+        """
+        keywords_filter = kwargs.get("keywords", "")
+        
+        # If searching by keywords, fetch all and filter locally
+        if keywords_filter:
+            params = {
+                "page": 1,
+                "page_size": MAX_PAGE_SIZE,
+                "orderby": kwargs.get("orderby", "create_time"),
+                "desc": kwargs.get("desc", True),
+            }
+            if kwargs.get("id"):
+                params["id"] = kwargs["id"]
+            
+            result = await self._get(f"/datasets/{dataset_id}/documents", params=params)
+            if result.get("code") == 0:
+                all_items = result.get("data", {}).get("docs", [])
+                
+                # Local filtering (case-insensitive partial match on name)
+                keywords_lower = keywords_filter.lower()
+                all_items = [
+                    item for item in all_items 
+                    if keywords_lower in (item.get("name", "") or "").lower()
+                ]
+                
+                total = len(all_items)
+                start = (page - 1) * page_size
+                end = start + page_size
+                return {
+                    "items": all_items[start:end],
+                    "total": total
+                }
+            raise RAGFlowAPIError(result.get("message", "Failed to list documents"))
+        
+        # No filter - use RAGFlow's pagination directly
+        params = {
+            "page": page,
+            "page_size": page_size,
+            "orderby": kwargs.get("orderby", "create_time"),
+            "desc": kwargs.get("desc", True),
+        }
+        if kwargs.get("id"):
+            params["id"] = kwargs["id"]
+        
+        result = await self._get(f"/datasets/{dataset_id}/documents", params=params)
+        if result.get("code") == 0:
+            data = result.get("data", {})
+            total = data.get("total") or len(data.get("docs", []))
+            return {
+                "items": data.get("docs", []),
+                "total": total
+            }
+        raise RAGFlowAPIError(result.get("message", "Failed to list documents"))
+
+    async def delete_documents(self, dataset_id: str, ids: list):
+        """Delete documents by IDs within a dataset."""
+        result = await self._delete(f"/datasets/{dataset_id}/documents", json={"ids": ids})
+        if result.get("code") != 0:
+            raise RAGFlowAPIError(result.get("message", "Failed to delete documents"))
+        return result
+
 
 ragflow_client = RAGFlowClient()

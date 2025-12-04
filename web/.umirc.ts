@@ -17,6 +17,7 @@ export default defineConfig({
         { path: '/', redirect: '/dashboard' },
         { path: '/dashboard', component: '@/pages/dashboard' },
         { path: '/datasets', component: '@/pages/datasets' },
+        { path: '/datasets/:datasetId/documents', component: '@/pages/documents' },
         { path: '/chat', component: '@/pages/chat' },
         { path: '/agents', component: '@/pages/agents' },
         { path: '/settings', component: '@/pages/settings' },

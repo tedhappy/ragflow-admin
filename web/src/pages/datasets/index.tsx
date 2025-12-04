@@ -1,8 +1,9 @@
 ﻿import React, { useState } from 'react';
-import { Table, Button, Space, Card, message, Input, Typography, Spin } from 'antd';
+import { Table, Button, Space, Card, message, Input, Typography, Spin, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+import { ReloadOutlined, SearchOutlined, FileTextOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import { Link, useNavigate } from 'umi';
 import { datasetApi, Dataset } from '@/services/api';
 import { useTableList } from '@/hooks/useTableList';
 import { useConnectionCheck } from '@/hooks/useConnectionCheck';
@@ -15,6 +16,7 @@ const { Title } = Typography;
 
 const Datasets: React.FC = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { checking, connected } = useConnectionCheck();
   const [searchName, setSearchName] = useState('');
 
@@ -88,9 +90,16 @@ const Datasets: React.FC = () => {
     {
       title: t('common.actions'),
       key: 'action',
-      width: 120,
+      width: 150,
       render: (_, record) => (
-        <ConfirmDelete onConfirm={() => handleDelete([record.id])} />
+        <Space>
+          <Tooltip title={t('datasets.viewDocuments')}>
+            <Link to={`/datasets/${record.id}/documents?name=${encodeURIComponent(record.name)}`}>
+              <Button type="link" size="small" icon={<FileTextOutlined />} />
+            </Link>
+          </Tooltip>
+          <ConfirmDelete onConfirm={() => handleDelete([record.id])} />
+        </Space>
       ),
     },
   ];
@@ -135,6 +144,17 @@ const Datasets: React.FC = () => {
                 selectedRowKeys,
                 onChange: setSelectedRowKeys,
               }}
+              onRow={(record) => ({
+                onClick: (e) => {
+                  // Prevent navigation when clicking on checkbox or action buttons
+                  const target = e.target as HTMLElement;
+                  if (target.closest('.ant-checkbox-wrapper') || target.closest('button') || target.closest('a')) {
+                    return;
+                  }
+                  navigate(`/datasets/${record.id}/documents?name=${encodeURIComponent(record.name)}`);
+                },
+                style: { cursor: 'pointer' },
+              })}
               pagination={{
                 current: page,
                 pageSize: pageSize,

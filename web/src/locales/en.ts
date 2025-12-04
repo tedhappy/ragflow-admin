@@ -70,6 +70,23 @@ export default {
       searchPlaceholder: 'Search by name',
       documents: 'Documents',
       chunks: 'Chunks',
+      viewDocuments: 'View Documents',
+    },
+    documents: {
+      title: 'Documents',
+      searchPlaceholder: 'Search by filename',
+      size: 'Size',
+      chunks: 'Chunks',
+      tokens: 'Tokens',
+      progress: 'Progress',
+      statusLabel: 'Status',
+      status: {
+        unstart: 'Unstart',
+        running: 'Running',
+        cancel: 'Canceled',
+        done: 'Done',
+        fail: 'Failed',
+      },
     },
     chat: {
       title: 'Chat Assistants',

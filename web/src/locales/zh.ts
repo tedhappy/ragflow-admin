@@ -70,6 +70,23 @@ export default {
       searchPlaceholder: '按名称搜索',
       documents: '文档数',
       chunks: '分块数',
+      viewDocuments: '查看文档',
+    },
+    documents: {
+      title: '文档管理',
+      searchPlaceholder: '按文件名搜索',
+      size: '大小',
+      chunks: '分块数',
+      tokens: 'Token数',
+      progress: '进度',
+      statusLabel: '状态',
+      status: {
+        unstart: '未开始',
+        running: '处理中',
+        cancel: '已取消',
+        done: '已完成',
+        fail: '失败',
+      },
     },
     chat: {
       title: '聊天助手',

@@ -122,6 +122,36 @@ export const datasetApi = {
     request.post('/datasets/batch-delete', { ids }),
 };
 
+// Document API (within a dataset)
+export interface Document {
+  id: string;
+  name: string;
+  thumbnail?: string;
+  dataset_id?: string;
+  chunk_method?: string;
+  source_type?: string;
+  type?: string;
+  created_by?: string;
+  size?: number;
+  token_count?: number;
+  chunk_count?: number;
+  progress?: number;
+  progress_msg?: string;
+  process_begin_at?: string;
+  process_duration?: number;
+  run?: 'UNSTART' | 'RUNNING' | 'CANCEL' | 'DONE' | 'FAIL';
+  create_time?: string;
+  update_time?: string;
+}
+
+export const documentApi = {
+  list: (datasetId: string, params?: PaginationParams & { keywords?: string }) =>
+    request.get<any, ListResponse<Document>>(`/datasets/${datasetId}/documents`, { params }),
+  
+  batchDelete: (datasetId: string, ids: string[]) =>
+    request.post(`/datasets/${datasetId}/documents/batch-delete`, { ids }),
+};
+
 // Chat API
 export interface Chat {
   id: string;
