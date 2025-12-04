@@ -107,6 +107,9 @@ export interface Dataset {
   avatar?: string;
   chunk_count?: number;
   document_count?: number;
+  chunk_method?: string;
+  embedding_model?: string;
+  permission?: string;
   create_time?: string;
   update_time?: string;
 }
@@ -161,6 +164,10 @@ export interface Chat {
   create_time?: string;
   update_time?: string;
   dataset_ids?: string[];
+  llm?: {
+    model_name?: string;
+    temperature?: number;
+  };
 }
 
 export const chatApi = {

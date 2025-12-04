@@ -62,14 +62,15 @@ const Dashboard: React.FC = () => {
     <ErrorBoundary>
       <Spin spinning={isLoading} size="large">
         <div style={{ minHeight: isLoading ? 300 : 'auto', visibility: isLoading ? 'hidden' : 'visible' }}>
-          <Title level={4} style={{ marginBottom: 24 }}>{t('dashboard.title')}</Title>
-          <Row gutter={[16, 16]}>
+          <Title level={4} style={{ marginBottom: 24, textAlign: 'center' }}>{t('dashboard.title')}</Title>
+          <Row gutter={[16, 16]} justify="center">
             {statisticsData.map((item) => (
               <Col xs={24} sm={12} md={8} lg={6} key={item.title}>
                 <Card hoverable>
                   <Statistic
-                    title={item.title}
+                    title={<span style={{ display: 'block', textAlign: 'center' }}>{item.title}</span>}
                     value={item.value}
+                    valueStyle={{ textAlign: 'center' }}
                     prefix={React.cloneElement(item.icon as React.ReactElement, {
                       style: { color: item.color, fontSize: 24 },
                     })}

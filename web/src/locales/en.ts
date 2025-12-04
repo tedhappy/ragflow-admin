@@ -68,9 +68,11 @@ export default {
     datasets: {
       title: 'Datasets',
       searchPlaceholder: 'Search by name',
-      documents: 'Documents',
+      documents: 'Docs',
       chunks: 'Chunks',
       viewDocuments: 'View Documents',
+      chunkMethod: 'Chunk Method',
+      embeddingModel: 'Embedding Model',
     },
     documents: {
       title: 'Documents',
@@ -91,6 +93,8 @@ export default {
     chat: {
       title: 'Chat Assistants',
       searchPlaceholder: 'Search by name',
+      llmModel: 'LLM Model',
+      linkedDatasets: 'Datasets',
     },
     agents: {
       title: 'Agents',

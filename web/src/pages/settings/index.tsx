@@ -192,25 +192,25 @@ const Settings: React.FC = () => {
   return (
     <ErrorBoundary>
       <Spin spinning={loading} size="large">
-        <div style={{ minHeight: loading ? 400 : 'auto', visibility: loading ? 'hidden' : 'visible' }}>
-          <Title level={4} style={{ marginBottom: 8 }}>{t('settings.title')}</Title>
-          <Text type="secondary" style={{ display: 'block', marginBottom: 24 }}>
+        <div style={{ minHeight: loading ? 400 : 'auto', visibility: loading ? 'hidden' : 'visible', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <Title level={4} style={{ marginBottom: 8, textAlign: 'center' }}>{t('settings.title')}</Title>
+          <Text type="secondary" style={{ display: 'block', marginBottom: 24, textAlign: 'center' }}>
             {t('settings.subtitle')}
           </Text>
 
-          <Card>
+          <Card style={{ width: '100%', maxWidth: 560 }}>
             <Form
               form={form}
               layout="vertical"
               requiredMark={false}
-              style={{ maxWidth: 480 }}
             >
               {/* Connection Status */}
-              <Form.Item label={t('settings.connectionStatus')} style={{ marginBottom: 24 }}>
-                {renderStatusTag()}
-              </Form.Item>
-
-              <Divider style={{ margin: '16px 0' }} />
+              <div style={{ marginBottom: 24, padding: '16px', background: '#fafafa', borderRadius: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text strong>{t('settings.connectionStatus')}</Text>
+                  {renderStatusTag()}
+                </div>
+              </div>
 
               {/* RAGFlow URL */}
               <Form.Item
@@ -247,15 +247,14 @@ const Settings: React.FC = () => {
                 />
               </Form.Item>
 
-              <Divider style={{ margin: '16px 0' }} />
-
               {/* Action Buttons */}
-              <Form.Item style={{ marginBottom: 16 }}>
-                <Space size="middle">
+              <Form.Item style={{ marginBottom: 0, marginTop: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 16 }}>
                   <Button
                     icon={<ApiOutlined />}
                     onClick={handleTestConnection}
                     loading={testing}
+                    size="large"
                   >
                     {t('settings.testConnection')}
                   </Button>
@@ -264,12 +263,13 @@ const Settings: React.FC = () => {
                     icon={<SaveOutlined />}
                     onClick={handleSave}
                     loading={saving}
+                    size="large"
                     disabled={connectionStatus.status !== 'connected'}
                     title={connectionStatus.status !== 'connected' ? t('settings.testConnectionFirst') : ''}
                   >
                     {t('settings.saveSettings')}
                   </Button>
-                </Space>
+                </div>
               </Form.Item>
 
             </Form>

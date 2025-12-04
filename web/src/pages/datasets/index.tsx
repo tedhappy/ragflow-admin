@@ -58,41 +58,56 @@ const Datasets: React.FC = () => {
       title: t('common.name'), 
       dataIndex: 'name', 
       key: 'name',
-      width: 200,
+      width: '25%',
+      ellipsis: true,
     },
     { 
-      title: t('common.description'), 
-      dataIndex: 'description', 
-      key: 'description',
+      title: t('datasets.chunkMethod'), 
+      dataIndex: 'chunk_method', 
+      key: 'chunk_method',
+      width: 100,
+      align: 'center',
+      render: (val) => val || 'naive',
+    },
+    { 
+      title: t('datasets.embeddingModel'), 
+      dataIndex: 'embedding_model', 
+      key: 'embedding_model',
+      width: '20%',
       ellipsis: true,
+      render: (val) => val?.split('@')[0] || '-',
     },
     { 
       title: t('datasets.documents'), 
       dataIndex: 'document_count', 
       key: 'document_count',
-      width: 100,
+      width: 70,
+      align: 'center',
       render: (val) => val || 0,
     },
     { 
       title: t('datasets.chunks'), 
       dataIndex: 'chunk_count', 
       key: 'chunk_count',
-      width: 100,
-      render: (val) => val || 0,
+      width: 70,
+      align: 'center',
+      render: (val) => val?.toLocaleString() || 0,
     },
     { 
       title: t('common.created'), 
       dataIndex: 'create_time', 
       key: 'create_time',
-      width: 180,
+      width: 140,
+      align: 'center',
       render: (val) => val ? dayjs(val).format('YYYY-MM-DD HH:mm') : '-',
     },
     {
       title: t('common.actions'),
       key: 'action',
-      width: 150,
+      width: 100,
+      align: 'center',
       render: (_, record) => (
-        <Space>
+        <Space size="small">
           <Tooltip title={t('datasets.viewDocuments')}>
             <Link to={`/datasets/${record.id}/documents?name=${encodeURIComponent(record.name)}`}>
               <Button type="link" size="small" icon={<FileTextOutlined />} />

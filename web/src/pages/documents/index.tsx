@@ -90,40 +90,39 @@ const Documents: React.FC = () => {
       title: t('common.name'), 
       dataIndex: 'name', 
       key: 'name',
-      width: 250,
-      render: (name: string) => (
-        <Space>
-          <FileOutlined />
-          <span>{name}</span>
-        </Space>
-      ),
+      width: '35%',
+      ellipsis: true,
     },
     { 
       title: t('documents.size'), 
       dataIndex: 'size', 
       key: 'size',
-      width: 100,
+      width: 80,
+      align: 'center',
       render: (val) => formatSize(val),
     },
     { 
       title: t('documents.chunks'), 
       dataIndex: 'chunk_count', 
       key: 'chunk_count',
-      width: 80,
+      width: 70,
+      align: 'center',
       render: (val) => val || 0,
     },
     { 
       title: t('documents.tokens'), 
       dataIndex: 'token_count', 
       key: 'token_count',
-      width: 100,
+      width: 80,
+      align: 'center',
       render: (val) => val?.toLocaleString() || 0,
     },
     { 
       title: t('documents.progress'), 
       dataIndex: 'progress', 
       key: 'progress',
-      width: 150,
+      width: 120,
+      align: 'center',
       render: (val, record) => (
         <Progress 
           percent={Math.round((val || 0) * 100)} 
@@ -136,20 +135,23 @@ const Documents: React.FC = () => {
       title: t('documents.statusLabel'), 
       dataIndex: 'run', 
       key: 'run',
-      width: 100,
+      width: 80,
+      align: 'center',
       render: (val) => <StatusTag status={val} />,
     },
     { 
       title: t('common.created'), 
       dataIndex: 'create_time', 
       key: 'create_time',
-      width: 160,
+      width: 140,
+      align: 'center',
       render: (val) => val ? dayjs(val).format('YYYY-MM-DD HH:mm') : '-',
     },
     {
       title: t('common.actions'),
       key: 'action',
-      width: 100,
+      width: 70,
+      align: 'center',
       render: (_, record) => (
         <ConfirmDelete onConfirm={() => handleDelete([record.id])} />
       ),

@@ -1,5 +1,5 @@
 ﻿import React, { useState } from 'react';
-import { Table, Button, Space, Card, message, Input, Typography, Spin } from 'antd';
+import { Table, Button, Space, Card, message, Input, Typography, Spin, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
@@ -56,25 +56,47 @@ const ChatPage: React.FC = () => {
       title: t('common.name'), 
       dataIndex: 'name', 
       key: 'name',
-      width: 200,
+      width: '20%',
+      ellipsis: true,
+    },
+    { 
+      title: t('chat.llmModel'), 
+      dataIndex: ['llm', 'model_name'], 
+      key: 'llm_model',
+      width: '20%',
+      ellipsis: true,
+      render: (val) => val || '-',
+    },
+    { 
+      title: t('chat.linkedDatasets'), 
+      dataIndex: 'dataset_ids', 
+      key: 'dataset_ids',
+      width: 100,
+      align: 'center',
+      render: (val: string[]) => (
+        <Tag color="blue">{val?.length || 0}</Tag>
+      ),
     },
     { 
       title: t('common.description'), 
       dataIndex: 'description', 
       key: 'description',
+      width: '25%',
       ellipsis: true,
     },
     { 
       title: t('common.created'), 
       dataIndex: 'create_time', 
       key: 'create_time',
-      width: 180,
+      width: 150,
+      align: 'center',
       render: (val) => val ? dayjs(val).format('YYYY-MM-DD HH:mm') : '-',
     },
     {
       title: t('common.actions'),
       key: 'action',
-      width: 120,
+      width: 80,
+      align: 'center',
       render: (_, record) => (
         <ConfirmDelete onConfirm={() => handleDelete([record.id])} />
       ),

@@ -68,9 +68,11 @@ export default {
     datasets: {
       title: '知识库管理',
       searchPlaceholder: '按名称搜索',
-      documents: '文档数',
-      chunks: '分块数',
+      documents: '文档',
+      chunks: '分块',
       viewDocuments: '查看文档',
+      chunkMethod: '分块方式',
+      embeddingModel: '向量模型',
     },
     documents: {
       title: '文档管理',
@@ -91,6 +93,8 @@ export default {
     chat: {
       title: '聊天助手',
       searchPlaceholder: '按名称搜索',
+      llmModel: 'LLM 模型',
+      linkedDatasets: '关联知识库',
     },
     agents: {
       title: '智能体管理',
