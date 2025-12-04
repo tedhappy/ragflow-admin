@@ -41,6 +41,21 @@ export default {
       console: '管理控制台',
       profile: '个人资料',
       logout: '退出登录',
+      logoutSuccess: '已退出登录',
+    },
+    login: {
+      title: '登录账户',
+      slogan: 'RAGFlow 管理控制台',
+      username: '用户名',
+      usernamePlaceholder: '请输入用户名',
+      usernameRequired: '请输入用户名',
+      password: '密码',
+      passwordPlaceholder: '请输入密码',
+      passwordRequired: '请输入密码',
+      rememberMe: '记住登录',
+      submit: '登录',
+      success: '登录成功',
+      failed: '登录失败',
     },
     dashboard: {
       title: '仪表盘概览',
@@ -120,6 +135,11 @@ export default {
       nameRequired: '名称不能为空',
       idsRequired: 'ID 列表不能为空',
       ragflowNotConfigured: 'RAGFlow 连接未配置',
+      // Auth messages
+      usernameRequired: '用户名不能为空',
+      passwordRequired: '密码不能为空',
+      invalidCredentials: '用户名或密码错误',
+      authRequired: '请先登录',
     },
   },
 };

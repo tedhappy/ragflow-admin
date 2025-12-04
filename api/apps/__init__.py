@@ -46,13 +46,15 @@ swagger = Swagger(
 
 app.config["SECRET_KEY"] = settings.secret_key
 
-# 注册蓝图
+# Register blueprints
+from api.apps.auth_app import manager as auth_bp
 from api.apps.dashboard_app import manager as dashboard_bp
 from api.apps.dataset_app import manager as dataset_bp
 from api.apps.chat_app import manager as chat_bp
 from api.apps.agent_app import manager as agent_bp
 from api.apps.system_app import manager as system_bp
 
+app.register_blueprint(auth_bp, url_prefix="/api/v1/auth")
 app.register_blueprint(dashboard_bp, url_prefix="/api/v1/dashboard")
 app.register_blueprint(dataset_bp, url_prefix="/api/v1/datasets")
 app.register_blueprint(chat_bp, url_prefix="/api/v1/chats")

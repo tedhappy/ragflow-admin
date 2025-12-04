@@ -36,6 +36,11 @@ export const translateErrorMessage = (
     'name is required': t('error.nameRequired'),
     'ids is required': t('error.idsRequired'),
     'RAGFlow connection not configured': t('error.ragflowNotConfigured'),
+    // Auth messages
+    'Username is required': t('error.usernameRequired'),
+    'Password is required': t('error.passwordRequired'),
+    'Invalid username or password': t('error.invalidCredentials'),
+    'Authentication required': t('error.authRequired'),
   };
   
   // Exact match first

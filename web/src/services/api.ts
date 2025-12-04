@@ -6,10 +6,58 @@
 
 import axios from 'axios';
 
+// Auth token storage key
+const TOKEN_KEY = 'ragflow_admin_token';
+const REMEMBER_KEY = 'ragflow_admin_remember';
+
+// Get stored token (check both localStorage and sessionStorage)
+export const getToken = (): string | null => {
+  return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);
+};
+
+// Set token (localStorage for remember me, sessionStorage otherwise)
+export const setToken = (token: string, remember: boolean = true): void => {
+  if (remember) {
+    localStorage.setItem(TOKEN_KEY, token);
+    localStorage.setItem(REMEMBER_KEY, 'true');
+    sessionStorage.removeItem(TOKEN_KEY);
+  } else {
+    sessionStorage.setItem(TOKEN_KEY, token);
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(REMEMBER_KEY);
+  }
+};
+
+// Remove token from both storages
+export const removeToken = (): void => {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(REMEMBER_KEY);
+  sessionStorage.removeItem(TOKEN_KEY);
+};
+
+// Check if "remember me" was selected
+export const isRemembered = (): boolean => {
+  return localStorage.getItem(REMEMBER_KEY) === 'true';
+};
+
 const request = axios.create({
   baseURL: '/api/v1',
   timeout: 30000,
 });
+
+// Request interceptor - add auth token
+request.interceptors.request.use(
+  (config) => {
+    const token = getToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 // Response interceptor
 request.interceptors.response.use(
@@ -21,6 +69,14 @@ request.interceptors.response.use(
     return Promise.reject(new Error(data.message || 'Request failed'));
   },
   (error) => {
+    // Handle 401 Unauthorized
+    if (error.response?.status === 401) {
+      removeToken();
+      // Redirect to login page if not already there
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
     return Promise.reject(error);
   }
 );
@@ -124,6 +180,34 @@ export const systemApi = {
     request.post<any, TestConnectionResult>('/system/test-connection', data),
   saveConfig: (data: { ragflow_url: string; api_key: string }) =>
     request.post<any, { message: string }>('/system/config', data),
+};
+
+// Auth API
+export interface LoginRequest {
+  username: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  token: string;
+  username: string;
+  expires_in: number;
+}
+
+export interface UserInfo {
+  username: string;
+  role: string;
+}
+
+export const authApi = {
+  login: (data: LoginRequest) =>
+    request.post<any, LoginResponse>('/auth/login', data),
+  logout: () =>
+    request.post<any, void>('/auth/logout'),
+  getCurrentUser: () =>
+    request.get<any, UserInfo>('/auth/me'),
+  refreshToken: () =>
+    request.post<any, LoginResponse>('/auth/refresh'),
 };
 
 export default request;

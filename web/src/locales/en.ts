@@ -41,6 +41,21 @@ export default {
       console: 'Admin Console',
       profile: 'Profile',
       logout: 'Logout',
+      logoutSuccess: 'Logged out successfully',
+    },
+    login: {
+      title: 'Login',
+      slogan: 'RAGFlow Admin Console',
+      username: 'Username',
+      usernamePlaceholder: 'Enter your username',
+      usernameRequired: 'Please enter your username',
+      password: 'Password',
+      passwordPlaceholder: 'Enter your password',
+      passwordRequired: 'Please enter your password',
+      rememberMe: 'Remember me',
+      submit: 'Login',
+      success: 'Login successful',
+      failed: 'Login failed',
     },
     dashboard: {
       title: 'Dashboard Overview',
@@ -120,6 +135,11 @@ export default {
       nameRequired: 'name is required',
       idsRequired: 'ids is required',
       ragflowNotConfigured: 'RAGFlow connection not configured',
+      // Auth messages
+      usernameRequired: 'Username is required',
+      passwordRequired: 'Password is required',
+      invalidCredentials: 'Invalid username or password',
+      authRequired: 'Authentication required',
     },
   },
 };

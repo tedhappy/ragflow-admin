@@ -1,6 +1,6 @@
 ﻿import React, { useState } from 'react';
-import { Outlet, Link, useLocation } from 'umi';
-import { Layout, Menu, Avatar, Dropdown, Space, theme, ConfigProvider } from 'antd';
+import { Outlet, Link, useLocation, useNavigate } from 'umi';
+import { Layout, Menu, Avatar, Dropdown, Space, theme, ConfigProvider, message } from 'antd';
 import type { MenuProps } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import enUS from 'antd/locale/en_US';
@@ -19,9 +19,10 @@ import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import ThemeToggle from '@/components/ThemeToggle';
 import { ThemeProvider, useTheme } from '@/components/ThemeProvider';
+import { useAuthStore } from '@/stores/auth';
 import { Language } from '@/locales';
 
-import styles from './index.less';
+import styles from './BasicLayout.less';
 
 const { Header, Sider, Content } = Layout;
 
@@ -29,9 +30,11 @@ const { Header, Sider, Content } = Layout;
 const LayoutContent: React.FC = () => {
   const { t, i18n } = useTranslation();
   const location = useLocation();
+  const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const { token } = theme.useToken();
   const { isDark } = useTheme();
+  const { user, logout } = useAuthStore();
 
   // Get Ant Design locale based on current language
   const antdLocale = i18n.language === Language.Zh ? zhCN : enUS;
@@ -42,6 +45,18 @@ const LayoutContent: React.FC = () => {
     token: {
       colorPrimary: '#1677ff',
     },
+  };
+
+  // Handle user menu click
+  const handleUserMenuClick: MenuProps['onClick'] = async ({ key }) => {
+    if (key === 'logout') {
+      await logout();
+      message.success(t('header.logoutSuccess'));
+      navigate('/login', { replace: true });
+    } else if (key === 'profile') {
+      // Navigate to profile or show profile modal
+      navigate('/settings');
+    }
   };
 
   const menuItems = [
@@ -124,14 +139,17 @@ const LayoutContent: React.FC = () => {
             <div className={styles.headerRight}>
               <ThemeToggle />
               <LanguageSwitcher />
-              <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+              <Dropdown 
+                menu={{ items: userMenuItems, onClick: handleUserMenuClick }} 
+                placement="bottomRight"
+              >
                 <Space style={{ cursor: 'pointer' }}>
                   <Avatar 
                     size="small" 
                     icon={<UserOutlined />} 
                     style={{ backgroundColor: token.colorPrimary }}
                   />
-                  <span>{t('header.profile')}</span>
+                  <span>{user?.username || t('header.profile')}</span>
                 </Space>
               </Dropdown>
             </div>

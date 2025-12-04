@@ -8,12 +8,20 @@ export default defineConfig({
   // Disable Umi UI plugins
   mfsu: false,
   routes: [
-    { path: '/', redirect: '/dashboard' },
-    { path: '/dashboard', component: '@/pages/dashboard' },
-    { path: '/datasets', component: '@/pages/datasets' },
-    { path: '/chat', component: '@/pages/chat' },
-    { path: '/agents', component: '@/pages/agents' },
-    { path: '/settings', component: '@/pages/settings' },
+    { path: '/login', component: '@/pages/login' },
+    { 
+      path: '/',
+      component: '@/layouts/BasicLayout',
+      wrappers: ['@/wrappers/auth'],
+      routes: [
+        { path: '/', redirect: '/dashboard' },
+        { path: '/dashboard', component: '@/pages/dashboard' },
+        { path: '/datasets', component: '@/pages/datasets' },
+        { path: '/chat', component: '@/pages/chat' },
+        { path: '/agents', component: '@/pages/agents' },
+        { path: '/settings', component: '@/pages/settings' },
+      ],
+    },
   ],
   npmClient: 'npm',
   hash: true,
