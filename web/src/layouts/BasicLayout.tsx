@@ -14,6 +14,7 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   LogoutOutlined,
+  GithubOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
@@ -53,9 +54,6 @@ const LayoutContent: React.FC = () => {
       await logout();
       message.success(t('header.logoutSuccess'));
       navigate('/login', { replace: true });
-    } else if (key === 'profile') {
-      // Navigate to profile or show profile modal
-      navigate('/settings');
     }
   };
 
@@ -88,14 +86,6 @@ const LayoutContent: React.FC = () => {
   ];
 
   const userMenuItems: MenuProps['items'] = [
-    {
-      key: 'profile',
-      icon: <UserOutlined />,
-      label: t('header.profile'),
-    },
-    {
-      type: 'divider',
-    },
     {
       key: 'logout',
       icon: <LogoutOutlined />,
@@ -137,6 +127,13 @@ const LayoutContent: React.FC = () => {
               <span className={styles.headerTitle}>{t('header.console')}</span>
             </Space>
             <div className={styles.headerRight}>
+              <div 
+                className={styles.iconCircle}
+                onClick={() => window.open('https://github.com/tedhappy/ragflow-admin', '_blank')}
+                title="GitHub"
+              >
+                <GithubOutlined />
+              </div>
               <ThemeToggle />
               <LanguageSwitcher />
               <Dropdown 

@@ -53,6 +53,39 @@
   }
 }
 
+// Icon circle button - matching RAGFlow style
+.iconCircle {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: rgba(242, 243, 245, 0.4);
+  cursor: pointer;
+  transition: background-color 0.3s;
+  
+  &:hover {
+    background-color: rgba(242, 243, 245, 0.8);
+  }
+  
+  :global(.anticon) {
+    font-size: 16px;
+    color: var(--text-primary);
+  }
+}
+
+// Dark theme support for icon circle
+:global(.dark) {
+  .iconCircle {
+    background-color: rgba(255, 255, 255, 0.1);
+    
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.2);
+    }
+  }
+}
+
 .content {
   padding: @spacing-lg;
   background: var(--bg-canvas);
