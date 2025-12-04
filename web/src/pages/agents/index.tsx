@@ -23,19 +23,17 @@ const Agents: React.FC = () => {
     initialLoading,
     page,
     pageSize,
-    setParams,
     refresh,
     handlePageChange,
-    handleSearch: triggerSearch,
+    handleSearch,
   } = useTableList<Agent>({
     fetchFn: (params) => agentApi.list(params),
     defaultPageSize: 10,
     enabled: connected,
   });
 
-  const handleSearch = () => {
-    setParams({ title: searchTitle || undefined });
-    triggerSearch();
+  const onSearch = () => {
+    handleSearch({ title: searchTitle || undefined });
   };
 
   const columns: ColumnsType<Agent> = [
@@ -82,10 +80,10 @@ const Agents: React.FC = () => {
                   prefix={<SearchOutlined />}
                   value={searchTitle}
                   onChange={(e) => setSearchTitle(e.target.value)}
-                  onPressEnter={handleSearch}
+                  onPressEnter={onSearch}
                   style={{ width: 200 }}
                 />
-                <Button icon={<SearchOutlined />} onClick={handleSearch}>{t('common.search')}</Button>
+                <Button icon={<SearchOutlined />} onClick={onSearch}>{t('common.search')}</Button>
               </Space>
               <Button icon={<ReloadOutlined />} onClick={refresh}>{t('common.refresh')}</Button>
             </div>

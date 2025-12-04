@@ -27,19 +27,17 @@ const Datasets: React.FC = () => {
     pageSize,
     selectedRowKeys,
     setSelectedRowKeys,
-    setParams,
     refresh,
     handlePageChange,
-    handleSearch: triggerSearch,
+    handleSearch,
   } = useTableList<Dataset>({
     fetchFn: (params) => datasetApi.list(params),
     defaultPageSize: 10,
     enabled: connected,
   });
 
-  const handleSearch = () => {
-    setParams({ name: searchName || undefined });
-    triggerSearch();
+  const onSearch = () => {
+    handleSearch({ name: searchName || undefined });
   };
 
   const handleDelete = async (ids: string[]) => {
@@ -112,10 +110,10 @@ const Datasets: React.FC = () => {
                   prefix={<SearchOutlined />}
                   value={searchName}
                   onChange={(e) => setSearchName(e.target.value)}
-                  onPressEnter={handleSearch}
+                  onPressEnter={onSearch}
                   style={{ width: 200 }}
                 />
-                <Button icon={<SearchOutlined />} onClick={handleSearch}>{t('common.search')}</Button>
+                <Button icon={<SearchOutlined />} onClick={onSearch}>{t('common.search')}</Button>
               </Space>
               <Space>
                 <Button icon={<ReloadOutlined />} onClick={refresh}>{t('common.refresh')}</Button>

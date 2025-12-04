@@ -38,7 +38,7 @@ export interface UseTableListReturn<T, P extends ListParams> {
   setParams: (params: Partial<P>) => void;
   refresh: () => void;
   handlePageChange: (page: number, pageSize: number) => void;
-  handleSearch: () => void;
+  handleSearch: (searchParams?: Partial<P>) => void;
 }
 
 /**
@@ -119,9 +119,10 @@ export function useTableList<T, P extends ListParams = ListParams>(
     fetchData(newParams);
   }, [params, fetchData]);
 
-  const handleSearch = useCallback(() => {
+  const handleSearch = useCallback((searchParams?: Partial<P>) => {
     setPage(1);
-    const newParams = { ...params, page: 1 };
+    // Merge current params with new search params, reset to page 1
+    const newParams = { ...params, ...searchParams, page: 1 } as P;
     setParamsState(newParams);
     fetchData(newParams);
   }, [params, fetchData]);

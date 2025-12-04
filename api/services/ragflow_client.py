@@ -178,23 +178,59 @@ class RAGFlowClient:
             await self._http_client.aclose()
             self._http_client = None
 
-    # Dataset operations (using HTTP to get accurate total count)
+    # Dataset operations - RAGFlow API name param is exact match, so we use local filtering for search
     async def list_datasets(self, page: int = 1, page_size: int = 20, **kwargs) -> dict:
-        """List all datasets with pagination."""
+        """
+        List datasets with pagination and filtering.
+        
+        Note: RAGFlow's name parameter does exact match, not partial match.
+        For search functionality, we fetch all and filter locally.
+        """
+        name_filter = kwargs.get("name", "")
+        
+        # If searching by name, fetch all and filter locally for partial match
+        if name_filter:
+            params = {
+                "page": 1,
+                "page_size": MAX_PAGE_SIZE,
+                "orderby": kwargs.get("orderby", "create_time"),
+                "desc": kwargs.get("desc", True),
+            }
+            if kwargs.get("id"):
+                params["id"] = kwargs["id"]
+            
+            result = await self._get("/datasets", params=params)
+            if result.get("code") == 0:
+                all_items = result.get("data", [])
+                
+                # Local filtering (case-insensitive partial match)
+                name_lower = name_filter.lower()
+                all_items = [
+                    item for item in all_items 
+                    if name_lower in (item.get("name", "") or "").lower()
+                ]
+                
+                total = len(all_items)
+                start = (page - 1) * page_size
+                end = start + page_size
+                return {
+                    "items": all_items[start:end],
+                    "total": total
+                }
+            raise RAGFlowAPIError(result.get("message", "Failed to list datasets"))
+        
+        # No filter - use RAGFlow's pagination directly
         params = {
             "page": page,
             "page_size": page_size,
             "orderby": kwargs.get("orderby", "create_time"),
             "desc": kwargs.get("desc", True),
         }
-        if kwargs.get("name"):
-            params["name"] = kwargs["name"]
         if kwargs.get("id"):
             params["id"] = kwargs["id"]
         
         result = await self._get("/datasets", params=params)
         if result.get("code") == 0:
-            # RAGFlow returns total_datasets for datasets count
             total = result.get("total") or result.get("total_datasets") or len(result.get("data", []))
             return {
                 "items": result.get("data", []),
@@ -218,37 +254,62 @@ class RAGFlowClient:
             raise RAGFlowAPIError(result.get("message", "Failed to delete datasets"))
         return result
 
-    # Chat operations (RAGFlow API doesn't return total, so we fetch all and paginate)
+    # Chat operations - RAGFlow API name param is exact match, so we use local filtering for search
     async def list_chats(self, page: int = 1, page_size: int = 20, **kwargs) -> dict:
-        """List all chats with pagination."""
-        cache_key = f"chats:{kwargs.get('name', '')}"
+        """
+        List chat assistants with pagination and filtering.
         
-        # Build request params - fetch all for accurate count
+        Note: RAGFlow's name parameter does exact match, not partial match.
+        For search functionality, we fetch all and filter locally.
+        """
+        name_filter = kwargs.get("name", "")
+        
+        # If searching by name, fetch all and filter locally for partial match
+        if name_filter:
+            params = {
+                "page": 1,
+                "page_size": MAX_PAGE_SIZE,
+                "orderby": kwargs.get("orderby", "create_time"),
+                "desc": kwargs.get("desc", True),
+            }
+            if kwargs.get("id"):
+                params["id"] = kwargs["id"]
+            
+            result = await self._get("/chats", params=params)
+            if result.get("code") == 0:
+                all_items = result.get("data", [])
+                
+                # Local filtering (case-insensitive partial match)
+                name_lower = name_filter.lower()
+                all_items = [
+                    item for item in all_items 
+                    if name_lower in (item.get("name", "") or "").lower()
+                ]
+                
+                total = len(all_items)
+                start = (page - 1) * page_size
+                end = start + page_size
+                return {
+                    "items": all_items[start:end],
+                    "total": total
+                }
+            raise RAGFlowAPIError(result.get("message", "Failed to list chats"))
+        
+        # No filter - use RAGFlow's pagination directly
         params = {
-            "page": 1,
-            "page_size": MAX_PAGE_SIZE,
+            "page": page,
+            "page_size": page_size,
             "orderby": kwargs.get("orderby", "create_time"),
             "desc": kwargs.get("desc", True),
         }
-        if kwargs.get("name"):
-            params["name"] = kwargs["name"]
         if kwargs.get("id"):
             params["id"] = kwargs["id"]
         
         result = await self._get("/chats", params=params)
         if result.get("code") == 0:
-            all_items = result.get("data", [])
-            total = len(all_items)
-            
-            # Update cache
-            _total_cache.set(cache_key, total)
-            
-            # Manual pagination
-            start = (page - 1) * page_size
-            end = start + page_size
-            items = all_items[start:end]
+            total = result.get("total") or len(result.get("data", []))
             return {
-                "items": items,
+                "items": result.get("data", []),
                 "total": total
             }
         raise RAGFlowAPIError(result.get("message", "Failed to list chats"))
@@ -261,37 +322,62 @@ class RAGFlowClient:
             raise RAGFlowAPIError(result.get("message", "Failed to delete chats"))
         return result
 
-    # Agent operations (RAGFlow API doesn't return total, so we fetch all and paginate)
+    # Agent operations - RAGFlow API title param is exact match, so we use local filtering for search
     async def list_agents(self, page: int = 1, page_size: int = 20, **kwargs) -> dict:
-        """List all agents with pagination."""
-        cache_key = f"agents:{kwargs.get('title', '')}"
+        """
+        List agents with pagination and filtering.
         
-        # Build request params - fetch all for accurate count
+        Note: RAGFlow's title parameter does exact match, not partial match.
+        For search functionality, we fetch all and filter locally.
+        """
+        title_filter = kwargs.get("title", "")
+        
+        # If searching by title, fetch all and filter locally for partial match
+        if title_filter:
+            params = {
+                "page": 1,
+                "page_size": MAX_PAGE_SIZE,
+                "orderby": kwargs.get("orderby", "update_time"),
+                "desc": kwargs.get("desc", True),
+            }
+            if kwargs.get("id"):
+                params["id"] = kwargs["id"]
+            
+            result = await self._get("/agents", params=params)
+            if result.get("code") == 0:
+                all_items = result.get("data", [])
+                
+                # Local filtering (case-insensitive partial match)
+                title_lower = title_filter.lower()
+                all_items = [
+                    item for item in all_items 
+                    if title_lower in (item.get("title", "") or "").lower()
+                ]
+                
+                total = len(all_items)
+                start = (page - 1) * page_size
+                end = start + page_size
+                return {
+                    "items": all_items[start:end],
+                    "total": total
+                }
+            raise RAGFlowAPIError(result.get("message", "Failed to list agents"))
+        
+        # No filter - use RAGFlow's pagination directly
         params = {
-            "page": 1,
-            "page_size": MAX_PAGE_SIZE,
+            "page": page,
+            "page_size": page_size,
             "orderby": kwargs.get("orderby", "update_time"),
             "desc": kwargs.get("desc", True),
         }
-        if kwargs.get("title"):
-            params["title"] = kwargs["title"]
         if kwargs.get("id"):
             params["id"] = kwargs["id"]
         
         result = await self._get("/agents", params=params)
         if result.get("code") == 0:
-            all_items = result.get("data", [])
-            total = len(all_items)
-            
-            # Update cache
-            _total_cache.set(cache_key, total)
-            
-            # Manual pagination
-            start = (page - 1) * page_size
-            end = start + page_size
-            items = all_items[start:end]
+            total = result.get("total") or len(result.get("data", []))
             return {
-                "items": items,
+                "items": result.get("data", []),
                 "total": total
             }
         raise RAGFlowAPIError(result.get("message", "Failed to list agents"))
