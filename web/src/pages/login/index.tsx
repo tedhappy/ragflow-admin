@@ -6,10 +6,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { Form, Input, Button, Checkbox, message } from 'antd';
-import { UserOutlined, LockOutlined, EyeInvisibleOutlined, EyeTwoTone } from '@ant-design/icons';
+import { EyeInvisibleOutlined, EyeTwoTone } from '@ant-design/icons';
 import { useNavigate } from 'umi';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/stores/auth';
+import { saveCredentials, getSavedCredentials, clearCredentials } from '@/services/api';
 import { translateErrorMessage } from '@/utils/i18n';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -29,6 +30,18 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const { login, isAuthenticated } = useAuthStore();
 
+  // Load saved credentials on mount
+  useEffect(() => {
+    const saved = getSavedCredentials();
+    if (saved) {
+      form.setFieldsValue({
+        username: saved.username,
+        password: saved.password,
+        remember: true,
+      });
+    }
+  }, [form]);
+
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
@@ -39,7 +52,15 @@ const Login: React.FC = () => {
   const handleSubmit = async (values: LoginForm) => {
     try {
       setLoading(true);
-      await login(values.username, values.password, values.remember);
+      await login(values.username, values.password);
+      
+      // Save or clear credentials based on remember checkbox
+      if (values.remember) {
+        saveCredentials(values.username, values.password);
+      } else {
+        clearCredentials();
+      }
+      
       message.success(t('login.success'));
       navigate('/dashboard', { replace: true });
     } catch (error: any) {
@@ -52,21 +73,38 @@ const Login: React.FC = () => {
 
   return (
     <div className={styles.container}>
-      {/* Background decorations */}
-      <div className={styles.bgDecoration}>
-        <div className={styles.circle1}></div>
-        <div className={styles.circle2}></div>
-        <div className={styles.circle3}></div>
+      {/* SVG Background lines like RAGFlow */}
+      <div className={styles.bgSvg}>
+        <svg className={styles.bgLine} viewBox="0 0 1440 240" preserveAspectRatio="none">
+          <path
+            d="M0 120 Q 360 40, 720 120 T 1440 120"
+            stroke="#00BEB4"
+            strokeWidth="1"
+            fill="none"
+            opacity="0.15"
+          />
+        </svg>
+        <svg className={styles.bgLine2} viewBox="0 0 1440 300" preserveAspectRatio="none">
+          <path
+            d="M0 150 Q 480 50, 960 150 T 1440 100"
+            stroke="#00BEB4"
+            strokeWidth="1"
+            fill="none"
+            opacity="0.1"
+          />
+        </svg>
       </div>
+
+      {/* Spotlight gradient effect */}
+      <div className={styles.spotlight} />
 
       {/* Header with logo */}
       <header className={styles.header}>
         <div className={styles.logo}>
-          <img src="/logo.svg" alt="RAGFlow" />
-          <span>RAGFlow</span>
+          <img src="/logo.svg" alt="RAGFlow Admin" />
+          <span>RAGFlow Admin</span>
         </div>
         <div className={styles.headerRight}>
-          <ThemeToggle />
           <LanguageSwitcher />
         </div>
       </header>
@@ -84,17 +122,18 @@ const Login: React.FC = () => {
             onFinish={handleSubmit}
             autoComplete="off"
             layout="vertical"
-            initialValues={{ remember: true }}
+            initialValues={{ remember: false }}
           >
             <Form.Item
               label={t('login.username')}
               name="username"
               rules={[{ required: true, message: t('login.usernameRequired') }]}
+              required
             >
               <Input
-                prefix={<UserOutlined className={styles.inputIcon} />}
                 placeholder={t('login.usernamePlaceholder')}
                 size="large"
+                className={styles.formInput}
               />
             </Form.Item>
 
@@ -102,22 +141,23 @@ const Login: React.FC = () => {
               label={t('login.password')}
               name="password"
               rules={[{ required: true, message: t('login.passwordRequired') }]}
+              required
             >
               <Input.Password
-                prefix={<LockOutlined className={styles.inputIcon} />}
                 placeholder={t('login.passwordPlaceholder')}
                 size="large"
+                className={styles.formInput}
                 iconRender={(visible) =>
                   visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
                 }
               />
             </Form.Item>
 
-            <Form.Item name="remember" valuePropName="checked">
+            <Form.Item name="remember" valuePropName="checked" className={styles.rememberItem}>
               <Checkbox>{t('login.rememberMe')}</Checkbox>
             </Form.Item>
 
-            <Form.Item>
+            <Form.Item className={styles.submitItem}>
               <Button
                 type="primary"
                 htmlType="submit"
@@ -130,6 +170,11 @@ const Login: React.FC = () => {
               </Button>
             </Form.Item>
           </Form>
+        </div>
+
+        {/* Theme toggle below card like RAGFlow */}
+        <div className={styles.themeToggleWrapper}>
+          <ThemeToggle />
         </div>
       </main>
     </div>

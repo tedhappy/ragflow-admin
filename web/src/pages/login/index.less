@@ -1,65 +1,57 @@
 @import '../../less/variable.less';
 
+// Container - matching RAGFlow style
 .container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ed 100%);
+  background: #f8fafb;
   position: relative;
   overflow: hidden;
 }
 
-// Background decorations - matching RAGFlow style
-.bgDecoration {
+// SVG Background lines - matching RAGFlow
+.bgSvg {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   pointer-events: none;
   overflow: hidden;
 }
 
-.circle1 {
+.bgLine {
   position: absolute;
-  width: 600px;
-  height: 600px;
-  border-radius: 50%;
-  border: 1px solid rgba(22, 119, 255, 0.1);
-  top: -200px;
-  right: -100px;
+  top: 80px;
+  left: 0;
+  width: 100%;
+  height: 240px;
 }
 
-.circle2 {
+.bgLine2 {
   position: absolute;
-  width: 400px;
-  height: 400px;
-  border-radius: 50%;
-  border: 1px solid rgba(22, 119, 255, 0.08);
-  top: 50%;
-  left: -150px;
-  transform: translateY(-50%);
-}
-
-.circle3 {
-  position: absolute;
-  width: 300px;
+  top: 280px;
+  left: 0;
+  width: 100%;
   height: 300px;
-  border-radius: 50%;
-  border: 1px solid rgba(22, 119, 255, 0.06);
-  bottom: -100px;
-  right: 20%;
 }
 
-// Header
+// Spotlight gradient effect - matching RAGFlow
+.spotlight {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 190%, rgba(194, 221, 243, 0.5) 0%, rgba(194, 221, 243, 0) 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+// Header - matching RAGFlow (mt-12 ml-12 = 48px)
 .header {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  padding: 24px 40px;
+  padding: 48px 48px 0;
   z-index: 10;
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .headerRight {
@@ -71,7 +63,7 @@
 .logo {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
 
   img {
     height: 32px;
@@ -80,54 +72,71 @@
 
   span {
     font-size: 20px;
-    font-weight: 600;
+    font-weight: 700;
     color: @text-color;
   }
 }
 
-// Main content
+// Main content - matching RAGFlow layout
 .main {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   min-height: 100vh;
-  padding: 20px;
+  padding: 160px 20px 80px;
+  position: relative;
+  z-index: 1;
 }
 
+// Title - matching RAGFlow (text-4xl = 36px, font-medium)
 .title {
-  font-size: 28px;
+  font-size: 36px;
   font-weight: 500;
   color: @text-color;
   margin-bottom: 48px;
   text-align: center;
 }
 
-// Form card
+// Form card - matching RAGFlow (max-w-[540px], rounded-2xl, px-10 pt-14 pb-10)
 .formCard {
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 40px;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(8px);
+  border-radius: 16px;
+  padding: 56px 40px 40px;
   width: 100%;
-  max-width: 400px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  max-width: 540px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
 .formTitle {
-  font-size: 18px;
-  font-weight: 500;
+  font-size: 20px;
+  font-weight: 600;
   color: @text-color;
   margin-bottom: 32px;
   text-align: center;
 }
 
-.inputIcon {
-  color: @text-color-secondary;
+// Form input - matching RAGFlow (h-10 = 40px)
+.formInput {
+  height: 40px;
+  border-radius: 8px;
+}
+
+// Remember checkbox - matching RAGFlow (!mt-5 = reduced margin)
+.rememberItem {
+  margin-bottom: 8px;
+}
+
+// Submit button - matching RAGFlow (variant=highlighted)
+.submitItem {
+  margin-top: 32px;
+  margin-bottom: 0;
 }
 
 .submitBtn {
   height: 44px;
   font-size: 16px;
+  font-weight: 500;
   border-radius: 8px;
   background: linear-gradient(135deg, #1677ff 0%, #0958d9 100%);
   border: none;
@@ -137,16 +146,26 @@
   }
 }
 
+// Theme toggle wrapper - below card like RAGFlow (mt-8 = 32px)
+.themeToggleWrapper {
+  margin-top: 32px;
+  display: flex;
+  justify-content: center;
+}
+
 // Dark theme support
 :global(.dark) {
   .container {
-    background: linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%);
+    background: #0a0a0a;
   }
-
-  .circle1,
-  .circle2,
-  .circle3 {
-    border-color: rgba(22, 119, 255, 0.15);
+  
+  .spotlight {
+    background: radial-gradient(circle at 50% 190%, rgba(128, 255, 248, 0.15) 0%, rgba(128, 255, 248, 0) 60%);
+  }
+  
+  .bgLine path,
+  .bgLine2 path {
+    stroke: #00BEB4;
   }
 
   .logo span {
@@ -158,8 +177,8 @@
   }
 
   .formCard {
-    background: var(--bg-component);
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+    background: rgba(30, 30, 30, 0.95);
+    backdrop-filter: blur(8px);
     
     // Form labels
     :global(.ant-form-item-label > label) {
@@ -182,7 +201,7 @@
       background: var(--bg-base) !important;
       border-color: var(--border-default) !important;
       
-      &:hover, &:focus {
+      &:hover, &:focus, &:focus-within {
         border-color: var(--primary-color) !important;
       }
     }
@@ -206,19 +225,23 @@
   .formTitle {
     color: var(--text-primary);
   }
-
-  .inputIcon {
-    color: var(--text-secondary);
-  }
 }
 
 // Responsive
-@media (max-width: 480px) {
-  .formCard {
+@media (max-width: 640px) {
+  .header {
     padding: 24px;
+  }
+  
+  .main {
+    padding: 120px 16px 60px;
+  }
+  
+  .formCard {
+    padding: 40px 24px 32px;
   }
 
   .title {
-    font-size: 22px;
+    font-size: 28px;
   }
 }

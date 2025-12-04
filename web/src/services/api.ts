@@ -8,36 +8,44 @@ import axios from 'axios';
 
 // Auth token storage key
 const TOKEN_KEY = 'ragflow_admin_token';
-const REMEMBER_KEY = 'ragflow_admin_remember';
+const CREDENTIALS_KEY = 'ragflow_admin_credentials';
 
-// Get stored token (check both localStorage and sessionStorage)
+// Get stored token
 export const getToken = (): string | null => {
-  return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);
+  return localStorage.getItem(TOKEN_KEY);
 };
 
-// Set token (localStorage for remember me, sessionStorage otherwise)
-export const setToken = (token: string, remember: boolean = true): void => {
-  if (remember) {
-    localStorage.setItem(TOKEN_KEY, token);
-    localStorage.setItem(REMEMBER_KEY, 'true');
-    sessionStorage.removeItem(TOKEN_KEY);
-  } else {
-    sessionStorage.setItem(TOKEN_KEY, token);
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(REMEMBER_KEY);
+// Set token
+export const setToken = (token: string): void => {
+  localStorage.setItem(TOKEN_KEY, token);
+};
+
+// Remove token
+export const removeToken = (): void => {
+  localStorage.removeItem(TOKEN_KEY);
+};
+
+// Save credentials (remember password)
+export const saveCredentials = (username: string, password: string): void => {
+  // Base64 encode for basic obfuscation (not secure encryption, but better than plaintext)
+  const encoded = btoa(JSON.stringify({ username, password }));
+  localStorage.setItem(CREDENTIALS_KEY, encoded);
+};
+
+// Get saved credentials
+export const getSavedCredentials = (): { username: string; password: string } | null => {
+  const encoded = localStorage.getItem(CREDENTIALS_KEY);
+  if (!encoded) return null;
+  try {
+    return JSON.parse(atob(encoded));
+  } catch {
+    return null;
   }
 };
 
-// Remove token from both storages
-export const removeToken = (): void => {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(REMEMBER_KEY);
-  sessionStorage.removeItem(TOKEN_KEY);
-};
-
-// Check if "remember me" was selected
-export const isRemembered = (): boolean => {
-  return localStorage.getItem(REMEMBER_KEY) === 'true';
+// Clear saved credentials
+export const clearCredentials = (): void => {
+  localStorage.removeItem(CREDENTIALS_KEY);
 };
 
 const request = axios.create({

@@ -52,7 +52,7 @@ export default {
       password: '密码',
       passwordPlaceholder: '请输入密码',
       passwordRequired: '请输入密码',
-      rememberMe: '记住登录',
+      rememberMe: '记住密码',
       submit: '登录',
       success: '登录成功',
       failed: '登录失败',

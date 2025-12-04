@@ -52,7 +52,7 @@ export default {
       password: 'Password',
       passwordPlaceholder: 'Enter your password',
       passwordRequired: 'Please enter your password',
-      rememberMe: 'Remember me',
+      rememberMe: 'Remember password',
       submit: 'Login',
       success: 'Login successful',
       failed: 'Login failed',
