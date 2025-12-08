@@ -130,10 +130,15 @@ export default {
       searchPlaceholder: 'Search by name',
       llmModel: 'LLM Model',
       linkedDatasets: 'Datasets',
+      status: 'Status',
+      statusEnabled: 'Enabled',
+      statusDisabled: 'Disabled',
     },
     agents: {
       title: 'Agents',
       searchPlaceholder: 'Search by title',
+      components: 'Components',
+      nodes: 'Nodes',
     },
     settings: {
       title: 'System Settings',

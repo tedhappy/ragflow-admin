@@ -381,6 +381,15 @@ class RAGFlowClient:
                 "total": total
             }
         raise RAGFlowAPIError(result.get("message", "Failed to list agents"))
+
+    async def delete_agents(self, ids: list):
+        """Delete agents by IDs (one by one as RAGFlow API only supports single delete)."""
+        for agent_id in ids:
+            result = await self._delete(f"/agents/{agent_id}")
+            if result.get("code") != 0:
+                raise RAGFlowAPIError(result.get("message", f"Failed to delete agent {agent_id}"))
+        _total_cache.invalidate()  # Invalidate all cache after delete
+        return {"code": 0}
     
     def invalidate_cache(self, resource: str = None):
         """Invalidate cached total counts."""

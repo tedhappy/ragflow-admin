@@ -1,7 +1,7 @@
 ﻿import React, { useState } from 'react';
-import { Table, Button, Space, Card, message, Input, Typography, Spin, Tag } from 'antd';
+import { Table, Button, Space, Card, message, Input, Typography, Spin, Tag, Avatar, Badge } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+import { ReloadOutlined, SearchOutlined, MessageOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { chatApi, Chat } from '@/services/api';
 import { useTableList } from '@/hooks/useTableList';
@@ -61,33 +61,50 @@ const ChatPage: React.FC = () => {
       title: t('common.name'), 
       dataIndex: 'name', 
       key: 'name',
-      width: '20%',
+      width: 180,
       ellipsis: true,
+      render: (val, record) => (
+        <Space>
+          <Avatar 
+            src={record.avatar} 
+            icon={!record.avatar && <MessageOutlined />}
+            size="small"
+            style={{ backgroundColor: !record.avatar ? '#722ed1' : undefined }}
+          />
+          <span>{val}</span>
+        </Space>
+      ),
     },
     { 
       title: t('chat.llmModel'), 
       dataIndex: ['llm', 'model_name'], 
       key: 'llm_model',
-      width: '20%',
+      width: 160,
       ellipsis: true,
       render: (val) => val || '-',
     },
     { 
       title: t('chat.linkedDatasets'), 
-      dataIndex: 'dataset_ids', 
-      key: 'dataset_ids',
+      dataIndex: 'datasets', 
+      key: 'datasets',
       width: 100,
       align: 'center',
-      render: (val: string[]) => (
+      render: (val: any[]) => (
         <Tag color="blue">{val?.length || 0}</Tag>
       ),
     },
-    { 
-      title: t('common.description'), 
-      dataIndex: 'description', 
-      key: 'description',
-      width: '25%',
-      ellipsis: true,
+    {
+      title: t('chat.status'),
+      dataIndex: 'status',
+      key: 'status',
+      width: 80,
+      align: 'center',
+      render: (val) => (
+        <Badge 
+          status={val === '1' ? 'success' : 'default'} 
+          text={val === '1' ? t('chat.statusEnabled') : t('chat.statusDisabled')}
+        />
+      ),
     },
     { 
       title: t('common.created'), 
@@ -104,6 +121,7 @@ const ChatPage: React.FC = () => {
       key: 'action',
       width: 80,
       align: 'center',
+      fixed: 'right',
       render: (_, record) => (
         <ConfirmDelete onConfirm={() => handleDelete([record.id])} />
       ),
@@ -149,6 +167,7 @@ const ChatPage: React.FC = () => {
               dataSource={sortedData} 
               rowKey="id"
               loading={!initialLoading && loading}
+              scroll={{ x: 1000 }}
               rowSelection={{
                 selectedRowKeys,
                 onChange: setSelectedRowKeys,

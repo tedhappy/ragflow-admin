@@ -170,12 +170,25 @@ export interface Chat {
   name: string;
   avatar?: string;
   description?: string;
+  language?: string;
+  status?: string;
+  prompt_type?: string;
+  top_k?: number;
   create_time?: string;
   update_time?: string;
-  dataset_ids?: string[];
+  datasets?: Array<{
+    id: string;
+    name?: string;
+    chunk_num?: number;
+  }>;
   llm?: {
     model_name?: string;
     temperature?: number;
+    top_p?: number;
+  };
+  prompt?: {
+    top_n?: number;
+    similarity_threshold?: number;
   };
 }
 
@@ -193,13 +206,24 @@ export interface Agent {
   title: string;
   description?: string;
   avatar?: string;
+  canvas_type?: string;
   create_time?: string;
   update_time?: string;
+  dsl?: {
+    components?: Record<string, any>;
+    graph?: {
+      nodes?: any[];
+      edges?: any[];
+    };
+  };
 }
 
 export const agentApi = {
   list: (params?: PaginationParams & { title?: string }) =>
     request.get<any, ListResponse<Agent>>('/agents', { params }),
+  
+  batchDelete: (ids: string[]) =>
+    request.post('/agents/batch-delete', { ids }),
 };
 
 // Dashboard API

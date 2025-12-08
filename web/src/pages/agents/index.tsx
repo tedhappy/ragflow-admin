@@ -1,12 +1,14 @@
 ﻿import React, { useState } from 'react';
-import { Table, Button, Space, Card, message, Input, Typography, Spin } from 'antd';
+import { Table, Button, Space, Card, message, Input, Typography, Spin, Avatar, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+import { ReloadOutlined, SearchOutlined, RobotOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { agentApi, Agent } from '@/services/api';
 import { useTableList } from '@/hooks/useTableList';
 import { useConnectionCheck } from '@/hooks/useConnectionCheck';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import ConfirmDelete from '@/components/ConfirmDelete';
+import { translateErrorMessage } from '@/utils/i18n';
 import dayjs from 'dayjs';
 
 const { Title } = Typography;
@@ -23,6 +25,8 @@ const Agents: React.FC = () => {
     initialLoading,
     page,
     pageSize,
+    selectedRowKeys,
+    setSelectedRowKeys,
     refresh,
     handlePageChange,
     handleSearch,
@@ -36,6 +40,17 @@ const Agents: React.FC = () => {
     handleSearch({ title: searchTitle || undefined });
   };
 
+  const handleDelete = async (ids: string[]) => {
+    try {
+      await agentApi.batchDelete(ids);
+      message.success(t('common.deletedSuccess'));
+      setSelectedRowKeys([]);
+      refresh();
+    } catch (error: any) {
+      message.error(translateErrorMessage(error.message, t) || t('common.deleteFailed'));
+    }
+  };
+
   // Sort by create_time descending
   const sortedData = [...data].sort((a, b) => 
     new Date(b.create_time || 0).getTime() - new Date(a.create_time || 0).getTime()
@@ -46,15 +61,47 @@ const Agents: React.FC = () => {
       title: t('common.name'), 
       dataIndex: 'title', 
       key: 'title',
-      width: '25%',
+      width: '20%',
       ellipsis: true,
+      render: (val, record) => (
+        <Space>
+          <Avatar 
+            src={record.avatar} 
+            icon={!record.avatar && <RobotOutlined />}
+            size="small"
+            style={{ backgroundColor: !record.avatar ? '#722ed1' : undefined }}
+          />
+          <span>{val}</span>
+        </Space>
+      ),
     },
     { 
       title: t('common.description'), 
       dataIndex: 'description', 
       key: 'description',
-      width: '40%',
+      width: '30%',
       ellipsis: true,
+      render: (val) => val || '-',
+    },
+    {
+      title: t('agents.components'),
+      key: 'components',
+      width: 100,
+      align: 'center',
+      render: (_, record) => {
+        const count = record.dsl?.components ? Object.keys(record.dsl.components).length : 0;
+        return <Tag color="purple">{count}</Tag>;
+      },
+    },
+    {
+      title: t('agents.nodes'),
+      key: 'nodes',
+      width: 100,
+      align: 'center',
+      render: (_, record) => {
+        const count = record.dsl?.graph?.nodes?.length || 0;
+        return <Tag color="blue">{count}</Tag>;
+      },
     },
     { 
       title: t('common.created'), 
@@ -75,6 +122,16 @@ const Agents: React.FC = () => {
       sorter: (a, b) => new Date(a.update_time || 0).getTime() - new Date(b.update_time || 0).getTime(),
       showSorterTooltip: false,
       render: (val) => val ? dayjs(val).format('YYYY-MM-DD HH:mm') : '-',
+    },
+    {
+      title: t('common.actions'),
+      key: 'action',
+      width: 80,
+      align: 'center',
+      fixed: 'right',
+      render: (_, record) => (
+        <ConfirmDelete onConfirm={() => handleDelete([record.id])} />
+      ),
     },
   ];
 
@@ -101,13 +158,27 @@ const Agents: React.FC = () => {
                 />
                 <Button icon={<SearchOutlined />} onClick={onSearch}>{t('common.search')}</Button>
               </Space>
-              <Button icon={<ReloadOutlined />} onClick={refresh}>{t('common.refresh')}</Button>
+              <Space>
+                <Button icon={<ReloadOutlined />} onClick={refresh}>{t('common.refresh')}</Button>
+                <ConfirmDelete
+                  onConfirm={() => handleDelete(selectedRowKeys as string[])}
+                  disabled={selectedRowKeys.length === 0}
+                  buttonText={t('common.deleteSelected', { count: selectedRowKeys.length })}
+                  buttonType="default"
+                  buttonSize="middle"
+                />
+              </Space>
             </div>
             <Table 
               columns={columns} 
               dataSource={sortedData} 
               rowKey="id"
               loading={!initialLoading && loading}
+              scroll={{ x: 900 }}
+              rowSelection={{
+                selectedRowKeys,
+                onChange: setSelectedRowKeys,
+              }}
               pagination={{
                 current: page,
                 pageSize: pageSize,

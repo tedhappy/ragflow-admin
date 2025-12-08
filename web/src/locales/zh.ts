@@ -129,11 +129,16 @@ export default {
       title: '聊天助手',
       searchPlaceholder: '按名称搜索',
       llmModel: 'LLM 模型',
-      linkedDatasets: '关联知识库',
+      linkedDatasets: '知识库',
+      status: '状态',
+      statusEnabled: '启用',
+      statusDisabled: '禁用',
     },
     agents: {
       title: '智能体管理',
       searchPlaceholder: '按标题搜索',
+      components: '组件数',
+      nodes: '节点数',
     },
     settings: {
       title: '系统设置',

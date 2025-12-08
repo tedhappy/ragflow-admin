@@ -53,3 +53,42 @@ async def list_agents():
     except Exception as e:
         logger.exception("Unexpected error listing agents")
         return jsonify({"code": -1, "message": str(e)}), 500
+
+
+@manager.route("/batch-delete", methods=["POST"])
+async def batch_delete_agents():
+    """
+    Delete agents in batch
+    ---
+    tags:
+      - Agent
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            ids:
+              type: array
+              items:
+                type: string
+    responses:
+      200:
+        description: Agents deleted successfully
+    """
+    data = await request.get_json()
+    ids = data.get("ids", [])
+    
+    if not ids:
+        return jsonify({"code": -1, "message": "ids is required"}), 400
+    
+    try:
+        await ragflow_client.delete_agents(ids=ids)
+        return jsonify({"code": 0, "message": "success"})
+    except RAGFlowAPIError as e:
+        logger.error(f"Failed to delete agents: {e.message}")
+        return jsonify({"code": e.code, "message": e.message}), 500
+    except Exception as e:
+        logger.exception("Unexpected error deleting agents")
+        return jsonify({"code": -1, "message": str(e)}), 500
