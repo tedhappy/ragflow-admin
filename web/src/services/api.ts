@@ -226,6 +226,57 @@ export const agentApi = {
     request.post('/agents/batch-delete', { ids }),
 };
 
+// User API (RAGFlow users via MySQL)
+export interface RagflowUser {
+  id: string;
+  email: string;
+  nickname?: string;
+  avatar?: string;
+  status?: string;
+  is_superuser?: boolean;
+  login_channel?: string;
+  create_time?: string;
+  update_time?: string;
+  has_token?: boolean;
+}
+
+export interface MySQLConfig {
+  configured: boolean;
+  host: string;
+  port: number;
+  database: string;
+  user: string;
+}
+
+export interface MySQLTestResult {
+  connected: boolean;
+  version?: string;
+  database?: string;
+  user_table_exists?: boolean;
+  error?: string;
+}
+
+export const userApi = {
+  // MySQL config
+  getConfig: () => request.get<any, MySQLConfig>('/users/config'),
+  saveConfig: (data: { host: string; port: number; database: string; user: string; password: string }) =>
+    request.post<any, { message: string }>('/users/config', data),
+  testConnection: (data: { host: string; port: number; database: string; user: string; password: string }) =>
+    request.post<any, MySQLTestResult>('/users/config/test', data),
+  
+  // User CRUD
+  list: (params?: PaginationParams & { email?: string }) =>
+    request.get<any, ListResponse<RagflowUser>>('/users', { params }),
+  create: (data: { email: string; password: string; nickname?: string }) =>
+    request.post<any, { id: string; email: string }>('/users', data),
+  updateStatus: (userId: string, status: string) =>
+    request.put<any, { message: string }>(`/users/${userId}/status`, { status }),
+  updatePassword: (userId: string, password: string) =>
+    request.put<any, { message: string }>(`/users/${userId}/password`, { password }),
+  batchDelete: (ids: string[]) =>
+    request.post('/users/batch-delete', { ids }),
+};
+
 // Dashboard API
 export interface DashboardStats {
   dataset_count: number;

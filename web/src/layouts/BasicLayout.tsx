@@ -11,6 +11,7 @@ import {
   RobotOutlined,
   SettingOutlined,
   UserOutlined,
+  TeamOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   LogoutOutlined,
@@ -77,6 +78,11 @@ const LayoutContent: React.FC = () => {
       key: '/agents', 
       icon: <RobotOutlined />, 
       label: <Link to="/agents">{t('menu.agents')}</Link> 
+    },
+    { 
+      key: '/users', 
+      icon: <TeamOutlined />, 
+      label: <Link to="/users">{t('menu.users')}</Link> 
     },
     { 
       key: '/settings', 

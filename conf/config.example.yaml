@@ -25,3 +25,17 @@ admin:
   username: "admin"
   # Password (please change to a secure password)
   password: "admin123"
+
+# MySQL connection settings for RAGFlow database (optional, for user management)
+# Default values are based on RAGFlow's default configuration
+mysql:
+  # MySQL host (use "localhost" or Docker container IP)
+  host: "localhost"
+  # MySQL port (RAGFlow exposes 5455 to host, internal port is 3306)
+  port: 5455
+  # Database name
+  database: "rag_flow"
+  # MySQL username
+  user: "root"
+  # MySQL password (RAGFlow default is "infini_rag_flow")
+  password: "infini_rag_flow"

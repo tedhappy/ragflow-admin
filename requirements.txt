@@ -18,3 +18,7 @@ pydantic>=2.0.0
 
 # Auth
 itsdangerous>=2.1.0
+werkzeug>=3.0.0
+
+# Database
+aiomysql>=0.2.0

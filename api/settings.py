@@ -122,5 +122,116 @@ class Settings:
     def admin_password(self) -> str:
         return self._config["admin"]["password"]
 
+    @property
+    def mysql_host(self) -> str:
+        """Get MySQL host."""
+        mysql_config = self._config.get("mysql", {})
+        return mysql_config.get("host", "") or ""
+
+    @property
+    def mysql_port(self) -> int:
+        """Get MySQL port."""
+        mysql_config = self._config.get("mysql", {})
+        return mysql_config.get("port", 3306) or 3306
+
+    @property
+    def mysql_database(self) -> str:
+        """Get MySQL database name."""
+        mysql_config = self._config.get("mysql", {})
+        return mysql_config.get("database", "") or ""
+
+    @property
+    def mysql_user(self) -> str:
+        """Get MySQL username."""
+        mysql_config = self._config.get("mysql", {})
+        return mysql_config.get("user", "") or ""
+
+    @property
+    def mysql_password(self) -> str:
+        """Get MySQL password."""
+        mysql_config = self._config.get("mysql", {})
+        return mysql_config.get("password", "") or ""
+
+    @property
+    def is_mysql_configured(self) -> bool:
+        """Check if MySQL connection is configured."""
+        return bool(self.mysql_host and self.mysql_database and self.mysql_user)
+
+    def update_mysql_config(self, host: str, port: int, database: str, user: str, password: str) -> bool:
+        """Update MySQL configuration and save to config.yaml."""
+        try:
+            # Ensure mysql section exists
+            if "mysql" not in self._config:
+                self._config["mysql"] = {}
+            
+            # Update in memory
+            self._config["mysql"]["host"] = host
+            self._config["mysql"]["port"] = port
+            self._config["mysql"]["database"] = database
+            self._config["mysql"]["user"] = user
+            self._config["mysql"]["password"] = password
+            
+            # Read original file
+            original_content = ""
+            if self._config_path.exists():
+                with open(self._config_path, "r", encoding="utf-8") as f:
+                    original_content = f.read()
+            
+            # Check if mysql section exists
+            if "mysql:" not in original_content:
+                # Append mysql section
+                mysql_section = f"""
+# MySQL connection settings for RAGFlow database
+mysql:
+  host: "{host}"
+  port: {port}
+  database: "{database}"
+  user: "{user}"
+  password: "{password}"
+"""
+                with open(self._config_path, "a", encoding="utf-8") as f:
+                    f.write(mysql_section)
+            else:
+                # Update existing mysql section
+                lines = original_content.split("\n")
+                new_lines = []
+                in_mysql_section = False
+                
+                for line in lines:
+                    if line.strip() == "mysql:":
+                        in_mysql_section = True
+                        new_lines.append(line)
+                    elif in_mysql_section and line.strip() and not line.startswith(" ") and not line.startswith("\t"):
+                        in_mysql_section = False
+                        new_lines.append(line)
+                    elif in_mysql_section:
+                        if line.strip().startswith("host:"):
+                            indent = len(line) - len(line.lstrip())
+                            new_lines.append(f"{' ' * indent}host: \"{host}\"")
+                        elif line.strip().startswith("port:"):
+                            indent = len(line) - len(line.lstrip())
+                            new_lines.append(f"{' ' * indent}port: {port}")
+                        elif line.strip().startswith("database:"):
+                            indent = len(line) - len(line.lstrip())
+                            new_lines.append(f"{' ' * indent}database: \"{database}\"")
+                        elif line.strip().startswith("user:"):
+                            indent = len(line) - len(line.lstrip())
+                            new_lines.append(f"{' ' * indent}user: \"{user}\"")
+                        elif line.strip().startswith("password:"):
+                            indent = len(line) - len(line.lstrip())
+                            new_lines.append(f"{' ' * indent}password: \"{password}\"")
+                        else:
+                            new_lines.append(line)
+                    else:
+                        new_lines.append(line)
+                
+                with open(self._config_path, "w", encoding="utf-8") as f:
+                    f.write("\n".join(new_lines))
+            
+            return True
+        except Exception as e:
+            print(f"Failed to save MySQL config: {e}")
+            return False
+
 
 settings = Settings()

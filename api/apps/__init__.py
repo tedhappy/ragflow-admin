@@ -54,6 +54,7 @@ from api.apps.document_app import manager as document_bp
 from api.apps.chat_app import manager as chat_bp
 from api.apps.agent_app import manager as agent_bp
 from api.apps.system_app import manager as system_bp
+from api.apps.user_app import manager as user_bp
 
 app.register_blueprint(auth_bp, url_prefix="/api/v1/auth")
 app.register_blueprint(dashboard_bp, url_prefix="/api/v1/dashboard")
@@ -62,6 +63,7 @@ app.register_blueprint(document_bp, url_prefix="/api/v1/datasets")
 app.register_blueprint(chat_bp, url_prefix="/api/v1/chats")
 app.register_blueprint(agent_bp, url_prefix="/api/v1/agents")
 app.register_blueprint(system_bp, url_prefix="/api/v1/system")
+app.register_blueprint(user_bp, url_prefix="/api/v1/users")
 
 
 @app.route("/health")

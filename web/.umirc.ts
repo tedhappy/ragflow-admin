@@ -20,6 +20,7 @@ export default defineConfig({
         { path: '/datasets/:datasetId/documents', component: '@/pages/documents' },
         { path: '/chat', component: '@/pages/chat' },
         { path: '/agents', component: '@/pages/agents' },
+        { path: '/users', component: '@/pages/users' },
         { path: '/settings', component: '@/pages/settings' },
       ],
     },
