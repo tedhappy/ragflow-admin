@@ -373,7 +373,14 @@ const Users: React.FC = () => {
                   placeholder={t('users.searchStatus')}
                   allowClear
                   value={searchStatus}
-                  onChange={(value) => setSearchStatus(value)}
+                  onChange={(value) => {
+                    setSearchStatus(value);
+                    handleSearch({ 
+                      email: searchEmail || undefined,
+                      nickname: searchNickname || undefined,
+                      status: value,
+                    });
+                  }}
                   style={{ width: 120 }}
                   options={[
                     { value: '1', label: t('users.active') },
