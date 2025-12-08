@@ -92,3 +92,84 @@ async def batch_delete_chats():
     except Exception as e:
         logger.exception("Unexpected error deleting chats")
         return jsonify({"code": -1, "message": str(e)}), 500
+
+
+@manager.route("/<chat_id>/sessions", methods=["GET"])
+async def list_chat_sessions(chat_id: str):
+    """
+    List sessions for a chat assistant
+    ---
+    tags:
+      - Chat
+    parameters:
+      - name: chat_id
+        in: path
+        type: string
+        required: true
+      - name: page
+        in: query
+        type: integer
+        default: 1
+      - name: page_size
+        in: query
+        type: integer
+        default: 30
+    responses:
+      200:
+        description: Session list
+    """
+    page = request.args.get("page", 1, type=int)
+    page_size = request.args.get("page_size", 30, type=int)
+    
+    try:
+        result = await ragflow_client.list_chat_sessions(chat_id, page=page, page_size=page_size)
+        return jsonify({"code": 0, "data": result})
+    except RAGFlowAPIError as e:
+        logger.error(f"Failed to list chat sessions: {e.message}")
+        return jsonify({"code": e.code, "message": e.message}), 500
+    except Exception as e:
+        logger.exception("Unexpected error listing chat sessions")
+        return jsonify({"code": -1, "message": str(e)}), 500
+
+
+@manager.route("/<chat_id>/sessions", methods=["DELETE"])
+async def delete_chat_sessions(chat_id: str):
+    """
+    Delete sessions for a chat assistant
+    ---
+    tags:
+      - Chat
+    parameters:
+      - name: chat_id
+        in: path
+        type: string
+        required: true
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            ids:
+              type: array
+              items:
+                type: string
+    responses:
+      200:
+        description: Sessions deleted successfully
+    """
+    data = await request.get_json()
+    session_ids = data.get("ids", [])
+    
+    if not session_ids:
+        return jsonify({"code": -1, "message": "ids is required"}), 400
+    
+    try:
+        await ragflow_client.delete_chat_sessions(chat_id, session_ids=session_ids)
+        return jsonify({"code": 0, "message": "success"})
+    except RAGFlowAPIError as e:
+        logger.error(f"Failed to delete chat sessions: {e.message}")
+        return jsonify({"code": e.code, "message": e.message}), 500
+    except Exception as e:
+        logger.exception("Unexpected error deleting chat sessions")
+        return jsonify({"code": -1, "message": str(e)}), 500

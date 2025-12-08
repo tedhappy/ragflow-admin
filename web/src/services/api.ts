@@ -303,13 +303,48 @@ export interface TestConnectionResult {
   error_message: string | null;
 }
 
+export interface SystemHealth {
+  healthy: boolean;
+  status: string;
+  db?: string;
+  redis?: string;
+  doc_engine?: string;
+  storage?: string;
+  error?: string;
+  meta?: Record<string, any>;
+}
+
 export const systemApi = {
   getStatus: () => request.get<any, SystemStatus>('/system/status'),
-  checkHealth: () => request.get<any, { status: string }>('/system/health'),
+  checkHealth: () => request.get<any, SystemHealth>('/system/health'),
   testConnection: (data: { ragflow_url: string; api_key: string }) =>
     request.post<any, TestConnectionResult>('/system/test-connection', data),
   saveConfig: (data: { ragflow_url: string; api_key: string }) =>
     request.post<any, { message: string }>('/system/config', data),
+};
+
+// Chat Session API
+export interface ChatMessage {
+  content: string;
+  role: 'user' | 'assistant';
+}
+
+export interface ChatSession {
+  id: string;
+  name: string;
+  chat: string;
+  messages?: ChatMessage[];
+  create_time: string;
+  create_date?: string;
+  update_time: string;
+  update_date?: string;
+}
+
+export const chatSessionApi = {
+  list: (chatId: string, params?: PaginationParams) =>
+    request.get<any, ListResponse<ChatSession>>(`/chats/${chatId}/sessions`, { params }),
+  batchDelete: (chatId: string, ids: string[]) =>
+    request.delete<any, void>(`/chats/${chatId}/sessions`, { data: { ids } }),
 };
 
 // Auth API

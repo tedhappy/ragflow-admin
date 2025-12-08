@@ -174,43 +174,25 @@ async def test_connection():
 @manager.route("/health", methods=["GET"])
 async def check_health():
     """
-    Check RAGFlow service health
+    Check RAGFlow service health (DB, Redis, doc_engine, storage)
     ---
     tags:
       - System
     responses:
       200:
-        description: Health status
+        description: Health status of all components
     """
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"{settings.ragflow_base_url}/api/v1/datasets",
-                params={"page": 1, "page_size": 1},
-                headers={"Authorization": f"Bearer {settings.ragflow_api_key}"},
-                timeout=10
-            )
-            if response.status_code == 200:
-                return jsonify({
-                    "code": 0,
-                    "data": {
-                        "status": "healthy",
-                        "ragflow_url": settings.ragflow_base_url
-                    }
-                })
-            else:
-                return jsonify({
-                    "code": -1,
-                    "data": {
-                        "status": "unhealthy",
-                        "status_code": response.status_code
-                    }
-                })
+        health = await ragflow_client.check_system_health()
+        return jsonify({
+            "code": 0 if health.get("healthy") else -1,
+            "data": health
+        })
     except Exception as e:
         return jsonify({
             "code": -1,
             "message": str(e),
-            "data": {"status": "unreachable"}
+            "data": {"status": "error", "healthy": False, "error": str(e)}
         }), 500
 
 

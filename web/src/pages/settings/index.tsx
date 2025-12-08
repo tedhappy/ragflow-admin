@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useState } from 'react';
-import { Card, Form, Input, Button, Space, Tag, message, Typography, Divider, Spin } from 'antd';
+import { Card, Form, Input, Button, Space, Tag, message, Typography, Spin, Row, Col } from 'antd';
 import { 
   CheckCircleOutlined, 
   CloseCircleOutlined, 
@@ -8,10 +8,15 @@ import {
   SaveOutlined,
   LinkOutlined,
   KeyOutlined,
-  LoadingOutlined
+  LoadingOutlined,
+  ReloadOutlined,
+  DatabaseOutlined,
+  CloudServerOutlined,
+  HddOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import { systemApi } from '@/services/api';
+import { systemApi, SystemHealth } from '@/services/api';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { translateErrorMessage } from '@/utils/i18n';
 
@@ -37,6 +42,8 @@ const Settings: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({ status: 'untested' });
+  const [healthLoading, setHealthLoading] = useState(false);
+  const [health, setHealth] = useState<SystemHealth | null>(null);
 
   // Check if redirected from other pages and show message
   useEffect(() => {
@@ -162,6 +169,47 @@ const Settings: React.FC = () => {
     }
   };
 
+  // Check system health
+  const handleCheckHealth = async () => {
+    try {
+      setHealthLoading(true);
+      const result = await systemApi.checkHealth();
+      setHealth(result);
+    } catch (error: any) {
+      setHealth({
+        healthy: false,
+        status: 'error',
+        error: error.message,
+      });
+    } finally {
+      setHealthLoading(false);
+    }
+  };
+
+  // Render health status item
+  const renderHealthItem = (name: string, status: string | undefined, icon: React.ReactNode) => {
+    const isOk = status === 'ok';
+    return (
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'space-between',
+        padding: '12px 16px',
+        borderRadius: 8,
+        background: 'rgba(0,0,0,0.02)',
+        marginBottom: 8,
+      }}>
+        <Space>
+          {icon}
+          <Text>{name}</Text>
+        </Space>
+        <Tag color={isOk ? 'success' : status === 'unknown' ? 'default' : 'error'}>
+          {isOk ? t('settings.health.ok') : status === 'unknown' ? t('settings.health.unknown') : t('settings.health.error')}
+        </Tag>
+      </div>
+    );
+  };
+
   // Render connection status tag
   const renderStatusTag = () => {
     const { status, message: msg } = connectionStatus;
@@ -273,6 +321,37 @@ const Settings: React.FC = () => {
               </Form.Item>
 
             </Form>
+          </Card>
+
+          {/* System Health Card */}
+          <Card 
+            title={t('settings.health.title')} 
+            style={{ width: '100%', maxWidth: 560, marginTop: 24 }}
+            extra={
+              <Button 
+                icon={<ReloadOutlined />} 
+                onClick={handleCheckHealth}
+                loading={healthLoading}
+              >
+                {t('settings.health.check')}
+              </Button>
+            }
+          >
+            {health ? (
+              <>
+                {renderHealthItem(t('settings.health.database'), health.db, <DatabaseOutlined style={{ color: '#1677ff' }} />)}
+                {renderHealthItem('Redis', health.redis, <ThunderboltOutlined style={{ color: '#eb2f96' }} />)}
+                {renderHealthItem(t('settings.health.docEngine'), health.doc_engine, <CloudServerOutlined style={{ color: '#52c41a' }} />)}
+                {renderHealthItem(t('settings.health.storage'), health.storage, <HddOutlined style={{ color: '#fa8c16' }} />)}
+                {health.error && (
+                  <Text type="danger" style={{ display: 'block', marginTop: 8 }}>
+                    {health.error}
+                  </Text>
+                )}
+              </>
+            ) : (
+              <Text type="secondary">{t('settings.health.clickToCheck')}</Text>
+            )}
           </Card>
         </div>
       </Spin>

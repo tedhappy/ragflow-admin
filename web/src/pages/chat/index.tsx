@@ -1,9 +1,9 @@
 ﻿import React, { useState } from 'react';
-import { Table, Button, Space, Card, message, Input, Typography, Spin, Tag, Avatar, Badge } from 'antd';
+import { Table, Button, Space, Card, message, Input, Typography, Spin, Tag, Avatar, Badge, Modal } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { ReloadOutlined, SearchOutlined, MessageOutlined } from '@ant-design/icons';
+import { ReloadOutlined, SearchOutlined, MessageOutlined, HistoryOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import { chatApi, Chat } from '@/services/api';
+import { chatApi, Chat, chatSessionApi, ChatSession } from '@/services/api';
 import { useTableList } from '@/hooks/useTableList';
 import { useConnectionCheck } from '@/hooks/useConnectionCheck';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -11,12 +11,19 @@ import ConfirmDelete from '@/components/ConfirmDelete';
 import { translateErrorMessage } from '@/utils/i18n';
 import dayjs from 'dayjs';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 const ChatPage: React.FC = () => {
   const { t } = useTranslation();
   const { checking, connected } = useConnectionCheck();
   const [searchName, setSearchName] = useState('');
+  
+  // Session modal states
+  const [sessionModalVisible, setSessionModalVisible] = useState(false);
+  const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [selectedSessionKeys, setSelectedSessionKeys] = useState<React.Key[]>([]);
 
   const {
     data,
@@ -55,6 +62,77 @@ const ChatPage: React.FC = () => {
       message.error(translateErrorMessage(error.message, t) || t('common.deleteFailed'));
     }
   };
+
+  // Session management functions
+  const handleViewSessions = async (chat: Chat) => {
+    setSelectedChat(chat);
+    setSessionModalVisible(true);
+    setSessionsLoading(true);
+    setSelectedSessionKeys([]);
+    try {
+      const result = await chatSessionApi.list(chat.id, { page: 1, page_size: 100 });
+      setSessions(result.items || []);
+    } catch (error: any) {
+      message.error(translateErrorMessage(error.message, t) || t('chat.loadSessionsFailed'));
+      setSessions([]);
+    } finally {
+      setSessionsLoading(false);
+    }
+  };
+
+  const handleDeleteSessions = async () => {
+    if (!selectedChat || selectedSessionKeys.length === 0) return;
+    
+    try {
+      await chatSessionApi.batchDelete(selectedChat.id, selectedSessionKeys as string[]);
+      message.success(t('common.deletedSuccess'));
+      setSelectedSessionKeys([]);
+      // Refresh sessions
+      handleViewSessions(selectedChat);
+    } catch (error: any) {
+      message.error(translateErrorMessage(error.message, t) || t('common.deleteFailed'));
+    }
+  };
+
+  const sessionColumns: ColumnsType<ChatSession> = [
+    {
+      title: t('chat.sessionName'),
+      dataIndex: 'name',
+      key: 'name',
+      width: 150,
+      ellipsis: true,
+      render: (val) => val || t('chat.defaultSessionName'),
+    },
+    {
+      title: t('chat.messageCount'),
+      dataIndex: 'messages',
+      key: 'messageCount',
+      width: 80,
+      align: 'center',
+      render: (messages: any[]) => (
+        <Tag color="blue">{messages?.length || 0}</Tag>
+      ),
+    },
+    {
+      title: t('chat.lastMessage'),
+      dataIndex: 'messages',
+      key: 'lastMessage',
+      ellipsis: true,
+      render: (messages: any[]) => {
+        if (!messages || messages.length === 0) return '-';
+        const lastMsg = messages[messages.length - 1];
+        const prefix = lastMsg.role === 'user' ? '👤 ' : '🤖 ';
+        return prefix + (lastMsg.content?.slice(0, 50) || '-');
+      },
+    },
+    {
+      title: t('common.updated'),
+      dataIndex: 'update_time',
+      key: 'update_time',
+      width: 140,
+      render: (val) => val ? dayjs(val).format('MM-DD HH:mm') : '-',
+    },
+  ];
 
   const columns: ColumnsType<Chat> = [
     { 
@@ -172,6 +250,17 @@ const ChatPage: React.FC = () => {
                 selectedRowKeys,
                 onChange: setSelectedRowKeys,
               }}
+              onRow={(record) => ({
+                onClick: (e) => {
+                  // Prevent when clicking on checkbox or action buttons
+                  const target = e.target as HTMLElement;
+                  if (target.closest('.ant-checkbox-wrapper') || target.closest('button') || target.closest('a')) {
+                    return;
+                  }
+                  handleViewSessions(record);
+                },
+                style: { cursor: 'pointer' },
+              })}
               pagination={{
                 current: page,
                 pageSize: pageSize,
@@ -185,6 +274,58 @@ const ChatPage: React.FC = () => {
           </Card>
         </div>
       </Spin>
+
+      {/* Sessions Modal */}
+      <Modal
+        title={
+          <Space>
+            <HistoryOutlined />
+            {t('chat.sessions')} - {selectedChat?.name}
+          </Space>
+        }
+        open={sessionModalVisible}
+        onCancel={() => {
+          setSessionModalVisible(false);
+          setSelectedChat(null);
+          setSessions([]);
+          setSelectedSessionKeys([]);
+        }}
+        footer={null}
+        width={700}
+      >
+        <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Text type="secondary">
+            {t('chat.totalSessions', { count: sessions.length })}
+          </Text>
+          <ConfirmDelete
+            onConfirm={handleDeleteSessions}
+            disabled={selectedSessionKeys.length === 0}
+            buttonText={t('common.deleteSelected', { count: selectedSessionKeys.length })}
+            buttonType="default"
+            buttonSize="middle"
+            buttonDanger
+          />
+        </div>
+        <Table
+          columns={sessionColumns}
+          dataSource={sessions}
+          rowKey="id"
+          loading={sessionsLoading}
+          size="small"
+          rowSelection={{
+            selectedRowKeys: selectedSessionKeys,
+            onChange: setSelectedSessionKeys,
+          }}
+          pagination={{
+            pageSize: 10,
+            showSizeChanger: false,
+            showTotal: (total) => t('common.total', { count: total }),
+          }}
+          locale={{
+            emptyText: t('chat.noSessions'),
+          }}
+        />
+      </Modal>
     </ErrorBoundary>
   );
 };

@@ -555,5 +555,92 @@ class RAGFlowClient:
             return result
         raise RAGFlowAPIError(result.get("message", "Failed to stop parsing documents"))
 
+    async def check_system_health(self) -> dict:
+        """
+        Check system health status (DB, Redis, doc_engine, storage).
+        This endpoint doesn't require authentication.
+        
+        Returns:
+            dict with health status of each component
+        """
+        # Use base URL without /api/v1 for health check
+        base_url = settings.ragflow_base_url
+        async with httpx.AsyncClient(timeout=10) as client:
+            try:
+                resp = await client.get(f"{base_url}/v1/system/healthz")
+                if resp.status_code == 200:
+                    data = resp.json()
+                    return {
+                        "healthy": True,
+                        "status": data.get("status", "unknown"),
+                        "db": data.get("db", "unknown"),
+                        "redis": data.get("redis", "unknown"),
+                        "doc_engine": data.get("doc_engine", "unknown"),
+                        "storage": data.get("storage", "unknown"),
+                    }
+                else:
+                    data = resp.json()
+                    return {
+                        "healthy": False,
+                        "status": data.get("status", "nok"),
+                        "db": data.get("db", "unknown"),
+                        "redis": data.get("redis", "unknown"),
+                        "doc_engine": data.get("doc_engine", "unknown"),
+                        "storage": data.get("storage", "unknown"),
+                        "meta": data.get("_meta", {}),
+                    }
+            except Exception as e:
+                logger.error(f"Health check failed: {e}")
+                return {
+                    "healthy": False,
+                    "status": "error",
+                    "error": str(e),
+                }
+
+    # Session management for chat assistants
+    async def list_chat_sessions(self, chat_id: str, page: int = 1, page_size: int = 30) -> dict:
+        """
+        List sessions for a chat assistant.
+        
+        Args:
+            chat_id: The ID of the chat assistant
+            page: Page number
+            page_size: Number of items per page
+        
+        Returns:
+            dict with items list and total count
+        """
+        params = {
+            "page": page,
+            "page_size": page_size,
+        }
+        result = await self._get(f"/chats/{chat_id}/sessions", params=params)
+        if result.get("code") == 0:
+            data = result.get("data", [])
+            return {
+                "items": data if isinstance(data, list) else [],
+                "total": len(data) if isinstance(data, list) else 0,
+            }
+        raise RAGFlowAPIError(result.get("message", "Failed to list chat sessions"))
+
+    async def delete_chat_sessions(self, chat_id: str, session_ids: list) -> dict:
+        """
+        Delete sessions for a chat assistant.
+        
+        Args:
+            chat_id: The ID of the chat assistant
+            session_ids: List of session IDs to delete
+        
+        Returns:
+            dict with result
+        """
+        result = await self._delete(
+            f"/chats/{chat_id}/sessions",
+            json={"ids": session_ids}
+        )
+        if result.get("code") == 0:
+            return result
+        raise RAGFlowAPIError(result.get("message", "Failed to delete chat sessions"))
+
 
 ragflow_client = RAGFlowClient()
