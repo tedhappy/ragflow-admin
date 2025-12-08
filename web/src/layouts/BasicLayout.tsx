@@ -109,7 +109,7 @@ const LayoutContent: React.FC = () => {
           collapsed={collapsed}
           className={styles.sider}
         >
-          <div className={styles.logo}>
+          <div className={styles.logo} onClick={() => navigate('/dashboard')} style={{ cursor: 'pointer' }}>
             <img src="/logo.svg" alt="logo" />
             {!collapsed && <span className={styles.title}>{t('header.title')}</span>}
           </div>
