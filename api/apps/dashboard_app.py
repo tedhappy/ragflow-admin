@@ -8,6 +8,8 @@ import asyncio
 import logging
 from quart import Blueprint, jsonify
 from api.services.ragflow_client import ragflow_client, RAGFlowAPIError
+from api.services.mysql_client import mysql_client
+from api.settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +43,15 @@ async def get_stats():
             for ds in datasets.get("items", [])
         )
         
+        # Get user count from MySQL if configured
+        user_count = 0
+        if settings.is_mysql_configured:
+            try:
+                users = await mysql_client.list_users(page=1, page_size=1)
+                user_count = users.get("total", 0)
+            except Exception as e:
+                logger.warning(f"Failed to get user count: {e}")
+        
         return jsonify({
             "code": 0,
             "data": {
@@ -48,6 +59,7 @@ async def get_stats():
                 "document_count": document_count,
                 "chat_count": chats.get("total", 0),
                 "agent_count": agents.get("total", 0),
+                "user_count": user_count,
             }
         })
     except RAGFlowAPIError as e:

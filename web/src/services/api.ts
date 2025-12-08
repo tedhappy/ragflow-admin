@@ -283,6 +283,7 @@ export interface DashboardStats {
   document_count: number;
   chat_count: number;
   agent_count: number;
+  user_count: number;
 }
 
 export const dashboardApi = {

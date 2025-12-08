@@ -65,6 +65,7 @@ export default {
       documents: '文档',
       chats: '聊天',
       agents: '智能体',
+      users: '用户',
       fetchFailed: '获取统计数据失败',
     },
     datasets: {

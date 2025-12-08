@@ -7,7 +7,7 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Space, Card, message, Input, Typography, Spin, Tag, Badge, Modal, Form, Alert, Avatar, Select } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { ReloadOutlined, SearchOutlined, UserOutlined, PlusOutlined, KeyOutlined, SettingOutlined, ClearOutlined } from '@ant-design/icons';
+import { ReloadOutlined, SearchOutlined, UserOutlined, PlusOutlined, KeyOutlined, SettingOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { userApi, RagflowUser, MySQLConfig } from '@/services/api';
 import { useTableList } from '@/hooks/useTableList';
@@ -91,13 +91,6 @@ const Users: React.FC = () => {
       nickname: searchNickname || undefined,
       status: searchStatus,
     });
-  };
-
-  const onClearFilters = () => {
-    setSearchEmail('');
-    setSearchNickname('');
-    setSearchStatus(undefined);
-    handleSearch({});
   };
 
   // Sort by create_time descending
@@ -388,7 +381,6 @@ const Users: React.FC = () => {
                   ]}
                 />
                 <Button icon={<SearchOutlined />} onClick={onSearch}>{t('common.search')}</Button>
-                <Button icon={<ClearOutlined />} onClick={onClearFilters}>{t('common.clear')}</Button>
               </Space>
               <Space wrap>
                 <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalVisible(true)}>

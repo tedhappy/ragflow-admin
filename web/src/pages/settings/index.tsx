@@ -205,7 +205,7 @@ const Settings: React.FC = () => {
               requiredMark={false}
             >
               {/* Connection Status */}
-              <div style={{ marginBottom: 24, padding: '16px', background: '#fafafa', borderRadius: 8 }}>
+              <div style={{ marginBottom: 24, padding: '16px', background: 'rgba(0,0,0,0.02)', borderRadius: 8 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Text strong>{t('settings.connectionStatus')}</Text>
                   {renderStatusTag()}
@@ -224,7 +224,7 @@ const Settings: React.FC = () => {
                 style={{ marginBottom: 20 }}
               >
                 <Input 
-                  prefix={<LinkOutlined style={{ color: '#bfbfbf' }} />}
+                  prefix={<LinkOutlined style={{ opacity: 0.45 }} />}
                   placeholder={t('settings.ragflowUrlPlaceholder')}
                   onChange={() => setConnectionStatus({ status: 'untested' })}
                 />
@@ -241,7 +241,7 @@ const Settings: React.FC = () => {
                 style={{ marginBottom: 24 }}
               >
                 <Input.Password 
-                  prefix={<KeyOutlined style={{ color: '#bfbfbf' }} />}
+                  prefix={<KeyOutlined style={{ opacity: 0.45 }} />}
                   placeholder={t('settings.apiKeyPlaceholder')}
                   onChange={() => setConnectionStatus({ status: 'untested' })}
                 />

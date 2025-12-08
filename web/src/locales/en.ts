@@ -65,6 +65,7 @@ export default {
       documents: 'Documents',
       chats: 'Chats',
       agents: 'Agents',
+      users: 'Users',
       fetchFailed: 'Failed to fetch statistics',
     },
     datasets: {
