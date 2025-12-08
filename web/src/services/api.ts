@@ -265,7 +265,7 @@ export const userApi = {
     request.post<any, MySQLTestResult>('/users/config/test', data),
   
   // User CRUD
-  list: (params?: PaginationParams & { email?: string }) =>
+  list: (params?: PaginationParams & { email?: string; nickname?: string; status?: string }) =>
     request.get<any, ListResponse<RagflowUser>>('/users', { params }),
   create: (data: { email: string; password: string; nickname?: string }) =>
     request.post<any, { id: string; email: string }>('/users', data),

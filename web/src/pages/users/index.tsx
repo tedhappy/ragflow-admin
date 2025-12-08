@@ -5,9 +5,9 @@
 //
 
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Space, Card, message, Input, Typography, Spin, Tag, Badge, Modal, Form, Alert, Avatar } from 'antd';
+import { Table, Button, Space, Card, message, Input, Typography, Spin, Tag, Badge, Modal, Form, Alert, Avatar, Select } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { ReloadOutlined, SearchOutlined, UserOutlined, PlusOutlined, KeyOutlined, SettingOutlined } from '@ant-design/icons';
+import { ReloadOutlined, SearchOutlined, UserOutlined, PlusOutlined, KeyOutlined, SettingOutlined, ClearOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { userApi, RagflowUser, MySQLConfig } from '@/services/api';
 import { useTableList } from '@/hooks/useTableList';
@@ -21,6 +21,8 @@ const { Title } = Typography;
 const Users: React.FC = () => {
   const { t } = useTranslation();
   const [searchEmail, setSearchEmail] = useState('');
+  const [searchNickname, setSearchNickname] = useState('');
+  const [searchStatus, setSearchStatus] = useState<string | undefined>(undefined);
   const [mysqlConfig, setMysqlConfig] = useState<MySQLConfig | null>(null);
   const [configLoading, setConfigLoading] = useState(true);
   
@@ -84,7 +86,18 @@ const Users: React.FC = () => {
   });
 
   const onSearch = () => {
-    handleSearch({ email: searchEmail || undefined });
+    handleSearch({ 
+      email: searchEmail || undefined,
+      nickname: searchNickname || undefined,
+      status: searchStatus,
+    });
+  };
+
+  const onClearFilters = () => {
+    setSearchEmail('');
+    setSearchNickname('');
+    setSearchStatus(undefined);
+    handleSearch({});
   };
 
   // Sort by create_time descending
@@ -347,15 +360,35 @@ const Users: React.FC = () => {
             <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
               <Space wrap>
                 <Input
-                  placeholder={t('users.searchPlaceholder')}
+                  placeholder={t('users.searchEmail')}
                   prefix={<SearchOutlined />}
                   allowClear
                   value={searchEmail}
                   onChange={(e) => setSearchEmail(e.target.value)}
                   onPressEnter={onSearch}
-                  style={{ width: 200 }}
+                  style={{ width: 180 }}
+                />
+                <Input
+                  placeholder={t('users.searchNickname')}
+                  allowClear
+                  value={searchNickname}
+                  onChange={(e) => setSearchNickname(e.target.value)}
+                  onPressEnter={onSearch}
+                  style={{ width: 150 }}
+                />
+                <Select
+                  placeholder={t('users.searchStatus')}
+                  allowClear
+                  value={searchStatus}
+                  onChange={(value) => setSearchStatus(value)}
+                  style={{ width: 120 }}
+                  options={[
+                    { value: '1', label: t('users.active') },
+                    { value: '0', label: t('users.inactive') },
+                  ]}
                 />
                 <Button icon={<SearchOutlined />} onClick={onSearch}>{t('common.search')}</Button>
+                <Button icon={<ClearOutlined />} onClick={onClearFilters}>{t('common.clear')}</Button>
               </Space>
               <Space wrap>
                 <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalVisible(true)}>
@@ -471,7 +504,11 @@ const Users: React.FC = () => {
           >
             <Input.Password placeholder="******" />
           </Form.Item>
-          <Form.Item name="nickname" label={t('users.nickname')}>
+          <Form.Item 
+            name="nickname" 
+            label={t('users.nickname')}
+            rules={[{ required: true, message: t('users.nicknameRequired') }]}
+          >
             <Input placeholder={t('users.nicknamePlaceholder')} />
           </Form.Item>
         </Form>

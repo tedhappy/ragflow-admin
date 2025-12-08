@@ -6,6 +6,7 @@
 
 import logging
 import time
+import base64
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from werkzeug.security import generate_password_hash
@@ -116,17 +117,29 @@ class MySQLClient:
                 "error": str(e),
             }
 
-    async def list_users(self, page: int = 1, page_size: int = 20, email: str = None) -> Dict[str, Any]:
-        """List all users with pagination."""
+    async def list_users(self, page: int = 1, page_size: int = 20, 
+                         email: str = None, nickname: str = None, status: str = None) -> Dict[str, Any]:
+        """List all users with pagination and filters."""
         conn = await self._get_connection()
         try:
             async with conn.cursor() as cursor:
-                # Build query
-                where_clause = ""
+                # Build query with multiple filters
+                conditions = []
                 params = []
+                
                 if email:
-                    where_clause = "WHERE email LIKE %s"
+                    conditions.append("email LIKE %s")
                     params.append(f"%{email}%")
+                if nickname:
+                    conditions.append("nickname LIKE %s")
+                    params.append(f"%{nickname}%")
+                if status is not None and status != '':
+                    conditions.append("status = %s")
+                    params.append(status)
+                
+                where_clause = ""
+                if conditions:
+                    where_clause = "WHERE " + " AND ".join(conditions)
                 
                 # Get total count
                 count_sql = f"SELECT COUNT(*) FROM user {where_clause}"
@@ -199,11 +212,27 @@ class MySQLClient:
             await self._release_connection(conn)
 
     def _hash_password(self, password: str) -> str:
-        """Hash password using the same method as RAGFlow (werkzeug.security)."""
-        return generate_password_hash(password)
+        """Hash password using the same method as RAGFlow.
+        
+        RAGFlow stores passwords as hash of base64-encoded password:
+        1. Frontend encrypts password with RSA
+        2. Backend decrypts and gets base64-encoded password
+        3. Database stores hash of the base64-encoded password
+        
+        So we need: generate_password_hash(base64_encode(password))
+        """
+        # Base64 encode the password first (as RAGFlow does)
+        password_b64 = base64.b64encode(password.encode('utf-8')).decode('utf-8')
+        return generate_password_hash(password_b64)
 
     async def create_user(self, email: str, password: str, nickname: str = None) -> Dict[str, Any]:
-        """Create a new user using the same method as RAGFlow."""
+        """Create a new user using the same method as RAGFlow.
+        
+        RAGFlow requires creating records in multiple tables:
+        1. user - User account
+        2. tenant - Tenant/workspace for the user
+        3. user_tenant - Links user to tenant with OWNER role
+        """
         import uuid
         
         conn = await self._get_connection()
@@ -215,32 +244,72 @@ class MySQLClient:
                     raise MySQLClientError("User with this email already exists")
                 
                 user_id = str(uuid.uuid4()).replace("-", "")
-                # Use generate_password_hash like RAGFlow does
-                hashed_password = generate_password_hash(str(password))
+                user_tenant_id = str(uuid.uuid4()).replace("-", "")
+                nick = nickname  # nickname is required
+                
+                # Hash password using RAGFlow's method (base64 encode + hash)
+                hashed_password = self._hash_password(password)
+                logger.info(f"Creating user {email} with password hash: {hashed_password[:50]}...")
                 now_timestamp = int(time.time() * 1000)  # Timestamp in milliseconds
                 now_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Formatted date string
+                access_token = str(uuid.uuid4()).replace("-", "")
                 
+                # 1. Create user record with default values (matching RAGFlow registration)
                 await cursor.execute("""
                     INSERT INTO user (id, email, password, nickname, status, 
-                                      create_time, create_date, update_time, update_date)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, (user_id, email, hashed_password, nickname or email.split("@")[0], "1", 
-                      now_timestamp, now_date, now_timestamp, now_date))
+                                      create_time, create_date, update_time, update_date,
+                                      access_token, is_authenticated, is_active, is_anonymous,
+                                      login_channel, is_superuser, last_login_time,
+                                      language, color_schema, timezone)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (user_id, email, hashed_password, nick, "1", 
+                      now_timestamp, now_date, now_timestamp, now_date,
+                      access_token, "1", "1", "0", "password", 0, now_date,
+                      "English", "Bright", "UTC+8\tAsia/Shanghai"))
+                
+                # 2. Create tenant record (user's workspace)
+                tenant_name = f"{nick}'s Kingdom"
+                await cursor.execute("""
+                    INSERT INTO tenant (id, name, llm_id, embd_id, asr_id, img2txt_id, rerank_id, tts_id,
+                                        parser_ids, credit, create_time, create_date, update_time, update_date, status)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (user_id, tenant_name, "", "", "", "", "", "", "", 0,
+                      now_timestamp, now_date, now_timestamp, now_date, "1"))
+                
+                # 3. Create user_tenant record (link user to tenant as OWNER)
+                await cursor.execute("""
+                    INSERT INTO user_tenant (id, user_id, tenant_id, role, status,
+                                             create_time, create_date, update_time, update_date, invited_by)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (user_tenant_id, user_id, user_id, "owner", "1",
+                      now_timestamp, now_date, now_timestamp, now_date, user_id))
                 
                 return {"id": user_id, "email": email}
         finally:
             await self._release_connection(conn)
 
     async def update_user_status(self, user_id: str, status: str) -> bool:
-        """Update user status (1=active, 0=inactive)."""
+        """Update user status (1=active, 0=inactive).
+        
+        Updates both user.status and user_tenant.status for complete access control.
+        """
         conn = await self._get_connection()
         try:
             async with conn.cursor() as cursor:
                 now_timestamp = int(time.time() * 1000)  # Timestamp in milliseconds
                 now_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Formatted date string
+                
+                # 1. Update user status and is_active
                 await cursor.execute("""
-                    UPDATE user SET status = %s, update_time = %s, update_date = %s WHERE id = %s
-                """, (status, now_timestamp, now_date, user_id))
+                    UPDATE user SET status = %s, is_active = %s, update_time = %s, update_date = %s WHERE id = %s
+                """, (status, status, now_timestamp, now_date, user_id))
+                
+                # 2. Update user_tenant status (sync with user status)
+                await cursor.execute("""
+                    UPDATE user_tenant SET status = %s, update_time = %s, update_date = %s 
+                    WHERE user_id = %s OR tenant_id = %s
+                """, (status, now_timestamp, now_date, user_id, user_id))
+                
                 return cursor.rowcount > 0
         finally:
             await self._release_connection(conn)
@@ -250,8 +319,8 @@ class MySQLClient:
         conn = await self._get_connection()
         try:
             async with conn.cursor() as cursor:
-                # Use generate_password_hash like RAGFlow does
-                hashed_password = generate_password_hash(str(new_password))
+                # Hash password using RAGFlow's method (base64 encode + hash)
+                hashed_password = self._hash_password(new_password)
                 now_timestamp = int(time.time() * 1000)  # Timestamp in milliseconds
                 now_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Formatted date string
                 await cursor.execute("""
@@ -262,17 +331,24 @@ class MySQLClient:
             await self._release_connection(conn)
 
     async def delete_user(self, user_id: str) -> bool:
-        """Delete a user."""
+        """Delete a user and related records (tenant, user_tenant)."""
         conn = await self._get_connection()
         try:
             async with conn.cursor() as cursor:
+                # Delete related records first (foreign key order)
+                # 1. Delete user_tenant records
+                await cursor.execute("DELETE FROM user_tenant WHERE user_id = %s OR tenant_id = %s", 
+                                     (user_id, user_id))
+                # 2. Delete tenant record (user_id = tenant_id for owner)
+                await cursor.execute("DELETE FROM tenant WHERE id = %s", (user_id,))
+                # 3. Delete user record
                 await cursor.execute("DELETE FROM user WHERE id = %s", (user_id,))
                 return cursor.rowcount > 0
         finally:
             await self._release_connection(conn)
 
     async def delete_users(self, user_ids: List[str]) -> int:
-        """Delete multiple users."""
+        """Delete multiple users and their related records."""
         if not user_ids:
             return 0
         
@@ -280,6 +356,15 @@ class MySQLClient:
         try:
             async with conn.cursor() as cursor:
                 placeholders = ",".join(["%s"] * len(user_ids))
+                # Delete related records first
+                # 1. Delete user_tenant records
+                await cursor.execute(
+                    f"DELETE FROM user_tenant WHERE user_id IN ({placeholders}) OR tenant_id IN ({placeholders})", 
+                    user_ids + user_ids
+                )
+                # 2. Delete tenant records
+                await cursor.execute(f"DELETE FROM tenant WHERE id IN ({placeholders})", user_ids)
+                # 3. Delete user records
                 await cursor.execute(f"DELETE FROM user WHERE id IN ({placeholders})", user_ids)
                 return cursor.rowcount
         finally:

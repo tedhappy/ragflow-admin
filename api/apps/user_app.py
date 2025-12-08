@@ -195,6 +195,12 @@ async def list_users():
       - name: email
         in: query
         type: string
+      - name: nickname
+        in: query
+        type: string
+      - name: status
+        in: query
+        type: string
     responses:
       200:
         description: User list
@@ -205,9 +211,14 @@ async def list_users():
     page = request.args.get("page", 1, type=int)
     page_size = request.args.get("page_size", 20, type=int)
     email = request.args.get("email", None)
+    nickname = request.args.get("nickname", None)
+    status = request.args.get("status", None)
     
     try:
-        result = await mysql_client.list_users(page=page, page_size=page_size, email=email)
+        result = await mysql_client.list_users(
+            page=page, page_size=page_size, 
+            email=email, nickname=nickname, status=status
+        )
         return jsonify({"code": 0, "data": result})
     except MySQLClientError as e:
         logger.error(f"Failed to list users: {e.message}")
@@ -245,12 +256,12 @@ async def create_user():
         return jsonify({"code": -1, "message": "MySQL not configured"}), 400
     
     data = await request.get_json()
-    email = data.get("email", "")
+    email = data.get("email", "").strip()
     password = data.get("password", "")
-    nickname = data.get("nickname", "")
+    nickname = data.get("nickname", "").strip()
     
-    if not email or not password:
-        return jsonify({"code": -1, "message": "email and password are required"}), 400
+    if not email or not password or not nickname:
+        return jsonify({"code": -1, "message": "email, password and nickname are required"}), 400
     
     try:
         result = await mysql_client.create_user(email=email, password=password, nickname=nickname)
