@@ -37,6 +37,11 @@ class Settings:
         else:
             raise FileNotFoundError("Config file not found")
 
+    def reload_config(self):
+        """Reload configuration from file."""
+        self._config = None
+        self._load_config()
+
     def update_ragflow_config(self, base_url: str, api_key: str) -> bool:
         """Update RAGFlow configuration and save to config.yaml."""
         try:

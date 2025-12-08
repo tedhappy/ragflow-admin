@@ -31,6 +31,7 @@ const Users: React.FC = () => {
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [selectedUserEmail, setSelectedUserEmail] = useState<string>('');
   
   // Form instances
   const [configForm] = Form.useForm();
@@ -150,11 +151,18 @@ const Users: React.FC = () => {
   };
 
   const handleSaveConfig = async () => {
+    // Must test connection first
+    if (!testResult?.success) {
+      message.warning(t('users.testConnectionFirst'));
+      return;
+    }
+    
     try {
       const values = await configForm.validateFields();
       await userApi.saveConfig(values);
       message.success(t('users.configSaved'));
       setConfigModalVisible(false);
+      setTestResult(null);  // Reset test result
       loadConfig();
       refresh();
     } catch (error: any) {
@@ -262,6 +270,7 @@ const Users: React.FC = () => {
             icon={<KeyOutlined />}
             onClick={() => {
               setSelectedUserId(record.id);
+              setSelectedUserEmail(record.email);
               setPasswordModalVisible(true);
             }}
             title={t('users.updatePassword')}
@@ -301,8 +310,12 @@ const Users: React.FC = () => {
           title={t('users.mysqlConfig')}
           open={configModalVisible}
           onOk={handleSaveConfig}
-          onCancel={() => setConfigModalVisible(false)}
+          onCancel={() => {
+            setConfigModalVisible(false);
+            setTestResult(null);
+          }}
           okText={t('common.save')}
+          okButtonProps={{ disabled: !testResult?.success }}
           width={500}
         >
           <Form 
@@ -435,8 +448,12 @@ const Users: React.FC = () => {
         title={t('users.mysqlConfig')}
         open={configModalVisible}
         onOk={handleSaveConfig}
-        onCancel={() => setConfigModalVisible(false)}
+        onCancel={() => {
+          setConfigModalVisible(false);
+          setTestResult(null);
+        }}
         okText={t('common.save')}
+        okButtonProps={{ disabled: !testResult?.success }}
         width={500}
       >
         <Form 
@@ -501,7 +518,25 @@ const Users: React.FC = () => {
             label={t('users.password')} 
             rules={[{ required: true, message: t('users.passwordRequired') }]}
           >
-            <Input.Password placeholder="******" />
+            <Input.Password placeholder={t('users.newPasswordPlaceholder')} />
+          </Form.Item>
+          <Form.Item 
+            name="confirmPassword" 
+            label={t('users.confirmPassword')} 
+            dependencies={['password']}
+            rules={[
+              { required: true, message: t('users.confirmPasswordRequired') },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || getFieldValue('password') === value) {
+                    return Promise.resolve();
+                  }
+                  return Promise.reject(new Error(t('users.passwordMismatch')));
+                },
+              }),
+            ]}
+          >
+            <Input.Password placeholder={t('users.confirmPasswordPlaceholder')} />
           </Form.Item>
           <Form.Item 
             name="nickname" 
@@ -515,23 +550,44 @@ const Users: React.FC = () => {
 
       {/* Update Password Modal */}
       <Modal
-        title={t('users.updatePassword')}
+        title={t('users.changePassword')}
         open={passwordModalVisible}
         onOk={handleUpdatePassword}
         onCancel={() => {
           setPasswordModalVisible(false);
           passwordForm.resetFields();
         }}
-        okText={t('common.confirm')}
-        width={400}
+        okText={t('users.changePassword')}
+        width={450}
       >
         <Form form={passwordForm} layout="vertical">
+          <Form.Item label={t('users.email')}>
+            <Input value={selectedUserEmail} disabled />
+          </Form.Item>
           <Form.Item 
             name="password" 
             label={t('users.newPassword')} 
             rules={[{ required: true, message: t('users.passwordRequired') }]}
           >
-            <Input.Password placeholder="******" />
+            <Input.Password placeholder={t('users.newPasswordPlaceholder')} />
+          </Form.Item>
+          <Form.Item 
+            name="confirmPassword" 
+            label={t('users.confirmPassword')} 
+            dependencies={['password']}
+            rules={[
+              { required: true, message: t('users.confirmPasswordRequired') },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || getFieldValue('password') === value) {
+                    return Promise.resolve();
+                  }
+                  return Promise.reject(new Error(t('users.passwordMismatch')));
+                },
+              }),
+            ]}
+          >
+            <Input.Password placeholder={t('users.confirmPasswordPlaceholder')} />
           </Form.Item>
         </Form>
       </Modal>
