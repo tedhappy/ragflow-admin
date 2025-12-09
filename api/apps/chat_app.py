@@ -102,8 +102,14 @@ async def batch_delete_chats():
         return jsonify({"code": -1, "message": "ids is required"}), 400
     
     try:
-        deleted = await mysql_client.delete_chats(ids)
-        return jsonify({"code": 0, "message": "success", "deleted": deleted})
+        # Cleans up: conversation, dialog (with transaction)
+        result = await mysql_client.delete_chats(ids)
+        return jsonify({
+            "code": 0, 
+            "message": "success", 
+            "deleted": result["chats"],
+            "details": result,
+        })
     except MySQLClientError as e:
         logger.error(f"Failed to delete chats: {e.message}")
         return jsonify({"code": e.code, "message": e.message}), 500

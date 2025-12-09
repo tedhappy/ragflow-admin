@@ -233,8 +233,14 @@ async def batch_delete_users():
         return jsonify({"code": -1, "message": "ids is required"}), 400
     
     try:
-        count = await mysql_client.delete_users(ids)
-        return jsonify({"code": 0, "message": f"Deleted {count} users"})
+        # Cleans up ALL user data: datasets, documents, tasks, chats, agents, etc.
+        result = await mysql_client.delete_users(ids)
+        return jsonify({
+            "code": 0, 
+            "message": "success",
+            "deleted": result["users"],
+            "details": result,
+        })
     except Exception as e:
         logger.exception("Failed to delete users")
         return jsonify({"code": -1, "message": str(e)}), 500

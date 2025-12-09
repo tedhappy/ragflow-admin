@@ -75,6 +75,34 @@ class MySQLClient:
         if self._pool:
             self._pool.release(conn)
 
+    async def _execute_transaction(self, operations):
+        """
+        Execute multiple operations in a transaction.
+        
+        Args:
+            operations: async function that takes cursor and performs operations
+        
+        Returns:
+            Result from operations function
+        """
+        conn = await self._get_connection()
+        try:
+            # Disable autocommit for transaction
+            await conn.autocommit(False)
+            try:
+                async with conn.cursor() as cursor:
+                    result = await operations(cursor)
+                    await conn.commit()
+                    return result
+            except Exception as e:
+                await conn.rollback()
+                raise e
+            finally:
+                # Re-enable autocommit
+                await conn.autocommit(True)
+        finally:
+            await self._release_connection(conn)
+
     async def close(self):
         """Close the connection pool."""
         if self._pool:
@@ -328,84 +356,80 @@ class MySQLClient:
         """
         import uuid
         
-        conn = await self._get_connection()
-        try:
-            async with conn.cursor() as cursor:
-                # Check if user already exists
-                await cursor.execute("SELECT id FROM user WHERE email = %s", (email,))
-                if await cursor.fetchone():
-                    raise MySQLClientError("User with this email already exists")
-                
-                user_id = str(uuid.uuid4()).replace("-", "")
-                user_tenant_id = str(uuid.uuid4()).replace("-", "")
-                nick = nickname  # nickname is required
-                
-                # Hash password using RAGFlow's method (base64 encode + hash)
-                hashed_password = self._hash_password(password)
-                logger.info(f"Creating user {email} with password hash: {hashed_password[:50]}...")
-                now_timestamp = int(time.time() * 1000)  # Timestamp in milliseconds
-                now_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Formatted date string
-                access_token = str(uuid.uuid4()).replace("-", "")
-                
-                # 1. Create user record with default values (matching RAGFlow registration)
-                await cursor.execute("""
-                    INSERT INTO user (id, email, password, nickname, status, 
-                                      create_time, create_date, update_time, update_date,
-                                      access_token, is_authenticated, is_active, is_anonymous,
-                                      login_channel, is_superuser, last_login_time,
-                                      language, color_schema, timezone)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, (user_id, email, hashed_password, nick, "1", 
-                      now_timestamp, now_date, now_timestamp, now_date,
-                      access_token, "1", "1", "0", "password", 0, now_date,
-                      "English", "Bright", "UTC+8\tAsia/Shanghai"))
-                
-                # 2. Create tenant record (user's workspace)
-                tenant_name = f"{nick}'s Kingdom"
-                await cursor.execute("""
-                    INSERT INTO tenant (id, name, llm_id, embd_id, asr_id, img2txt_id, rerank_id, tts_id,
-                                        parser_ids, credit, create_time, create_date, update_time, update_date, status)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, (user_id, tenant_name, "", "", "", "", "", "", "", 0,
-                      now_timestamp, now_date, now_timestamp, now_date, "1"))
-                
-                # 3. Create user_tenant record (link user to tenant as OWNER)
-                await cursor.execute("""
-                    INSERT INTO user_tenant (id, user_id, tenant_id, role, status,
-                                             create_time, create_date, update_time, update_date, invited_by)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, (user_tenant_id, user_id, user_id, "owner", "1",
-                      now_timestamp, now_date, now_timestamp, now_date, user_id))
-                
-                return {"id": user_id, "email": email}
-        finally:
-            await self._release_connection(conn)
+        async def operations(cursor):
+            # Check if user already exists
+            await cursor.execute("SELECT id FROM user WHERE email = %s", (email,))
+            if await cursor.fetchone():
+                raise MySQLClientError("User with this email already exists")
+            
+            user_id = str(uuid.uuid4()).replace("-", "")
+            user_tenant_id = str(uuid.uuid4()).replace("-", "")
+            nick = nickname  # nickname is required
+            
+            # Hash password using RAGFlow's method (base64 encode + hash)
+            hashed_password = self._hash_password(password)
+            logger.info(f"Creating user {email} with password hash: {hashed_password[:50]}...")
+            now_timestamp = int(time.time() * 1000)  # Timestamp in milliseconds
+            now_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Formatted date string
+            access_token = str(uuid.uuid4()).replace("-", "")
+            
+            # 1. Create user record with default values (matching RAGFlow registration)
+            await cursor.execute("""
+                INSERT INTO user (id, email, password, nickname, status, 
+                                  create_time, create_date, update_time, update_date,
+                                  access_token, is_authenticated, is_active, is_anonymous,
+                                  login_channel, is_superuser, last_login_time,
+                                  language, color_schema, timezone)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (user_id, email, hashed_password, nick, "1", 
+                  now_timestamp, now_date, now_timestamp, now_date,
+                  access_token, "1", "1", "0", "password", 0, now_date,
+                  "English", "Bright", "UTC+8\tAsia/Shanghai"))
+            
+            # 2. Create tenant record (user's workspace)
+            tenant_name = f"{nick}'s Kingdom"
+            await cursor.execute("""
+                INSERT INTO tenant (id, name, llm_id, embd_id, asr_id, img2txt_id, rerank_id, tts_id,
+                                    parser_ids, credit, create_time, create_date, update_time, update_date, status)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (user_id, tenant_name, "", "", "", "", "", "", "", 0,
+                  now_timestamp, now_date, now_timestamp, now_date, "1"))
+            
+            # 3. Create user_tenant record (link user to tenant as OWNER)
+            await cursor.execute("""
+                INSERT INTO user_tenant (id, user_id, tenant_id, role, status,
+                                         create_time, create_date, update_time, update_date, invited_by)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (user_tenant_id, user_id, user_id, "owner", "1",
+                  now_timestamp, now_date, now_timestamp, now_date, user_id))
+            
+            return {"id": user_id, "email": email}
+        
+        return await self._execute_transaction(operations)
 
     async def update_user_status(self, user_id: str, status: str) -> bool:
-        """Update user status (1=active, 0=inactive).
+        """Update user status (1=active, 0=inactive) with transaction.
         
         Updates both user.status and user_tenant.status for complete access control.
         """
-        conn = await self._get_connection()
-        try:
-            async with conn.cursor() as cursor:
-                now_timestamp = int(time.time() * 1000)  # Timestamp in milliseconds
-                now_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Formatted date string
-                
-                # 1. Update user status and is_active
-                await cursor.execute("""
-                    UPDATE user SET status = %s, is_active = %s, update_time = %s, update_date = %s WHERE id = %s
-                """, (status, status, now_timestamp, now_date, user_id))
-                
-                # 2. Update user_tenant status (sync with user status)
-                await cursor.execute("""
-                    UPDATE user_tenant SET status = %s, update_time = %s, update_date = %s 
-                    WHERE user_id = %s OR tenant_id = %s
-                """, (status, now_timestamp, now_date, user_id, user_id))
-                
-                return cursor.rowcount > 0
-        finally:
-            await self._release_connection(conn)
+        async def operations(cursor):
+            now_timestamp = int(time.time() * 1000)  # Timestamp in milliseconds
+            now_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Formatted date string
+            
+            # 1. Update user status and is_active
+            await cursor.execute("""
+                UPDATE user SET status = %s, is_active = %s, update_time = %s, update_date = %s WHERE id = %s
+            """, (status, status, now_timestamp, now_date, user_id))
+            
+            # 2. Update user_tenant status (sync with user status)
+            await cursor.execute("""
+                UPDATE user_tenant SET status = %s, update_time = %s, update_date = %s 
+                WHERE user_id = %s OR tenant_id = %s
+            """, (status, now_timestamp, now_date, user_id, user_id))
+            
+            return cursor.rowcount > 0
+        
+        return await self._execute_transaction(operations)
 
     async def update_user_password(self, user_id: str, new_password: str) -> bool:
         """Update user password using the same method as RAGFlow."""
@@ -423,45 +447,169 @@ class MySQLClient:
         finally:
             await self._release_connection(conn)
 
-    async def delete_user(self, user_id: str) -> bool:
-        """Delete a user and related records (tenant, user_tenant)."""
-        conn = await self._get_connection()
-        try:
-            async with conn.cursor() as cursor:
-                # Delete related records first (foreign key order)
-                # 1. Delete user_tenant records
-                await cursor.execute("DELETE FROM user_tenant WHERE user_id = %s OR tenant_id = %s", 
-                                     (user_id, user_id))
-                # 2. Delete tenant record (user_id = tenant_id for owner)
-                await cursor.execute("DELETE FROM tenant WHERE id = %s", (user_id,))
-                # 3. Delete user record
-                await cursor.execute("DELETE FROM user WHERE id = %s", (user_id,))
-                return cursor.rowcount > 0
-        finally:
-            await self._release_connection(conn)
+    async def delete_user(self, user_id: str) -> Dict[str, int]:
+        """Delete a user and all related data."""
+        return await self.delete_users([user_id])
 
-    async def delete_users(self, user_ids: List[str]) -> int:
-        """Delete multiple users and their related records."""
-        if not user_ids:
-            return 0
+    async def delete_users(self, user_ids: List[str]) -> Dict[str, int]:
+        """
+        Delete multiple users and ALL their related data (with transaction).
         
-        conn = await self._get_connection()
-        try:
-            async with conn.cursor() as cursor:
-                placeholders = ",".join(["%s"] * len(user_ids))
-                # Delete related records first
-                # 1. Delete user_tenant records
+        Cleans up (in order):
+        1. task - document parsing tasks
+        2. file - file records
+        3. file2document - file-document relations
+        4. document - documents
+        5. knowledgebase - knowledge bases
+        6. conversation - chat sessions
+        7. dialog - chat assistants
+        8. user_canvas_version - agent versions
+        9. user_canvas - agents
+        10. user_tenant - user-tenant relations
+        11. tenant - user's tenant/workspace
+        12. user - user record
+        """
+        if not user_ids:
+            return {"users": 0}
+        
+        async def operations(cursor):
+            placeholders = ",".join(["%s"] * len(user_ids))
+            result = {
+                "users": 0, "tenants": 0, "user_tenants": 0,
+                "datasets": 0, "documents": 0, "tasks": 0, "files": 0, "file_relations": 0,
+                "chats": 0, "conversations": 0, "agents": 0, "agent_versions": 0,
+            }
+            
+            # 1. Get all knowledge base IDs owned by these users (tenant_id = user_id)
+            await cursor.execute(
+                f"SELECT id FROM knowledgebase WHERE tenant_id IN ({placeholders})",
+                user_ids
+            )
+            kb_rows = await cursor.fetchall()
+            kb_ids = [row[0] for row in kb_rows]
+            
+            if kb_ids:
+                kb_placeholders = ",".join(["%s"] * len(kb_ids))
+                
+                # 2. Get all document IDs in these knowledge bases
                 await cursor.execute(
-                    f"DELETE FROM user_tenant WHERE user_id IN ({placeholders}) OR tenant_id IN ({placeholders})", 
-                    user_ids + user_ids
+                    f"SELECT id FROM document WHERE kb_id IN ({kb_placeholders})",
+                    kb_ids
                 )
-                # 2. Delete tenant records
-                await cursor.execute(f"DELETE FROM tenant WHERE id IN ({placeholders})", user_ids)
-                # 3. Delete user records
-                await cursor.execute(f"DELETE FROM user WHERE id IN ({placeholders})", user_ids)
-                return cursor.rowcount
-        finally:
-            await self._release_connection(conn)
+                doc_rows = await cursor.fetchall()
+                doc_ids = [row[0] for row in doc_rows]
+                
+                if doc_ids:
+                    doc_placeholders = ",".join(["%s"] * len(doc_ids))
+                    
+                    # 3. Delete tasks
+                    await cursor.execute(
+                        f"DELETE FROM task WHERE doc_id IN ({doc_placeholders})",
+                        doc_ids
+                    )
+                    result["tasks"] = cursor.rowcount
+                    
+                    # 4. Get file IDs before deleting relations
+                    await cursor.execute(
+                        f"SELECT file_id FROM file2document WHERE document_id IN ({doc_placeholders})",
+                        doc_ids
+                    )
+                    file_rows = await cursor.fetchall()
+                    file_ids = [row[0] for row in file_rows if row[0]]
+                    
+                    # 5. Delete file-document relations
+                    await cursor.execute(
+                        f"DELETE FROM file2document WHERE document_id IN ({doc_placeholders})",
+                        doc_ids
+                    )
+                    result["file_relations"] = cursor.rowcount
+                    
+                    # 6. Delete file records
+                    if file_ids:
+                        file_placeholders = ",".join(["%s"] * len(file_ids))
+                        await cursor.execute(
+                            f"DELETE FROM file WHERE id IN ({file_placeholders}) AND source_type = 'knowledgebase'",
+                            file_ids
+                        )
+                        result["files"] = cursor.rowcount
+                
+                # 7. Delete documents
+                await cursor.execute(
+                    f"DELETE FROM document WHERE kb_id IN ({kb_placeholders})",
+                    kb_ids
+                )
+                result["documents"] = cursor.rowcount
+                
+                # 8. Delete knowledge bases
+                await cursor.execute(
+                    f"DELETE FROM knowledgebase WHERE id IN ({kb_placeholders})",
+                    kb_ids
+                )
+                result["datasets"] = cursor.rowcount
+            
+            # 9. Delete conversations (chat sessions) for dialogs owned by these users
+            await cursor.execute(
+                f"DELETE FROM conversation WHERE dialog_id IN (SELECT id FROM dialog WHERE tenant_id IN ({placeholders}))",
+                user_ids
+            )
+            result["conversations"] = cursor.rowcount
+            
+            # 10. Delete dialogs (chats) owned by these users
+            await cursor.execute(
+                f"DELETE FROM dialog WHERE tenant_id IN ({placeholders})",
+                user_ids
+            )
+            result["chats"] = cursor.rowcount
+            
+            # 11. Get all agent IDs owned by these users
+            await cursor.execute(
+                f"SELECT id FROM user_canvas WHERE user_id IN ({placeholders})",
+                user_ids
+            )
+            agent_rows = await cursor.fetchall()
+            agent_ids = [row[0] for row in agent_rows]
+            
+            if agent_ids:
+                agent_placeholders = ",".join(["%s"] * len(agent_ids))
+                
+                # 12. Delete agent versions
+                await cursor.execute(
+                    f"DELETE FROM user_canvas_version WHERE user_canvas_id IN ({agent_placeholders})",
+                    agent_ids
+                )
+                result["agent_versions"] = cursor.rowcount
+            
+            # 13. Delete agents
+            await cursor.execute(
+                f"DELETE FROM user_canvas WHERE user_id IN ({placeholders})",
+                user_ids
+            )
+            result["agents"] = cursor.rowcount
+            
+            # 14. Delete user_tenant records
+            await cursor.execute(
+                f"DELETE FROM user_tenant WHERE user_id IN ({placeholders}) OR tenant_id IN ({placeholders})", 
+                user_ids + user_ids
+            )
+            result["user_tenants"] = cursor.rowcount
+            
+            # 15. Delete tenant records (user_id = tenant_id for owner)
+            await cursor.execute(
+                f"DELETE FROM tenant WHERE id IN ({placeholders})",
+                user_ids
+            )
+            result["tenants"] = cursor.rowcount
+            
+            # 16. Delete user records
+            await cursor.execute(
+                f"DELETE FROM user WHERE id IN ({placeholders})",
+                user_ids
+            )
+            result["users"] = cursor.rowcount
+            
+            return result
+        
+        return await self._execute_transaction(operations)
 
 
     # ==================== Global List Methods ====================
@@ -735,73 +883,81 @@ class MySQLClient:
 
     async def delete_datasets(self, dataset_ids: List[str]) -> Dict[str, int]:
         """
-        Delete multiple datasets and all related data.
+        Delete multiple datasets and all related data (with transaction).
         
         Cleans up:
         1. task table - parsing tasks for documents in these datasets
-        2. file2document table - file-document relations
-        3. document table - documents in these datasets
-        4. knowledgebase table - the datasets themselves
+        2. file table - file records
+        3. file2document table - file-document relations
+        4. document table - documents in these datasets
+        5. knowledgebase table - the datasets themselves
         """
         if not dataset_ids:
-            return {"datasets": 0, "documents": 0, "tasks": 0, "file_relations": 0}
+            return {"datasets": 0, "documents": 0, "tasks": 0, "files": 0, "file_relations": 0}
         
-        conn = await self._get_connection()
-        try:
-            async with conn.cursor() as cursor:
-                placeholders = ",".join(["%s"] * len(dataset_ids))
+        async def operations(cursor):
+            placeholders = ",".join(["%s"] * len(dataset_ids))
+            result = {"datasets": 0, "documents": 0, "tasks": 0, "files": 0, "file_relations": 0}
+            
+            # 1. Get all document IDs in these datasets
+            await cursor.execute(
+                f"SELECT id FROM document WHERE kb_id IN ({placeholders})",
+                dataset_ids
+            )
+            doc_rows = await cursor.fetchall()
+            doc_ids = [row[0] for row in doc_rows]
+            
+            if doc_ids:
+                doc_placeholders = ",".join(["%s"] * len(doc_ids))
                 
-                # 1. Get all document IDs in these datasets
+                # 2. Delete related tasks
                 await cursor.execute(
-                    f"SELECT id FROM document WHERE kb_id IN ({placeholders})",
-                    dataset_ids
+                    f"DELETE FROM task WHERE doc_id IN ({doc_placeholders})",
+                    doc_ids
                 )
-                doc_rows = await cursor.fetchall()
-                doc_ids = [row[0] for row in doc_rows]
+                result["tasks"] = cursor.rowcount
                 
-                tasks_deleted = 0
-                relations_deleted = 0
-                docs_deleted = 0
-                
-                if doc_ids:
-                    doc_placeholders = ",".join(["%s"] * len(doc_ids))
-                    
-                    # 2. Delete related tasks
-                    await cursor.execute(
-                        f"DELETE FROM task WHERE doc_id IN ({doc_placeholders})",
-                        doc_ids
-                    )
-                    tasks_deleted = cursor.rowcount
-                    
-                    # 3. Delete file-document relations
-                    await cursor.execute(
-                        f"DELETE FROM file2document WHERE document_id IN ({doc_placeholders})",
-                        doc_ids
-                    )
-                    relations_deleted = cursor.rowcount
-                    
-                    # 4. Delete documents
-                    await cursor.execute(
-                        f"DELETE FROM document WHERE id IN ({doc_placeholders})",
-                        doc_ids
-                    )
-                    docs_deleted = cursor.rowcount
-                
-                # 5. Delete datasets
+                # 3. Get file IDs before deleting relations
                 await cursor.execute(
-                    f"DELETE FROM knowledgebase WHERE id IN ({placeholders})",
-                    dataset_ids
+                    f"SELECT file_id FROM file2document WHERE document_id IN ({doc_placeholders})",
+                    doc_ids
                 )
-                datasets_deleted = cursor.rowcount
+                file_rows = await cursor.fetchall()
+                file_ids = [row[0] for row in file_rows if row[0]]
                 
-                return {
-                    "datasets": datasets_deleted,
-                    "documents": docs_deleted,
-                    "tasks": tasks_deleted,
-                    "file_relations": relations_deleted,
-                }
-        finally:
-            await self._release_connection(conn)
+                # 4. Delete file-document relations
+                await cursor.execute(
+                    f"DELETE FROM file2document WHERE document_id IN ({doc_placeholders})",
+                    doc_ids
+                )
+                result["file_relations"] = cursor.rowcount
+                
+                # 5. Delete file records
+                if file_ids:
+                    file_placeholders = ",".join(["%s"] * len(file_ids))
+                    await cursor.execute(
+                        f"DELETE FROM file WHERE id IN ({file_placeholders}) AND source_type = 'knowledgebase'",
+                        file_ids
+                    )
+                    result["files"] = cursor.rowcount
+                
+                # 6. Delete documents
+                await cursor.execute(
+                    f"DELETE FROM document WHERE id IN ({doc_placeholders})",
+                    doc_ids
+                )
+                result["documents"] = cursor.rowcount
+            
+            # 7. Delete datasets
+            await cursor.execute(
+                f"DELETE FROM knowledgebase WHERE id IN ({placeholders})",
+                dataset_ids
+            )
+            result["datasets"] = cursor.rowcount
+            
+            return result
+        
+        return await self._execute_transaction(operations)
 
     async def delete_agent(self, agent_id: str) -> Dict[str, int]:
         """Delete an agent and related data."""
@@ -809,7 +965,7 @@ class MySQLClient:
 
     async def delete_agents(self, agent_ids: List[str]) -> Dict[str, int]:
         """
-        Delete multiple agents and related data.
+        Delete multiple agents and related data (with transaction).
         
         Cleans up:
         1. user_canvas_version table - version history
@@ -818,60 +974,52 @@ class MySQLClient:
         if not agent_ids:
             return {"agents": 0, "versions": 0}
         
-        conn = await self._get_connection()
-        try:
-            async with conn.cursor() as cursor:
-                placeholders = ",".join(["%s"] * len(agent_ids))
-                
-                # 1. Delete version history
-                await cursor.execute(
-                    f"DELETE FROM user_canvas_version WHERE user_canvas_id IN ({placeholders})",
-                    agent_ids
-                )
-                versions_deleted = cursor.rowcount
-                
-                # 2. Delete agents
-                await cursor.execute(
-                    f"DELETE FROM user_canvas WHERE id IN ({placeholders})",
-                    agent_ids
-                )
-                agents_deleted = cursor.rowcount
-                
-                return {
-                    "agents": agents_deleted,
-                    "versions": versions_deleted,
-                }
-        finally:
-            await self._release_connection(conn)
+        async def operations(cursor):
+            placeholders = ",".join(["%s"] * len(agent_ids))
+            result = {"agents": 0, "versions": 0}
+            
+            # 1. Delete version history
+            await cursor.execute(
+                f"DELETE FROM user_canvas_version WHERE user_canvas_id IN ({placeholders})",
+                agent_ids
+            )
+            result["versions"] = cursor.rowcount
+            
+            # 2. Delete agents
+            await cursor.execute(
+                f"DELETE FROM user_canvas WHERE id IN ({placeholders})",
+                agent_ids
+            )
+            result["agents"] = cursor.rowcount
+            
+            return result
+        
+        return await self._execute_transaction(operations)
 
-    async def delete_chat(self, chat_id: str) -> bool:
+    async def delete_chat(self, chat_id: str) -> Dict[str, int]:
         """Delete a chat assistant and its conversations."""
-        conn = await self._get_connection()
-        try:
-            async with conn.cursor() as cursor:
-                # Delete conversations first
-                await cursor.execute("DELETE FROM conversation WHERE dialog_id = %s", (chat_id,))
-                # Delete dialog
-                await cursor.execute("DELETE FROM dialog WHERE id = %s", (chat_id,))
-                return cursor.rowcount > 0
-        finally:
-            await self._release_connection(conn)
+        return await self.delete_chats([chat_id])
 
-    async def delete_chats(self, chat_ids: List[str]) -> int:
-        """Delete multiple chat assistants and their conversations."""
+    async def delete_chats(self, chat_ids: List[str]) -> Dict[str, int]:
+        """Delete multiple chat assistants and their conversations (with transaction)."""
         if not chat_ids:
-            return 0
-        conn = await self._get_connection()
-        try:
-            async with conn.cursor() as cursor:
-                placeholders = ",".join(["%s"] * len(chat_ids))
-                # Delete conversations first
-                await cursor.execute(f"DELETE FROM conversation WHERE dialog_id IN ({placeholders})", chat_ids)
-                # Delete dialogs
-                await cursor.execute(f"DELETE FROM dialog WHERE id IN ({placeholders})", chat_ids)
-                return cursor.rowcount
-        finally:
-            await self._release_connection(conn)
+            return {"chats": 0, "conversations": 0}
+        
+        async def operations(cursor):
+            placeholders = ",".join(["%s"] * len(chat_ids))
+            result = {"chats": 0, "conversations": 0}
+            
+            # Delete conversations first
+            await cursor.execute(f"DELETE FROM conversation WHERE dialog_id IN ({placeholders})", chat_ids)
+            result["conversations"] = cursor.rowcount
+            
+            # Delete dialogs
+            await cursor.execute(f"DELETE FROM dialog WHERE id IN ({placeholders})", chat_ids)
+            result["chats"] = cursor.rowcount
+            
+            return result
+        
+        return await self._execute_transaction(operations)
 
     async def delete_sessions(self, chat_id: str, session_ids: List[str]) -> int:
         """Delete chat sessions (conversations) by IDs."""
@@ -892,72 +1040,85 @@ class MySQLClient:
 
     async def delete_documents(self, dataset_id: str, document_ids: List[str]) -> Dict[str, int]:
         """
-        Delete documents and related data by IDs.
+        Delete documents and related data by IDs (with transaction).
         
         Cleans up:
         1. task table - parsing tasks
-        2. file2document table - file-document relations
-        3. document table - main document records
-        4. knowledgebase counts - doc_num, chunk_num, token_num
+        2. file table - file records (via file2document)
+        3. file2document table - file-document relations
+        4. document table - main document records
+        5. knowledgebase counts - doc_num, chunk_num, token_num
         
-        Note: Elasticsearch chunks and MinIO files are NOT deleted (requires RAGFlow API)
+        Note: Elasticsearch chunks and MinIO storage files are NOT deleted (requires RAGFlow API)
         """
         if not document_ids:
-            return {"documents": 0, "tasks": 0, "file_relations": 0}
+            return {"documents": 0, "tasks": 0, "files": 0, "file_relations": 0}
         
-        conn = await self._get_connection()
-        try:
-            async with conn.cursor() as cursor:
-                placeholders = ",".join(["%s"] * len(document_ids))
-                
-                # 0. Get chunk_num and token_num sum for documents to be deleted
+        async def operations(cursor):
+            placeholders = ",".join(["%s"] * len(document_ids))
+            result = {"documents": 0, "tasks": 0, "files": 0, "file_relations": 0}
+            
+            # 0. Get chunk_num and token_num sum for documents to be deleted
+            await cursor.execute(
+                f"SELECT COALESCE(SUM(chunk_num), 0), COALESCE(SUM(token_num), 0) FROM document WHERE kb_id = %s AND id IN ({placeholders})",
+                [dataset_id] + document_ids
+            )
+            row = await cursor.fetchone()
+            total_chunks = int(row[0]) if row else 0
+            total_tokens = int(row[1]) if row else 0
+            
+            # 1. Delete related tasks
+            await cursor.execute(
+                f"DELETE FROM task WHERE doc_id IN ({placeholders})",
+                document_ids
+            )
+            result["tasks"] = cursor.rowcount
+            
+            # 2. Get file IDs from file2document before deleting relations
+            await cursor.execute(
+                f"SELECT file_id FROM file2document WHERE document_id IN ({placeholders})",
+                document_ids
+            )
+            file_rows = await cursor.fetchall()
+            file_ids = [row[0] for row in file_rows if row[0]]
+            
+            # 3. Delete file-document relations
+            await cursor.execute(
+                f"DELETE FROM file2document WHERE document_id IN ({placeholders})",
+                document_ids
+            )
+            result["file_relations"] = cursor.rowcount
+            
+            # 4. Delete file records (only knowledgebase source files)
+            if file_ids:
+                file_placeholders = ",".join(["%s"] * len(file_ids))
                 await cursor.execute(
-                    f"SELECT COALESCE(SUM(chunk_num), 0), COALESCE(SUM(token_num), 0) FROM document WHERE kb_id = %s AND id IN ({placeholders})",
-                    [dataset_id] + document_ids
+                    f"DELETE FROM file WHERE id IN ({file_placeholders}) AND source_type = 'knowledgebase'",
+                    file_ids
                 )
-                row = await cursor.fetchone()
-                total_chunks = int(row[0]) if row else 0
-                total_tokens = int(row[1]) if row else 0
-                
-                # 1. Delete related tasks
+                result["files"] = cursor.rowcount
+            
+            # 5. Delete documents (with dataset_id check for safety)
+            await cursor.execute(
+                f"DELETE FROM document WHERE kb_id = %s AND id IN ({placeholders})",
+                [dataset_id] + document_ids
+            )
+            result["documents"] = cursor.rowcount
+            
+            # 6. Update knowledgebase counts (doc_num, chunk_num, token_num)
+            if result["documents"] > 0:
                 await cursor.execute(
-                    f"DELETE FROM task WHERE doc_id IN ({placeholders})",
-                    document_ids
+                    """UPDATE knowledgebase SET 
+                       doc_num = GREATEST(0, doc_num - %s),
+                       chunk_num = GREATEST(0, chunk_num - %s),
+                       token_num = GREATEST(0, token_num - %s)
+                       WHERE id = %s""",
+                    [result["documents"], total_chunks, total_tokens, dataset_id]
                 )
-                tasks_deleted = cursor.rowcount
-                
-                # 2. Delete file-document relations
-                await cursor.execute(
-                    f"DELETE FROM file2document WHERE document_id IN ({placeholders})",
-                    document_ids
-                )
-                relations_deleted = cursor.rowcount
-                
-                # 3. Delete documents (with dataset_id check for safety)
-                await cursor.execute(
-                    f"DELETE FROM document WHERE kb_id = %s AND id IN ({placeholders})",
-                    [dataset_id] + document_ids
-                )
-                docs_deleted = cursor.rowcount
-                
-                # 4. Update knowledgebase counts (doc_num, chunk_num, token_num)
-                if docs_deleted > 0:
-                    await cursor.execute(
-                        """UPDATE knowledgebase SET 
-                           doc_num = GREATEST(0, doc_num - %s),
-                           chunk_num = GREATEST(0, chunk_num - %s),
-                           token_num = GREATEST(0, token_num - %s)
-                           WHERE id = %s""",
-                        [docs_deleted, total_chunks, total_tokens, dataset_id]
-                    )
-                
-                return {
-                    "documents": docs_deleted,
-                    "tasks": tasks_deleted,
-                    "file_relations": relations_deleted,
-                }
-        finally:
-            await self._release_connection(conn)
+            
+            return result
+        
+        return await self._execute_transaction(operations)
 
     async def list_documents(self, dataset_id: str, page: int = 1, page_size: int = 20, **kwargs) -> Dict[str, Any]:
         """

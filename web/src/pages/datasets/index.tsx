@@ -108,6 +108,17 @@ const Datasets: React.FC = () => {
       render: (val) => <Tag color="green">{val || 0}</Tag>,
     },
     {
+      title: t('datasets.chunkMethod'),
+      dataIndex: 'parser_id',
+      key: 'parser_id',
+      width: 100,
+      align: 'center',
+      render: (val) => {
+        const method = chunkMethodOptions.find(m => m.value === val);
+        return <Tag color="purple">{method?.label || val || '-'}</Tag>;
+      },
+    },
+    {
       title: t('datasets.owner'),
       key: 'owner',
       width: 180,
