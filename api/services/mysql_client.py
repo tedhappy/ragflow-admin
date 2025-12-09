@@ -1048,7 +1048,7 @@ class MySQLClient:
 
     async def list_parsing_tasks(self, page: int = 1, page_size: int = 20, 
                                   status: str = None, dataset_name: str = None,
-                                  doc_name: str = None) -> Dict[str, Any]:
+                                  doc_name: str = None, owner: str = None) -> Dict[str, Any]:
         """List all document parsing tasks across all datasets with pagination and filters."""
         conn = await self._get_connection()
         try:
@@ -1072,12 +1072,18 @@ class MySQLClient:
                     conditions.append("d.name LIKE %s")
                     params.append(f"%{doc_name}%")
                 
+                if owner:
+                    conditions.append("(u.email LIKE %s OR u.nickname LIKE %s)")
+                    params.append(f"%{owner}%")
+                    params.append(f"%{owner}%")
+                
                 where_clause = " AND ".join(conditions) if conditions else "1=1"
                 
                 count_params = params.copy()
                 await cursor.execute(f"""
                     SELECT COUNT(*) FROM document d
                     LEFT JOIN knowledgebase kb ON d.kb_id = kb.id
+                    LEFT JOIN user u ON kb.tenant_id = u.id
                     WHERE {where_clause}
                 """, count_params)
                 total = (await cursor.fetchone())[0]

@@ -26,7 +26,8 @@ import {
   SyncOutlined,
   ExclamationCircleOutlined,
   FolderOutlined,
-  SettingOutlined
+  SettingOutlined,
+  UserOutlined
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'umi';
@@ -76,6 +77,7 @@ const Tasks: React.FC = () => {
   // Filter states
   const [searchDoc, setSearchDoc] = useState('');
   const [searchDataset, setSearchDataset] = useState('');
+  const [searchOwner, setSearchOwner] = useState('');
   const [filterStatus, setFilterStatus] = useState<string | undefined>(undefined);
   
   // Data states
@@ -123,6 +125,7 @@ const Tasks: React.FC = () => {
       if (filterStatus) params.status = filterStatus;
       if (searchDoc) params.doc_name = searchDoc;
       if (searchDataset) params.dataset_name = searchDataset;
+      if (searchOwner) params.owner = searchOwner;
       
       const result = await taskApi.list(params);
       setTasks(result.items || []);
@@ -327,6 +330,8 @@ const Tasks: React.FC = () => {
       key: 'size',
       width: 80,
       align: 'center',
+      sorter: (a, b) => (a.size || 0) - (b.size || 0),
+      showSorterTooltip: false,
       render: (val) => formatSize(val),
     },
     { 
@@ -367,6 +372,8 @@ const Tasks: React.FC = () => {
       key: 'chunk_count',
       width: 70,
       align: 'center',
+      sorter: (a, b) => (a.chunk_count || 0) - (b.chunk_count || 0),
+      showSorterTooltip: false,
       render: (val) => val || 0,
     },
     { 
@@ -382,6 +389,8 @@ const Tasks: React.FC = () => {
       key: 'update_time',
       width: 160,
       align: 'center',
+      sorter: (a, b) => new Date(a.update_time || 0).getTime() - new Date(b.update_time || 0).getTime(),
+      showSorterTooltip: false,
       render: (val) => val ? dayjs(val).format('YYYY-MM-DD HH:mm:ss') : '-',
     },
   ];
@@ -493,6 +502,15 @@ const Tasks: React.FC = () => {
                   allowClear
                   value={searchDataset}
                   onChange={(e) => setSearchDataset(e.target.value)}
+                  onPressEnter={handleSearch}
+                  style={{ width: 160 }}
+                />
+                <Input
+                  placeholder={t('users.filterByOwner')}
+                  prefix={<UserOutlined />}
+                  allowClear
+                  value={searchOwner}
+                  onChange={(e) => setSearchOwner(e.target.value)}
                   onPressEnter={handleSearch}
                   style={{ width: 160 }}
                 />

@@ -356,6 +356,7 @@ const Documents: React.FC = () => {
       key: 'action',
       width: 70,
       align: 'center',
+      fixed: 'right',
       render: (_, record) => (
         <ConfirmDelete onConfirm={() => handleDelete([record.id])} />
       ),
@@ -450,6 +451,7 @@ const Documents: React.FC = () => {
               dataSource={sortedData} 
               rowKey="id"
               loading={!initialLoading && loading}
+              scroll={{ x: 800 }}
               rowSelection={{
                 selectedRowKeys,
                 onChange: setSelectedRowKeys,

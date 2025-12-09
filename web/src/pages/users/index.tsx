@@ -212,6 +212,7 @@ const Users: React.FC = () => {
       key: 'action',
       width: 100,
       align: 'center',
+      fixed: 'right',
       render: (_, record) => (
         <Space size="small">
           <Button 

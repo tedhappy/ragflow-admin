@@ -58,6 +58,7 @@ async def list_tasks():
     status = request.args.get("status", None)
     dataset_name = request.args.get("dataset_name", None)
     doc_name = request.args.get("doc_name", None)
+    owner = request.args.get("owner", None)
     
     try:
         result = await mysql_client.list_parsing_tasks(
@@ -65,7 +66,8 @@ async def list_tasks():
             page_size=page_size,
             status=status,
             dataset_name=dataset_name,
-            doc_name=doc_name
+            doc_name=doc_name,
+            owner=owner
         )
         return jsonify({"code": 0, "data": result})
     except MySQLClientError as e:

@@ -368,11 +368,11 @@ export default {
         timeout: '超时',
       },
       services: {
-        mysql: 'MySQL 数据库',
+        mysql: 'MySQL',
         ragflowApi: 'RAGFlow API',
-        redis: 'Redis 缓存',
-        docEngine: '文档引擎',
-        storage: '对象存储',
+        redis: 'Redis',
+        docEngine: 'Elasticsearch',
+        storage: 'MinIO',
       },
       stats: {
         users: '用户',

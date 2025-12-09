@@ -30,7 +30,6 @@ import {
   SyncOutlined,
   ReloadOutlined,
   RightOutlined,
-  ThunderboltOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -244,20 +243,20 @@ const Dashboard: React.FC = () => {
           </div>
           
           {/* Quick Stats Cards - Full width responsive */}
-          <div style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 20 }}>
             {statisticsData.map((item) => (
               <Card 
                 key={item.title}
                 hoverable 
                 onClick={() => navigate(item.path)}
-                style={{ flex: 1, borderRadius: 12, minWidth: 0 }}
-                bodyStyle={{ padding: '16px' }}
+                style={{ flex: '1 1 160px', borderRadius: 12, minWidth: 160 }}
+                bodyStyle={{ padding: '20px 16px' }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14 }}>
                   <div style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 10,
+                    width: 52,
+                    height: 52,
+                    borderRadius: 12,
                     backgroundColor: item.bgColor,
                     display: 'flex',
                     alignItems: 'center',
@@ -265,12 +264,12 @@ const Dashboard: React.FC = () => {
                     flexShrink: 0,
                   }}>
                     {React.cloneElement(item.icon as React.ReactElement, {
-                      style: { color: item.color, fontSize: 22 },
+                      style: { color: item.color, fontSize: 26 },
                     })}
                   </div>
                   <div>
-                    <div style={{ fontSize: 11, opacity: 0.65, marginBottom: 2 }}>{item.title}</div>
-                    <div style={{ fontSize: 22, fontWeight: 600, lineHeight: 1 }}>{item.value}</div>
+                    <div style={{ fontSize: 12, opacity: 0.65, marginBottom: 4 }}>{item.title}</div>
+                    <div style={{ fontSize: 26, fontWeight: 600, lineHeight: 1 }}>{item.value}</div>
                   </div>
                 </div>
               </Card>
@@ -458,23 +457,29 @@ const Dashboard: React.FC = () => {
                     
                     {/* Token Usage */}
                     <div style={{ 
-                      padding: '12px',
+                      marginTop: 12, 
+                      padding: '10px 12px', 
                       backgroundColor: 'var(--bg-card-hover, rgba(0,0,0,0.02))',
                       borderRadius: 8,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
                     }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                        <ThunderboltOutlined style={{ fontSize: 14, color: '#722ed1' }} />
-                        <Text type="secondary" style={{ fontSize: 12 }}>{t('monitoring.stats.tokenUsage')}</Text>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-                        <Text strong style={{ fontSize: 24 }}>
-                          {formatNumber(systemStats.datasets?.total_tokens || 0)}
-                        </Text>
-                        <Text type="secondary" style={{ fontSize: 12 }}>tokens</Text>
-                      </div>
-                      <Text type="secondary" style={{ fontSize: 12 }}>
-                        {formatNumber(systemStats.datasets?.total_chunks || 0)} {t('monitoring.stats.totalChunks').toLowerCase()}
-                      </Text>
+                      <Text style={{ fontSize: 12, opacity: 0.65 }}>{t('monitoring.stats.tokenUsage')}</Text>
+                      <Text strong>{formatNumber(systemStats.datasets?.total_tokens || 0)} tokens</Text>
+                    </div>
+                    {/* Total Chunks */}
+                    <div style={{ 
+                      marginTop: 8, 
+                      padding: '10px 12px', 
+                      backgroundColor: 'var(--bg-card-hover, rgba(0,0,0,0.02))',
+                      borderRadius: 8,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}>
+                      <Text style={{ fontSize: 12, opacity: 0.65 }}>{t('monitoring.stats.totalChunks')}</Text>
+                      <Text strong>{formatNumber(systemStats.datasets?.total_chunks || 0)}</Text>
                     </div>
                   </div>
                 )}

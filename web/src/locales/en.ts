@@ -368,11 +368,11 @@ export default {
         timeout: 'Timeout',
       },
       services: {
-        mysql: 'MySQL Database',
+        mysql: 'MySQL',
         ragflowApi: 'RAGFlow API',
         redis: 'Redis',
-        docEngine: 'Document Engine',
-        storage: 'Object Storage',
+        docEngine: 'Elasticsearch',
+        storage: 'MinIO',
       },
       stats: {
         users: 'Users',

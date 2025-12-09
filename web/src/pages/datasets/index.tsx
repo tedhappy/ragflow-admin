@@ -151,6 +151,7 @@ const Datasets: React.FC = () => {
       key: 'action',
       width: 70,
       align: 'center',
+      fixed: 'right',
       render: (_, record) => (
         <ConfirmDelete onConfirm={() => handleDelete([record.id])} />
       ),
@@ -213,6 +214,7 @@ const Datasets: React.FC = () => {
               dataSource={filteredData} 
               rowKey="id"
               loading={!initialLoading && loading}
+              scroll={{ x: 800 }}
               rowSelection={{
                 selectedRowKeys,
                 onChange: setSelectedRowKeys,
