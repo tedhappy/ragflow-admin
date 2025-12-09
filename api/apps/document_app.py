@@ -8,6 +8,7 @@ import logging
 import mimetypes
 from quart import Blueprint, jsonify, request
 from api.services.ragflow_client import ragflow_client, RAGFlowAPIError
+from api.services.mysql_client import mysql_client, MySQLClientError
 
 logger = logging.getLogger(__name__)
 
@@ -79,21 +80,22 @@ async def list_documents(dataset_id: str):
     run_status = request.args.get("run", None)
     
     try:
+        # Use MySQL for document listing (no RAGFlow API required)
         kwargs = {}
         if keywords:
             kwargs["keywords"] = keywords
         if run_status:
             kwargs["run"] = run_status
-        result = await ragflow_client.list_documents(
+        result = await mysql_client.list_documents(
             dataset_id=dataset_id, 
             page=page, 
             page_size=page_size, 
             **kwargs
         )
         return jsonify({"code": 0, "data": result})
-    except RAGFlowAPIError as e:
+    except MySQLClientError as e:
         logger.error(f"Failed to list documents: {e.message}")
-        return jsonify({"code": e.code, "message": e.message}), 500
+        return jsonify({"code": -1, "message": e.message}), 500
     except Exception as e:
         logger.exception("Unexpected error listing documents")
         return jsonify({"code": -1, "message": str(e)}), 500
@@ -133,11 +135,19 @@ async def batch_delete_documents(dataset_id: str):
         return jsonify({"code": -1, "message": "ids is required"}), 400
     
     try:
-        await ragflow_client.delete_documents(dataset_id=dataset_id, ids=ids)
-        return jsonify({"code": 0, "message": "success"})
-    except RAGFlowAPIError as e:
+        # Use MySQL for document deletion (no RAGFlow API required)
+        # Cleans up: document, task, file2document tables
+        # Note: ES chunks and MinIO files are NOT deleted without RAGFlow API
+        result = await mysql_client.delete_documents(dataset_id=dataset_id, document_ids=ids)
+        return jsonify({
+            "code": 0, 
+            "message": "success", 
+            "deleted": result["documents"],
+            "details": result,
+        })
+    except MySQLClientError as e:
         logger.error(f"Failed to delete documents: {e.message}")
-        return jsonify({"code": e.code, "message": e.message}), 500
+        return jsonify({"code": -1, "message": e.message}), 500
     except Exception as e:
         logger.exception("Unexpected error deleting documents")
         return jsonify({"code": -1, "message": str(e)}), 500

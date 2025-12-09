@@ -96,11 +96,24 @@ class RAGFlowClient:
 
     def _load_config(self):
         """Load configuration from settings."""
-        self._api_url = f"{settings.ragflow_base_url}/api/v1"
+        base_url = settings.ragflow_base_url or ""
+        self._api_url = f"{base_url}/api/v1" if base_url else ""
         self._headers = {
             "Authorization": f"Bearer {settings.ragflow_api_key}",
             "Content-Type": "application/json"
         }
+
+    @property
+    def is_configured(self) -> bool:
+        """Check if RAGFlow API is properly configured."""
+        base_url = settings.ragflow_base_url or ""
+        api_key = settings.ragflow_api_key or ""
+        return bool(base_url and base_url.startswith(("http://", "https://")) and api_key)
+
+    def _check_configured(self):
+        """Raise error if not configured."""
+        if not self.is_configured:
+            raise RAGFlowAPIError("RAGFlow API is not configured. Please configure it in Settings.", code=503)
 
     def reload(self):
         """Reload configuration and reset HTTP client."""
@@ -123,6 +136,7 @@ class RAGFlowClient:
 
     async def _get(self, path: str, params: dict = None) -> dict:
         """Make async GET request to RAGFlow API."""
+        self._check_configured()
         client = self._get_http_client()
         try:
             start_time = time.time()
@@ -140,6 +154,7 @@ class RAGFlowClient:
 
     async def _post(self, path: str, json: dict = None) -> dict:
         """Make async POST request to RAGFlow API."""
+        self._check_configured()
         client = self._get_http_client()
         try:
             start_time = time.time()
@@ -157,6 +172,7 @@ class RAGFlowClient:
 
     async def _delete(self, path: str, json: dict = None) -> dict:
         """Make async DELETE request to RAGFlow API."""
+        self._check_configured()
         client = self._get_http_client()
         try:
             start_time = time.time()

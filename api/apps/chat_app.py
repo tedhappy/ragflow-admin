@@ -151,3 +151,49 @@ async def list_chat_sessions(chat_id: str):
     except Exception as e:
         logger.exception("Unexpected error listing chat sessions")
         return jsonify({"code": -1, "message": str(e)}), 500
+
+
+@manager.route("/<chat_id>/sessions", methods=["DELETE"])
+async def delete_chat_sessions(chat_id: str):
+    """
+    Delete sessions for a chat assistant (MySQL)
+    ---
+    tags:
+      - Chat
+    parameters:
+      - name: chat_id
+        in: path
+        type: string
+        required: true
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            ids:
+              type: array
+              items:
+                type: string
+    responses:
+      200:
+        description: Sessions deleted
+    """
+    if not _check_mysql_config():
+        return jsonify({"code": -1, "message": "MySQL not configured"}), 500
+    
+    data = await request.get_json()
+    ids = data.get("ids", [])
+    
+    if not ids:
+        return jsonify({"code": -1, "message": "ids is required"}), 400
+    
+    try:
+        deleted = await mysql_client.delete_sessions(chat_id, ids)
+        return jsonify({"code": 0, "message": "success", "deleted": deleted})
+    except MySQLClientError as e:
+        logger.error(f"Failed to delete sessions: {e.message}")
+        return jsonify({"code": e.code, "message": e.message}), 500
+    except Exception as e:
+        logger.exception("Unexpected error deleting sessions")
+        return jsonify({"code": -1, "message": str(e)}), 500

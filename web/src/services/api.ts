@@ -181,6 +181,7 @@ export interface Chat {
   tenant_id?: string;
   owner_email?: string;
   owner_nickname?: string;
+  session_count?: number;
 }
 
 export const chatApi = {

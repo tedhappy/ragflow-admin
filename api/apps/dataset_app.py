@@ -102,8 +102,14 @@ async def batch_delete_datasets():
         return jsonify({"code": -1, "message": "ids is required"}), 400
     
     try:
-        deleted = await mysql_client.delete_datasets(ids)
-        return jsonify({"code": 0, "message": "success", "deleted": deleted})
+        # Cleans up: documents, tasks, file2document, knowledgebase
+        result = await mysql_client.delete_datasets(ids)
+        return jsonify({
+            "code": 0, 
+            "message": "success", 
+            "deleted": result["datasets"],
+            "details": result,
+        })
     except MySQLClientError as e:
         logger.error(f"Failed to delete datasets: {e.message}")
         return jsonify({"code": e.code, "message": e.message}), 500

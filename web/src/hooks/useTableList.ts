@@ -90,6 +90,8 @@ export function useTableList<T, P extends ListParams = ListParams>(
   // Initial fetch on mount only (if enabled)
   useEffect(() => {
     if (!enabled) {
+      // When disabled, set initialLoading to false to avoid infinite spinning
+      setInitialLoading(false);
       return;
     }
     // Reset initial loading state when enabled

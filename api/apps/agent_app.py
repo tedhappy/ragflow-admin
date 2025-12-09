@@ -102,8 +102,14 @@ async def batch_delete_agents():
         return jsonify({"code": -1, "message": "ids is required"}), 400
     
     try:
-        deleted = await mysql_client.delete_agents(ids)
-        return jsonify({"code": 0, "message": "success", "deleted": deleted})
+        # Cleans up: user_canvas_version, user_canvas
+        result = await mysql_client.delete_agents(ids)
+        return jsonify({
+            "code": 0, 
+            "message": "success", 
+            "deleted": result["agents"],
+            "details": result,
+        })
     except MySQLClientError as e:
         logger.error(f"Failed to delete agents: {e.message}")
         return jsonify({"code": e.code, "message": e.message}), 500

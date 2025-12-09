@@ -96,7 +96,8 @@ const Settings: React.FC = () => {
       }
     };
     loadSettings();
-  }, [mysqlForm, ragflowForm, t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mysqlForm, ragflowForm]);
 
   // MySQL handlers
   const handleMysqlTest = async () => {
@@ -226,7 +227,7 @@ const Settings: React.FC = () => {
       <Spin spinning={loading} size="large">
         <div style={{ minHeight: loading ? 400 : 'auto', visibility: loading ? 'hidden' : 'visible' }}>
           {/* Page Header */}
-          <div style={{ marginBottom: 24 }}>
+          <div style={{ marginBottom: 24, textAlign: 'center' }}>
             <Title level={4} style={{ margin: 0 }}>{t('settings.title')}</Title>
             <Text type="secondary">{t('settings.subtitle')}</Text>
           </div>
@@ -247,109 +248,109 @@ const Settings: React.FC = () => {
               style={{ marginBottom: 16 }}
               styles={{ header: { borderBottom: '1px solid var(--border-default)' }, body: { padding: 20 } }}
             >
-                {mysqlStatus.message && (
-                  <div style={{ 
-                    color: 'var(--error-color)', fontSize: 12, marginBottom: 16, 
-                    padding: '8px 12px', background: 'rgba(255, 77, 79, 0.1)', borderRadius: 6 
-                  }}>
-                    {mysqlStatus.message}
-                  </div>
-                )}
-                <Form form={mysqlForm} layout="vertical" requiredMark={false} size="middle">
-                  <Row gutter={12}>
-                    <Col span={18}>
-                      <Form.Item 
-                        name="host" 
-                        label={
-                          <span>
-                            {t('users.mysqlHost')}
-                            <Tooltip title={t('settings.mysqlHostTip')}>
-                              <QuestionCircleOutlined style={{ marginLeft: 4, color: 'var(--text-secondary)' }} />
-                            </Tooltip>
-                          </span>
-                        } 
-                        rules={[{ required: true }]} 
-                        style={{ marginBottom: 12 }}
-                      >
-                        <Input placeholder="localhost" onChange={() => setMysqlStatus({ status: 'untested' })} />
-                      </Form.Item>
-                    </Col>
-                    <Col span={6}>
-                      <Form.Item 
-                        name="port" 
-                        label={
-                          <span>
-                            {t('users.mysqlPort')}
-                            <Tooltip title={t('settings.mysqlPortTip')}>
-                              <QuestionCircleOutlined style={{ marginLeft: 4, color: 'var(--text-secondary)' }} />
-                            </Tooltip>
-                          </span>
-                        } 
-                        rules={[{ required: true }]} 
-                        style={{ marginBottom: 12 }}
-                      >
-                        <InputNumber style={{ width: '100%' }} min={1} max={65535} placeholder="5455" onChange={() => setMysqlStatus({ status: 'untested' })} />
-                      </Form.Item>
-                    </Col>
-                  </Row>
-                  <Form.Item 
-                    name="database" 
-                    label={
-                      <span>
-                        {t('users.mysqlDatabase')}
-                        <Tooltip title={t('settings.mysqlDatabaseTip')}>
-                          <QuestionCircleOutlined style={{ marginLeft: 4, color: 'var(--text-secondary)' }} />
-                        </Tooltip>
-                      </span>
-                    } 
-                    rules={[{ required: true }]} 
-                    style={{ marginBottom: 12 }}
-                  >
-                    <Input placeholder="rag_flow" onChange={() => setMysqlStatus({ status: 'untested' })} />
-                  </Form.Item>
-                  <Row gutter={12}>
-                    <Col span={12}>
-                      <Form.Item 
-                        name="user" 
-                        label={
-                          <span>
-                            {t('users.mysqlUser')}
-                            <Tooltip title={t('settings.mysqlUserTip')}>
-                              <QuestionCircleOutlined style={{ marginLeft: 4, color: 'var(--text-secondary)' }} />
-                            </Tooltip>
-                          </span>
-                        } 
-                        rules={[{ required: true }]} 
-                        style={{ marginBottom: 12 }}
-                      >
-                        <Input placeholder="root" onChange={() => setMysqlStatus({ status: 'untested' })} />
-                      </Form.Item>
-                    </Col>
-                    <Col span={12}>
-                      <Form.Item 
-                        name="password" 
-                        label={
-                          <span>
-                            {t('users.mysqlPassword')}
-                            <Tooltip title={t('settings.mysqlPasswordTip')}>
-                              <QuestionCircleOutlined style={{ marginLeft: 4, color: 'var(--text-secondary)' }} />
-                            </Tooltip>
-                          </span>
-                        } 
-                        style={{ marginBottom: 12 }}
-                      >
-                        <Input.Password placeholder="••••••••" onChange={() => setMysqlStatus({ status: 'untested' })} />
-                      </Form.Item>
-                    </Col>
-                  </Row>
-                  <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 16 }}>{t('settings.mysqlHelp')}</Text>
-                  <Space>
-                    <Button onClick={handleMysqlTest} loading={mysqlTesting}>{t('users.testConnection')}</Button>
-                    <Button type="primary" icon={<SaveOutlined />} onClick={handleMysqlSave} loading={mysqlSaving} disabled={mysqlStatus.status !== 'connected'}>
-                      {t('common.save')}
-                    </Button>
-                  </Space>
-                </Form>
+              {mysqlStatus.message && (
+                <div style={{ 
+                  color: 'var(--error-color)', fontSize: 12, marginBottom: 16, 
+                  padding: '8px 12px', background: 'rgba(255, 77, 79, 0.1)', borderRadius: 6 
+                }}>
+                  {mysqlStatus.message}
+                </div>
+              )}
+              <Form form={mysqlForm} layout="vertical" requiredMark={false} size="middle">
+                <Row gutter={12}>
+                  <Col span={18}>
+                    <Form.Item 
+                      name="host" 
+                      label={
+                        <span>
+                          {t('users.mysqlHost')}
+                          <Tooltip title={t('settings.mysqlHostTip')}>
+                            <QuestionCircleOutlined style={{ marginLeft: 4, color: 'var(--text-secondary)' }} />
+                          </Tooltip>
+                        </span>
+                      } 
+                      rules={[{ required: true }]} 
+                      style={{ marginBottom: 12 }}
+                    >
+                      <Input placeholder="localhost" onChange={() => setMysqlStatus({ status: 'untested' })} />
+                    </Form.Item>
+                  </Col>
+                  <Col span={6}>
+                    <Form.Item 
+                      name="port" 
+                      label={
+                        <span>
+                          {t('users.mysqlPort')}
+                          <Tooltip title={t('settings.mysqlPortTip')}>
+                            <QuestionCircleOutlined style={{ marginLeft: 4, color: 'var(--text-secondary)' }} />
+                          </Tooltip>
+                        </span>
+                      } 
+                      rules={[{ required: true }]} 
+                      style={{ marginBottom: 12 }}
+                    >
+                      <InputNumber style={{ width: '100%' }} min={1} max={65535} placeholder="5455" onChange={() => setMysqlStatus({ status: 'untested' })} />
+                    </Form.Item>
+                  </Col>
+                </Row>
+                <Form.Item 
+                  name="database" 
+                  label={
+                    <span>
+                      {t('users.mysqlDatabase')}
+                      <Tooltip title={t('settings.mysqlDatabaseTip')}>
+                        <QuestionCircleOutlined style={{ marginLeft: 4, color: 'var(--text-secondary)' }} />
+                      </Tooltip>
+                    </span>
+                  } 
+                  rules={[{ required: true }]} 
+                  style={{ marginBottom: 12 }}
+                >
+                  <Input placeholder="rag_flow" onChange={() => setMysqlStatus({ status: 'untested' })} />
+                </Form.Item>
+                <Row gutter={12}>
+                  <Col span={12}>
+                    <Form.Item 
+                      name="user" 
+                      label={
+                        <span>
+                          {t('users.mysqlUser')}
+                          <Tooltip title={t('settings.mysqlUserTip')}>
+                            <QuestionCircleOutlined style={{ marginLeft: 4, color: 'var(--text-secondary)' }} />
+                          </Tooltip>
+                        </span>
+                      } 
+                      rules={[{ required: true }]} 
+                      style={{ marginBottom: 12 }}
+                    >
+                      <Input placeholder="root" onChange={() => setMysqlStatus({ status: 'untested' })} />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item 
+                      name="password" 
+                      label={
+                        <span>
+                          {t('users.mysqlPassword')}
+                          <Tooltip title={t('settings.mysqlPasswordTip')}>
+                            <QuestionCircleOutlined style={{ marginLeft: 4, color: 'var(--text-secondary)' }} />
+                          </Tooltip>
+                        </span>
+                      } 
+                      style={{ marginBottom: 12 }}
+                    >
+                      <Input.Password placeholder="••••••••" onChange={() => setMysqlStatus({ status: 'untested' })} />
+                    </Form.Item>
+                  </Col>
+                </Row>
+                <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 16 }}>{t('settings.mysqlHelp')}</Text>
+                <Space>
+                  <Button onClick={handleMysqlTest} loading={mysqlTesting}>{t('users.testConnection')}</Button>
+                  <Button type="primary" icon={<SaveOutlined />} onClick={handleMysqlSave} loading={mysqlSaving} disabled={mysqlStatus.status !== 'connected'}>
+                    {t('common.save')}
+                  </Button>
+                </Space>
+              </Form>
             </Card>
 
             {/* RAGFlow API Configuration */}

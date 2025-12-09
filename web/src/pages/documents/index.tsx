@@ -169,8 +169,19 @@ const Documents: React.FC = () => {
     }
   };
 
+  // Check RAGFlow API before upload/parse operations
+  const checkRagflowApi = (): boolean => {
+    if (!ragflowConfigured) {
+      message.warning(t('documents.ragflowNotConfigured'));
+      return false;
+    }
+    return true;
+  };
+
   // Upload handlers
   const handleUpload = async () => {
+    if (!checkRagflowApi()) return;
+    
     if (uploadFileList.length === 0) {
       message.warning(t('documents.upload.noFiles'));
       return;
@@ -219,6 +230,8 @@ const Documents: React.FC = () => {
 
   // Parse handlers
   const handleParse = async (ids: string[]) => {
+    if (!checkRagflowApi()) return;
+    
     if (ids.length === 0) {
       message.warning(t('documents.parse.noDocuments'));
       return;
@@ -238,6 +251,7 @@ const Documents: React.FC = () => {
   };
 
   const handleStopParse = async (ids: string[]) => {
+    if (!checkRagflowApi()) return;
     if (ids.length === 0) return;
 
     try {
@@ -255,6 +269,12 @@ const Documents: React.FC = () => {
       }
       refresh();
     }
+  };
+
+  // Open upload modal with RAGFlow check
+  const openUploadModal = () => {
+    if (!checkRagflowApi()) return;
+    setUploadModalVisible(true);
   };
 
   // Get parseable documents (UNSTART or FAIL status)
@@ -381,7 +401,7 @@ const Documents: React.FC = () => {
               description={t('documents.ragflowNotConfiguredDesc')}
               type="warning"
               showIcon
-              style={{ marginBottom: 16 }}
+              style={{ marginBottom: 16, alignItems: 'center' }}
               action={
                 <Button size="small" icon={<SettingOutlined />} onClick={() => navigate('/settings')}>
                   {t('documents.configureRagflow')}
@@ -416,7 +436,7 @@ const Documents: React.FC = () => {
                 <Button 
                   type="primary" 
                   icon={<UploadOutlined />} 
-                  onClick={() => setUploadModalVisible(true)}
+                  onClick={openUploadModal}
                 >
                   {t('documents.upload.button')}
                 </Button>

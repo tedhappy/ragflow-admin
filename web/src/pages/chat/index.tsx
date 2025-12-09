@@ -180,6 +180,14 @@ const ChatPage: React.FC = () => {
         />
       ),
     },
+    {
+      title: t('chat.sessions'),
+      dataIndex: 'session_count',
+      key: 'session_count',
+      width: 80,
+      align: 'center',
+      render: (val) => <Tag color="purple">{val || 0}</Tag>,
+    },
     { 
       title: t('common.created'), 
       dataIndex: 'create_time', 

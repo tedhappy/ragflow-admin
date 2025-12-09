@@ -609,12 +609,13 @@ class MySQLClient:
                 """, params)
                 total = (await cursor.fetchone())[0]
                 
-                # Get chats with user info
+                # Get chats with user info and session count
                 offset = (page - 1) * page_size
                 await cursor.execute(f"""
                     SELECT d.id, d.name, d.description, d.icon, d.language,
                            d.llm_id, d.status, d.create_time, d.update_time, d.tenant_id,
-                           u.email as owner_email, u.nickname as owner_nickname
+                           u.email as owner_email, u.nickname as owner_nickname,
+                           (SELECT COUNT(*) FROM conversation c WHERE c.dialog_id = d.id) as session_count
                     FROM dialog d
                     LEFT JOIN user u ON d.tenant_id = u.id
                     WHERE {where_clause}
@@ -638,6 +639,7 @@ class MySQLClient:
                         "tenant_id": row[9],
                         "owner_email": row[10],
                         "owner_nickname": row[11],
+                        "session_count": row[12] or 0,
                     })
                 
                 return {
@@ -727,49 +729,118 @@ class MySQLClient:
         finally:
             await self._release_connection(conn)
 
-    async def delete_dataset(self, dataset_id: str) -> bool:
-        """Delete a dataset."""
-        conn = await self._get_connection()
-        try:
-            async with conn.cursor() as cursor:
-                await cursor.execute("DELETE FROM knowledgebase WHERE id = %s", (dataset_id,))
-                return cursor.rowcount > 0
-        finally:
-            await self._release_connection(conn)
+    async def delete_dataset(self, dataset_id: str) -> Dict[str, int]:
+        """Delete a dataset and all related data."""
+        return await self.delete_datasets([dataset_id])
 
-    async def delete_datasets(self, dataset_ids: List[str]) -> int:
-        """Delete multiple datasets."""
+    async def delete_datasets(self, dataset_ids: List[str]) -> Dict[str, int]:
+        """
+        Delete multiple datasets and all related data.
+        
+        Cleans up:
+        1. task table - parsing tasks for documents in these datasets
+        2. file2document table - file-document relations
+        3. document table - documents in these datasets
+        4. knowledgebase table - the datasets themselves
+        """
         if not dataset_ids:
-            return 0
+            return {"datasets": 0, "documents": 0, "tasks": 0, "file_relations": 0}
+        
         conn = await self._get_connection()
         try:
             async with conn.cursor() as cursor:
                 placeholders = ",".join(["%s"] * len(dataset_ids))
-                await cursor.execute(f"DELETE FROM knowledgebase WHERE id IN ({placeholders})", dataset_ids)
-                return cursor.rowcount
+                
+                # 1. Get all document IDs in these datasets
+                await cursor.execute(
+                    f"SELECT id FROM document WHERE kb_id IN ({placeholders})",
+                    dataset_ids
+                )
+                doc_rows = await cursor.fetchall()
+                doc_ids = [row[0] for row in doc_rows]
+                
+                tasks_deleted = 0
+                relations_deleted = 0
+                docs_deleted = 0
+                
+                if doc_ids:
+                    doc_placeholders = ",".join(["%s"] * len(doc_ids))
+                    
+                    # 2. Delete related tasks
+                    await cursor.execute(
+                        f"DELETE FROM task WHERE doc_id IN ({doc_placeholders})",
+                        doc_ids
+                    )
+                    tasks_deleted = cursor.rowcount
+                    
+                    # 3. Delete file-document relations
+                    await cursor.execute(
+                        f"DELETE FROM file2document WHERE document_id IN ({doc_placeholders})",
+                        doc_ids
+                    )
+                    relations_deleted = cursor.rowcount
+                    
+                    # 4. Delete documents
+                    await cursor.execute(
+                        f"DELETE FROM document WHERE id IN ({doc_placeholders})",
+                        doc_ids
+                    )
+                    docs_deleted = cursor.rowcount
+                
+                # 5. Delete datasets
+                await cursor.execute(
+                    f"DELETE FROM knowledgebase WHERE id IN ({placeholders})",
+                    dataset_ids
+                )
+                datasets_deleted = cursor.rowcount
+                
+                return {
+                    "datasets": datasets_deleted,
+                    "documents": docs_deleted,
+                    "tasks": tasks_deleted,
+                    "file_relations": relations_deleted,
+                }
         finally:
             await self._release_connection(conn)
 
-    async def delete_agent(self, agent_id: str) -> bool:
-        """Delete an agent."""
-        conn = await self._get_connection()
-        try:
-            async with conn.cursor() as cursor:
-                await cursor.execute("DELETE FROM user_canvas WHERE id = %s", (agent_id,))
-                return cursor.rowcount > 0
-        finally:
-            await self._release_connection(conn)
+    async def delete_agent(self, agent_id: str) -> Dict[str, int]:
+        """Delete an agent and related data."""
+        return await self.delete_agents([agent_id])
 
-    async def delete_agents(self, agent_ids: List[str]) -> int:
-        """Delete multiple agents."""
+    async def delete_agents(self, agent_ids: List[str]) -> Dict[str, int]:
+        """
+        Delete multiple agents and related data.
+        
+        Cleans up:
+        1. user_canvas_version table - version history
+        2. user_canvas table - the agents themselves
+        """
         if not agent_ids:
-            return 0
+            return {"agents": 0, "versions": 0}
+        
         conn = await self._get_connection()
         try:
             async with conn.cursor() as cursor:
                 placeholders = ",".join(["%s"] * len(agent_ids))
-                await cursor.execute(f"DELETE FROM user_canvas WHERE id IN ({placeholders})", agent_ids)
-                return cursor.rowcount
+                
+                # 1. Delete version history
+                await cursor.execute(
+                    f"DELETE FROM user_canvas_version WHERE user_canvas_id IN ({placeholders})",
+                    agent_ids
+                )
+                versions_deleted = cursor.rowcount
+                
+                # 2. Delete agents
+                await cursor.execute(
+                    f"DELETE FROM user_canvas WHERE id IN ({placeholders})",
+                    agent_ids
+                )
+                agents_deleted = cursor.rowcount
+                
+                return {
+                    "agents": agents_deleted,
+                    "versions": versions_deleted,
+                }
         finally:
             await self._release_connection(conn)
 
@@ -799,6 +870,187 @@ class MySQLClient:
                 # Delete dialogs
                 await cursor.execute(f"DELETE FROM dialog WHERE id IN ({placeholders})", chat_ids)
                 return cursor.rowcount
+        finally:
+            await self._release_connection(conn)
+
+    async def delete_sessions(self, chat_id: str, session_ids: List[str]) -> int:
+        """Delete chat sessions (conversations) by IDs."""
+        if not session_ids:
+            return 0
+        conn = await self._get_connection()
+        try:
+            async with conn.cursor() as cursor:
+                placeholders = ",".join(["%s"] * len(session_ids))
+                # Delete conversations that belong to the specified chat and have the given IDs
+                await cursor.execute(
+                    f"DELETE FROM conversation WHERE dialog_id = %s AND id IN ({placeholders})",
+                    [chat_id] + session_ids
+                )
+                return cursor.rowcount
+        finally:
+            await self._release_connection(conn)
+
+    async def delete_documents(self, dataset_id: str, document_ids: List[str]) -> Dict[str, int]:
+        """
+        Delete documents and related data by IDs.
+        
+        Cleans up:
+        1. task table - parsing tasks
+        2. file2document table - file-document relations
+        3. document table - main document records
+        4. knowledgebase counts - doc_num, chunk_num, token_num
+        
+        Note: Elasticsearch chunks and MinIO files are NOT deleted (requires RAGFlow API)
+        """
+        if not document_ids:
+            return {"documents": 0, "tasks": 0, "file_relations": 0}
+        
+        conn = await self._get_connection()
+        try:
+            async with conn.cursor() as cursor:
+                placeholders = ",".join(["%s"] * len(document_ids))
+                
+                # 0. Get chunk_num and token_num sum for documents to be deleted
+                await cursor.execute(
+                    f"SELECT COALESCE(SUM(chunk_num), 0), COALESCE(SUM(token_num), 0) FROM document WHERE kb_id = %s AND id IN ({placeholders})",
+                    [dataset_id] + document_ids
+                )
+                row = await cursor.fetchone()
+                total_chunks = int(row[0]) if row else 0
+                total_tokens = int(row[1]) if row else 0
+                
+                # 1. Delete related tasks
+                await cursor.execute(
+                    f"DELETE FROM task WHERE doc_id IN ({placeholders})",
+                    document_ids
+                )
+                tasks_deleted = cursor.rowcount
+                
+                # 2. Delete file-document relations
+                await cursor.execute(
+                    f"DELETE FROM file2document WHERE document_id IN ({placeholders})",
+                    document_ids
+                )
+                relations_deleted = cursor.rowcount
+                
+                # 3. Delete documents (with dataset_id check for safety)
+                await cursor.execute(
+                    f"DELETE FROM document WHERE kb_id = %s AND id IN ({placeholders})",
+                    [dataset_id] + document_ids
+                )
+                docs_deleted = cursor.rowcount
+                
+                # 4. Update knowledgebase counts (doc_num, chunk_num, token_num)
+                if docs_deleted > 0:
+                    await cursor.execute(
+                        """UPDATE knowledgebase SET 
+                           doc_num = GREATEST(0, doc_num - %s),
+                           chunk_num = GREATEST(0, chunk_num - %s),
+                           token_num = GREATEST(0, token_num - %s)
+                           WHERE id = %s""",
+                        [docs_deleted, total_chunks, total_tokens, dataset_id]
+                    )
+                
+                return {
+                    "documents": docs_deleted,
+                    "tasks": tasks_deleted,
+                    "file_relations": relations_deleted,
+                }
+        finally:
+            await self._release_connection(conn)
+
+    async def list_documents(self, dataset_id: str, page: int = 1, page_size: int = 20, **kwargs) -> Dict[str, Any]:
+        """
+        List documents in a dataset with pagination and filtering.
+        
+        Args:
+            dataset_id: The dataset (knowledgebase) ID
+            page: Page number (1-indexed)
+            page_size: Number of items per page
+            keywords: Filter by document name (partial match)
+            run: Filter by status (UNSTART, RUNNING, CANCEL, DONE, FAIL)
+        """
+        conn = await self._get_connection()
+        try:
+            async with conn.cursor() as cursor:
+                # Build query conditions
+                conditions = ["kb_id = %s"]
+                params: List[Any] = [dataset_id]
+                
+                keywords = kwargs.get("keywords")
+                if keywords:
+                    conditions.append("name LIKE %s")
+                    params.append(f"%{keywords}%")
+                
+                # Map string status to numeric for filtering
+                # RAGFlow uses: 0=UNSTART, 1=RUNNING, 2=CANCEL, 3=DONE, 4=FAIL
+                status_to_num = {
+                    'UNSTART': '0', 'RUNNING': '1', 'CANCEL': '2', 'DONE': '3', 'FAIL': '4'
+                }
+                run_status = kwargs.get("run")
+                if run_status:
+                    run_num = status_to_num.get(run_status, run_status)
+                    conditions.append("run = %s")
+                    params.append(run_num)
+                
+                where_clause = " AND ".join(conditions)
+                
+                # Get total count
+                await cursor.execute(f"SELECT COUNT(*) FROM document WHERE {where_clause}", params)
+                total = (await cursor.fetchone())[0]
+                
+                # Get paginated documents
+                offset = (page - 1) * page_size
+                query_params = params + [page_size, offset]
+                await cursor.execute(f"""
+                    SELECT id, name, thumbnail, location, size, type, 
+                           token_num, chunk_num, progress, progress_msg,
+                           process_begin_at, process_duration, run,
+                           create_time, update_time
+                    FROM document 
+                    WHERE {where_clause}
+                    ORDER BY create_time DESC
+                    LIMIT %s OFFSET %s
+                """, query_params)
+                rows = await cursor.fetchall()
+                
+                # Map run status from numeric to string
+                # RAGFlow uses: 0=UNSTART, 1=RUNNING, 2=CANCEL, 3=DONE, 4=FAIL
+                run_status_map = {
+                    '0': 'UNSTART', 0: 'UNSTART',
+                    '1': 'RUNNING', 1: 'RUNNING',
+                    '2': 'CANCEL', 2: 'CANCEL',
+                    '3': 'DONE', 3: 'DONE',
+                    '4': 'FAIL', 4: 'FAIL',
+                }
+                
+                documents = []
+                for row in rows:
+                    run_value = row[12]
+                    run_status = run_status_map.get(run_value, str(run_value) if run_value else 'UNSTART')
+                    
+                    documents.append({
+                        "id": row[0],
+                        "name": row[1],
+                        "thumbnail": row[2],
+                        "location": row[3],
+                        "size": row[4],
+                        "type": row[5],
+                        "token_count": row[6],
+                        "chunk_count": row[7],
+                        "progress": float(row[8]) if row[8] else 0,
+                        "progress_msg": row[9],
+                        "process_begin_at": format_datetime(row[10]) if row[10] else None,
+                        "process_duration": row[11],
+                        "run": run_status,
+                        "create_time": format_datetime(row[13]),
+                        "update_time": format_datetime(row[14]),
+                    })
+                
+                return {
+                    "items": documents,
+                    "total": total,
+                }
         finally:
             await self._release_connection(conn)
 
