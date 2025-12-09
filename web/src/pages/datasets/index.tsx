@@ -178,14 +178,6 @@ const Datasets: React.FC = () => {
                   onPressEnter={onSearch}
                   style={{ width: 180 }}
                 />
-                <Select
-                  placeholder={t('datasets.filterByChunkMethod')}
-                  allowClear
-                  value={filterChunkMethod}
-                  onChange={onFilterChange}
-                  options={chunkMethodOptions}
-                  style={{ width: 140 }}
-                />
                 <Input
                   placeholder={t('users.filterByOwner')}
                   prefix={<UserOutlined />}
@@ -194,6 +186,14 @@ const Datasets: React.FC = () => {
                   onChange={(e) => setSearchOwner(e.target.value)}
                   onPressEnter={onSearch}
                   style={{ width: 180 }}
+                />
+                <Select
+                  placeholder={t('datasets.filterByChunkMethod')}
+                  allowClear
+                  value={filterChunkMethod}
+                  onChange={onFilterChange}
+                  options={chunkMethodOptions}
+                  style={{ width: 140 }}
                 />
                 <Button icon={<SearchOutlined />} onClick={onSearch}>{t('common.search')}</Button>
               </Space>

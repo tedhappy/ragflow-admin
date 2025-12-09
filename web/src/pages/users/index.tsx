@@ -250,7 +250,7 @@ const Users: React.FC = () => {
                   value={searchKeyword}
                   onChange={(e) => setSearchKeyword(e.target.value)}
                   onPressEnter={onSearch}
-                  style={{ width: 200 }}
+                  style={{ width: 220 }}
                 />
                 <Select
                   placeholder={t('users.searchStatus')}
