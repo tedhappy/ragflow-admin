@@ -345,11 +345,11 @@ const Documents: React.FC = () => {
       title: t('common.created'), 
       dataIndex: 'create_time', 
       key: 'create_time',
-      width: 140,
+      width: 160,
       align: 'center',
       sorter: (a, b) => new Date(a.create_time || 0).getTime() - new Date(b.create_time || 0).getTime(),
       showSorterTooltip: false,
-      render: (val) => val ? dayjs(val).format('YYYY-MM-DD HH:mm') : '-',
+      render: (val) => val ? dayjs(val).format('YYYY-MM-DD HH:mm:ss') : '-',
     },
     {
       title: t('common.actions'),

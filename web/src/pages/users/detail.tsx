@@ -166,8 +166,8 @@ const UserDetailPage: React.FC = () => {
       title: t('common.updated'),
       dataIndex: 'update_time',
       key: 'update_time',
-      width: 130,
-      render: (val) => val ? dayjs(val).format('YYYY-MM-DD HH:mm') : '-',
+      width: 160,
+      render: (val) => val ? dayjs(val).format('YYYY-MM-DD HH:mm:ss') : '-',
     },
   ];
 
@@ -205,8 +205,8 @@ const UserDetailPage: React.FC = () => {
       title: t('common.updated'),
       dataIndex: 'update_time',
       key: 'update_time',
-      width: 130,
-      render: (val) => val ? dayjs(val).format('YYYY-MM-DD HH:mm') : '-',
+      width: 160,
+      render: (val) => val ? dayjs(val).format('YYYY-MM-DD HH:mm:ss') : '-',
     },
   ];
 
@@ -241,8 +241,8 @@ const UserDetailPage: React.FC = () => {
       title: t('common.updated'),
       dataIndex: 'update_time',
       key: 'update_time',
-      width: 130,
-      render: (val) => val ? dayjs(val).format('YYYY-MM-DD HH:mm') : '-',
+      width: 160,
+      render: (val) => val ? dayjs(val).format('YYYY-MM-DD HH:mm:ss') : '-',
     },
   ];
 

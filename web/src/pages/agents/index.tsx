@@ -124,7 +124,7 @@ const Agents: React.FC = () => {
       align: 'center',
       sorter: (a, b) => new Date(a.create_time || 0).getTime() - new Date(b.create_time || 0).getTime(),
       showSorterTooltip: false,
-      render: (val) => val ? dayjs(val).format('YYYY-MM-DD HH:mm') : '-',
+      render: (val) => val ? dayjs(val).format('YYYY-MM-DD HH:mm:ss') : '-',
     },
     {
       title: t('common.actions'),

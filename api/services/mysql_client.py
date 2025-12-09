@@ -1093,8 +1093,16 @@ class MySQLClient:
                     LEFT JOIN user u ON kb.tenant_id = u.id
                     WHERE {where_clause}
                     ORDER BY 
-                        CASE WHEN CAST(d.run AS SIGNED) = 1 THEN 0 ELSE 1 END,
-                        d.update_time DESC
+                        CASE CAST(d.run AS SIGNED)
+                            WHEN 1 THEN 1  -- RUNNING first
+                            WHEN 0 THEN 2  -- UNSTART (pending) second
+                            WHEN 4 THEN 3  -- FAIL third
+                            ELSE 4         -- DONE, CANCEL last
+                        END,
+                        CASE WHEN CAST(d.run AS SIGNED) IN (0, 1) 
+                             THEN d.create_time  -- Pending/Running: FIFO order
+                             ELSE -d.update_time -- Others: newest first
+                        END
                     LIMIT %s OFFSET %s
                 """, params + [page_size, offset])
                 rows = await cursor.fetchall()

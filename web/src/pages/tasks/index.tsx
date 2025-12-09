@@ -29,7 +29,7 @@ import {
   SettingOutlined
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'umi';
+import { useNavigate } from 'umi';
 import { taskApi, ParsingTask, TaskStats, systemApi } from '@/services/api';
 import { useConnectionCheck } from '@/hooks/useConnectionCheck';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -192,6 +192,15 @@ const Tasks: React.FC = () => {
     fetchStats();
   };
 
+  // Check if RAGFlow API is configured before operations
+  const checkRagflowApi = () => {
+    if (ragflowConfigured === false) {
+      message.warning(t('tasks.ragflowNotConfigured'));
+      return false;
+    }
+    return true;
+  };
+
   // Group selected tasks by dataset
   const groupTasksByDataset = (taskIds: React.Key[]) => {
     const groups: { [key: string]: string[] } = {};
@@ -211,6 +220,8 @@ const Tasks: React.FC = () => {
   };
 
   const handleBatchParse = async () => {
+    if (!checkRagflowApi()) return;
+    
     const parseableIds = selectedRowKeys.filter((id) => {
       const task = tasks.find((t) => t.id === id);
       return task && (task.run === 'UNSTART' || task.run === 'FAIL');
@@ -234,6 +245,8 @@ const Tasks: React.FC = () => {
   };
 
   const handleBatchStop = async () => {
+    if (!checkRagflowApi()) return;
+    
     const runningIds = selectedRowKeys.filter((id) => {
       const task = tasks.find((t) => t.id === id);
       return task && task.run === 'RUNNING';
@@ -257,6 +270,8 @@ const Tasks: React.FC = () => {
   };
 
   const handleRetryFailed = async () => {
+    if (!checkRagflowApi()) return;
+    
     try {
       const result = await taskApi.retryFailed();
       if (result.retried > 0) {
@@ -300,12 +315,10 @@ const Tasks: React.FC = () => {
       width: '15%',
       ellipsis: true,
       render: (val, record) => (
-        <Link to={`/datasets/${record.dataset_id}/documents`}>
-          <Space>
-            <FolderOutlined />
-            {val || record.dataset_id}
-          </Space>
-        </Link>
+        <Space>
+          <FolderOutlined style={{ color: '#8c8c8c' }} />
+          {val || record.dataset_id}
+        </Space>
       ),
     },
     { 
@@ -367,9 +380,9 @@ const Tasks: React.FC = () => {
       title: t('common.updated'), 
       dataIndex: 'update_time', 
       key: 'update_time',
-      width: 140,
+      width: 160,
       align: 'center',
-      render: (val) => val ? dayjs(val).format('MM-DD HH:mm:ss') : '-',
+      render: (val) => val ? dayjs(val).format('YYYY-MM-DD HH:mm:ss') : '-',
     },
   ];
 
@@ -498,21 +511,21 @@ const Tasks: React.FC = () => {
                   type="primary"
                   icon={<PlayCircleOutlined />}
                   onClick={handleBatchParse}
-                  disabled={getParseableCount() === 0}
+                  disabled={ragflowConfigured === false || getParseableCount() === 0}
                 >
                   {t('tasks.parseSelected', { count: getParseableCount() })}
                 </Button>
                 <Button
                   icon={<PauseCircleOutlined />}
                   onClick={handleBatchStop}
-                  disabled={getRunningCount() === 0}
+                  disabled={ragflowConfigured === false || getRunningCount() === 0}
                 >
                   {t('tasks.stopSelected', { count: getRunningCount() })}
                 </Button>
                 <Button
                   icon={<RedoOutlined />}
                   onClick={handleRetryFailed}
-                  disabled={!stats || stats.fail === 0}
+                  disabled={ragflowConfigured === false || !stats || stats.fail === 0}
                 >
                   {t('tasks.retryAll', { count: stats?.fail || 0 })}
                 </Button>

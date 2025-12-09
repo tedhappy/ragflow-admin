@@ -137,8 +137,8 @@ const ChatPage: React.FC = () => {
       title: t('common.updated'),
       dataIndex: 'update_time',
       key: 'update_time',
-      width: 140,
-      render: (val) => val ? dayjs(val).format('YYYY-MM-DD HH:mm') : '-',
+      width: 160,
+      render: (val) => val ? dayjs(val).format('YYYY-MM-DD HH:mm:ss') : '-',
     },
   ];
 
@@ -204,7 +204,7 @@ const ChatPage: React.FC = () => {
       align: 'center',
       sorter: (a, b) => new Date(a.create_time || 0).getTime() - new Date(b.create_time || 0).getTime(),
       showSorterTooltip: false,
-      render: (val) => val ? dayjs(val).format('YYYY-MM-DD HH:mm') : '-',
+      render: (val) => val ? dayjs(val).format('YYYY-MM-DD HH:mm:ss') : '-',
     },
     {
       title: t('common.actions'),
