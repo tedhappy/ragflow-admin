@@ -34,51 +34,51 @@ RAGFlow Admin 是一个独立的 RAGFlow 后台管理系统。通过调用 RAGFl
 ### 1. 配置
 
 复制配置文件并修改：
-
-`ash
+```bash
 cp conf/config.example.yaml conf/config.yaml
-`
-
+```
 编辑 `conf/config.yaml`，填入你的 RAGFlow 地址和 API Key：
-
-`yaml
+```yaml
 ragflow:
   base_url: "http://your-ragflow-host:9380"
   api_key: "your-api-key-here"
-`
+```
 
 ### 2. 启动后端
 
-`ash
-cd api
-pip install -r ../requirements.txt
-python server.py
-`
+```bash
+cd ragflow-admin
+pip install -r requirements.txt
+python -m api.server
+```
 
 ### 3. 启动前端
 
-`ash
-cd web
+```bash
+cd ragflow-admin/web
 npm install
 npm run dev
-`
+```
 
 ## 项目结构
 
-`
+```
 ragflow-admin/
- api/                    # 后端 (Quart)
-    apps/              # 路由模块
-    services/          # 业务逻辑
-    server.py          # 服务入口
- web/                    # 前端 (React + UmiJS)
-    src/
-        pages/         # 页面
-        components/    # 组件
-        services/      # API调用
- conf/                   # 配置文件
- requirements.txt
-`
+├── api/                    # Backend (Quart)
+│   ├── apps/               # API routes
+│   ├── services/           # Business logic
+│   ├── utils/              # Utilities
+│   └── server.py           # Entry point
+├── web/                    # Frontend (React + UmiJS)
+│   └── src/
+│       ├── pages/          # Page components
+│       ├── components/     # Shared components
+│       ├── hooks/          # Custom hooks
+│       ├── services/       # API client
+│       └── locales/        # i18n translations
+├── conf/                   # Configuration files
+└── requirements.txt
+```
 
 ## 相关链接
 

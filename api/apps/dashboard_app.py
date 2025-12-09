@@ -7,21 +7,11 @@
 import logging
 from quart import Blueprint, jsonify
 from api.services.mysql_client import mysql_client, MySQLClientError
-from api.settings import settings
+from api.utils import check_mysql_configured
 
 logger = logging.getLogger(__name__)
 
 manager = Blueprint("dashboard", __name__)
-
-
-def _check_mysql_config():
-    """Check if MySQL is configured."""
-    return all([
-        settings.mysql_host,
-        settings.mysql_port,
-        settings.mysql_database,
-        settings.mysql_user,
-    ])
 
 
 @manager.route("/stats", methods=["GET"])
@@ -35,7 +25,7 @@ async def get_stats():
       200:
         description: Dashboard statistics
     """
-    if not _check_mysql_config():
+    if not check_mysql_configured():
         return jsonify({"code": -1, "message": "MySQL not configured"}), 500
     
     try:

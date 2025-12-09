@@ -4,6 +4,13 @@
 // Licensed under the Apache License, Version 2.0
 //
 
+/**
+ * Error Boundary Component
+ *
+ * Catches JavaScript errors in child components and displays
+ * a fallback UI instead of crashing the whole application.
+ */
+
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Result, Button } from 'antd';
 import { useTranslation } from 'react-i18next';
@@ -18,7 +25,6 @@ interface State {
   error: Error | null;
 }
 
-// Error fallback component with i18n support
 const ErrorFallback: React.FC<{
   error: Error | null;
   onReset: () => void;
@@ -42,9 +48,6 @@ const ErrorFallback: React.FC<{
   );
 };
 
-/**
- * Error Boundary component to catch JavaScript errors in child components.
- */
 class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
@@ -56,7 +59,6 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // Log error to console in development
     if (process.env.NODE_ENV === 'development') {
       console.error('ErrorBoundary caught an error:', error, errorInfo);
     }

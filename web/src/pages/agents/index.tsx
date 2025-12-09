@@ -1,4 +1,16 @@
-﻿import React, { useState } from 'react';
+﻿//
+// Copyright 2024 RAGFlow Admin Authors.
+//
+// Licensed under the Apache License, Version 2.0
+//
+
+/**
+ * Agents Management Page
+ *
+ * Lists and manages RAGFlow agents (workflows and chatbots).
+ */
+
+import React, { useState } from 'react';
 import { Table, Button, Space, Card, message, Input, Typography, Spin, Avatar, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { ReloadOutlined, SearchOutlined, RobotOutlined } from '@ant-design/icons';
@@ -51,7 +63,6 @@ const Agents: React.FC = () => {
     }
   };
 
-  // Sort by create_time descending
   const sortedData = [...data].sort((a, b) => 
     new Date(b.create_time || 0).getTime() - new Date(a.create_time || 0).getTime()
   );

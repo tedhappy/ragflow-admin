@@ -1,4 +1,16 @@
-﻿import React, { useState } from 'react';
+﻿//
+// Copyright 2024 RAGFlow Admin Authors.
+//
+// Licensed under the Apache License, Version 2.0
+//
+
+/**
+ * Chat Assistants Management Page
+ *
+ * Lists chat assistants and their conversation sessions.
+ */
+
+import React, { useState } from 'react';
 import { Table, Button, Space, Card, message, Input, Typography, Spin, Tag, Avatar, Badge, Modal } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { ReloadOutlined, SearchOutlined, MessageOutlined, HistoryOutlined } from '@ant-design/icons';
@@ -17,8 +29,6 @@ const ChatPage: React.FC = () => {
   const { t } = useTranslation();
   const { checking, connected } = useConnectionCheck();
   const [searchName, setSearchName] = useState('');
-  
-  // Session modal states
   const [sessionModalVisible, setSessionModalVisible] = useState(false);
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -47,7 +57,6 @@ const ChatPage: React.FC = () => {
     handleSearch({ name: searchName || undefined });
   };
 
-  // Sort by create_time descending
   const sortedData = [...data].sort((a, b) => 
     new Date(b.create_time || 0).getTime() - new Date(a.create_time || 0).getTime()
   );
@@ -63,7 +72,6 @@ const ChatPage: React.FC = () => {
     }
   };
 
-  // Session management functions
   const handleViewSessions = async (chat: Chat) => {
     setSelectedChat(chat);
     setSessionModalVisible(true);
@@ -87,7 +95,6 @@ const ChatPage: React.FC = () => {
       await chatSessionApi.batchDelete(selectedChat.id, selectedSessionKeys as string[]);
       message.success(t('common.deletedSuccess'));
       setSelectedSessionKeys([]);
-      // Refresh sessions
       handleViewSessions(selectedChat);
     } catch (error: any) {
       message.error(translateErrorMessage(error.message, t) || t('common.deleteFailed'));
@@ -130,7 +137,7 @@ const ChatPage: React.FC = () => {
       dataIndex: 'update_time',
       key: 'update_time',
       width: 140,
-      render: (val) => val ? dayjs(val).format('MM-DD HH:mm') : '-',
+      render: (val) => val ? dayjs(val).format('YYYY-MM-DD HH:mm') : '-',
     },
   ];
 
@@ -171,7 +178,7 @@ const ChatPage: React.FC = () => {
       title: t('chat.status'),
       dataIndex: 'status',
       key: 'status',
-      width: 80,
+      width: 100,
       align: 'center',
       render: (val) => (
         <Badge 
@@ -184,7 +191,7 @@ const ChatPage: React.FC = () => {
       title: t('chat.sessions'),
       dataIndex: 'session_count',
       key: 'session_count',
-      width: 80,
+      width: 90,
       align: 'center',
       render: (val) => <Tag color="purple">{val || 0}</Tag>,
     },

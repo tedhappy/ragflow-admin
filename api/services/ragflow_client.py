@@ -4,6 +4,13 @@
 #  Licensed under the Apache License, Version 2.0
 #
 
+"""
+RAGFlow API client for document operations.
+
+Provides async HTTP client for RAGFlow API interactions including
+document upload, parsing, and dataset management via REST API.
+"""
+
 import time
 import logging
 import httpx
@@ -11,13 +18,11 @@ from typing import Optional, Any
 from api.settings import settings
 
 
-# Logger for this module
 logger = logging.getLogger(__name__)
 
-# Configuration for pagination
-MAX_PAGE_SIZE = 10000  # Maximum items to fetch for counting
-CACHE_TTL = 300  # Cache TTL in seconds (5 minutes)
-HTTP_TIMEOUT = 30  # HTTP request timeout in seconds
+MAX_PAGE_SIZE = 10000
+CACHE_TTL = 300
+HTTP_TIMEOUT = 30
 
 
 class RAGFlowAPIError(Exception):
@@ -58,7 +63,6 @@ class TotalCountCache:
             self._cache.clear()
 
 
-# Global cache instance
 _total_cache = TotalCountCache()
 
 
@@ -97,6 +101,9 @@ class RAGFlowClient:
     def _load_config(self):
         """Load configuration from settings."""
         base_url = settings.ragflow_base_url or ""
+        # Auto-add http:// if protocol is missing
+        if base_url and not base_url.startswith(("http://", "https://")):
+            base_url = f"http://{base_url}"
         self._api_url = f"{base_url}/api/v1" if base_url else ""
         self._headers = {
             "Authorization": f"Bearer {settings.ragflow_api_key}",
@@ -108,7 +115,8 @@ class RAGFlowClient:
         """Check if RAGFlow API is properly configured."""
         base_url = settings.ragflow_base_url or ""
         api_key = settings.ragflow_api_key or ""
-        return bool(base_url and base_url.startswith(("http://", "https://")) and api_key)
+        # Accept URLs without protocol (will be auto-added)
+        return bool(base_url and api_key)
 
     def _check_configured(self):
         """Raise error if not configured."""
@@ -119,7 +127,6 @@ class RAGFlowClient:
         """Reload configuration and reset HTTP client."""
         self._load_config()
         if self._http_client is not None and not self._http_client.is_closed:
-            # Close the old client asynchronously would be ideal, but for simplicity we'll let it be garbage collected
             self._http_client = None
         logger.info(f"RAGFlowClient reloaded with URL: {self._api_url}")
 
@@ -194,14 +201,8 @@ class RAGFlowClient:
             await self._http_client.aclose()
             self._http_client = None
 
-    # Dataset operations - RAGFlow API name param is exact match, so we use local filtering for search
     async def list_datasets(self, page: int = 1, page_size: int = 20, **kwargs) -> dict:
-        """
-        List datasets with pagination and filtering.
-        
-        Note: RAGFlow's name parameter does exact match, not partial match.
-        For search functionality, we fetch all and filter locally.
-        """
+        """List datasets with pagination and filtering."""
         name_filter = kwargs.get("name", "")
         
         # If searching by name, fetch all and filter locally for partial match
@@ -235,7 +236,6 @@ class RAGFlowClient:
                 }
             raise RAGFlowAPIError(result.get("message", "Failed to list datasets"))
         
-        # No filter - use RAGFlow's pagination directly
         params = {
             "page": page,
             "page_size": page_size,
@@ -270,14 +270,8 @@ class RAGFlowClient:
             raise RAGFlowAPIError(result.get("message", "Failed to delete datasets"))
         return result
 
-    # Chat operations - RAGFlow API name param is exact match, so we use local filtering for search
     async def list_chats(self, page: int = 1, page_size: int = 20, **kwargs) -> dict:
-        """
-        List chat assistants with pagination and filtering.
-        
-        Note: RAGFlow's name parameter does exact match, not partial match.
-        For search functionality, we fetch all and filter locally.
-        """
+        """List chat assistants with pagination and filtering."""
         name_filter = kwargs.get("name", "")
         
         # If searching by name, fetch all and filter locally for partial match
@@ -338,14 +332,8 @@ class RAGFlowClient:
             raise RAGFlowAPIError(result.get("message", "Failed to delete chats"))
         return result
 
-    # Agent operations - RAGFlow API title param is exact match, so we use local filtering for search
     async def list_agents(self, page: int = 1, page_size: int = 20, **kwargs) -> dict:
-        """
-        List agents with pagination and filtering.
-        
-        Note: RAGFlow's title parameter does exact match, not partial match.
-        For search functionality, we fetch all and filter locally.
-        """
+        """List agents with pagination and filtering."""
         title_filter = kwargs.get("title", "")
         
         # If searching by title, fetch all and filter locally for partial match
@@ -414,13 +402,8 @@ class RAGFlowClient:
         else:
             _total_cache.invalidate()
 
-    # Document operations within a dataset
     async def list_documents(self, dataset_id: str, page: int = 1, page_size: int = 20, **kwargs) -> dict:
-        """
-        List documents in a dataset with pagination and filtering.
-        
-        RAGFlow API: Dataset.list_documents(id, keywords, page, page_size, order_by, desc, run)
-        """
+        """List documents in a dataset with pagination and filtering."""
         keywords_filter = kwargs.get("keywords", "")
         run_filter = kwargs.get("run", "")
         
@@ -488,24 +471,13 @@ class RAGFlowClient:
         return result
 
     async def upload_documents(self, dataset_id: str, files: list) -> dict:
-        """
-        Upload documents to a dataset.
-        
-        Args:
-            dataset_id: The ID of the dataset
-            files: List of tuples (filename, file_content, content_type)
-        
-        Returns:
-            dict with uploaded document info
-        """
+        """Upload documents to a dataset. Files: list of (filename, content, content_type)."""
         client = self._get_http_client()
         try:
-            # Build multipart form data
             files_data = []
             for filename, content, content_type in files:
                 files_data.append(('file', (filename, content, content_type)))
             
-            # Need to create a new client without default Content-Type header for multipart
             headers = {"Authorization": f"Bearer {settings.ragflow_api_key}"}
             
             async with httpx.AsyncClient(
@@ -534,16 +506,7 @@ class RAGFlowClient:
             raise RAGFlowAPIError(f"Request failed: {str(e)}")
 
     async def parse_documents(self, dataset_id: str, document_ids: list) -> dict:
-        """
-        Parse (chunk) documents in a dataset.
-        
-        Args:
-            dataset_id: The ID of the dataset
-            document_ids: List of document IDs to parse
-        
-        Returns:
-            dict with parse result
-        """
+        """Parse (chunk) documents in a dataset."""
         result = await self._post(
             f"/datasets/{dataset_id}/chunks",
             json={"document_ids": document_ids}
@@ -553,16 +516,7 @@ class RAGFlowClient:
         raise RAGFlowAPIError(result.get("message", "Failed to parse documents"))
 
     async def stop_parsing_documents(self, dataset_id: str, document_ids: list) -> dict:
-        """
-        Stop parsing documents in a dataset.
-        
-        Args:
-            dataset_id: The ID of the dataset
-            document_ids: List of document IDs to stop parsing
-        
-        Returns:
-            dict with result
-        """
+        """Stop parsing documents in a dataset."""
         result = await self._delete(
             f"/datasets/{dataset_id}/chunks",
             json={"document_ids": document_ids}
@@ -572,14 +526,7 @@ class RAGFlowClient:
         raise RAGFlowAPIError(result.get("message", "Failed to stop parsing documents"))
 
     async def check_system_health(self) -> dict:
-        """
-        Check system health status (DB, Redis, doc_engine, storage).
-        This endpoint doesn't require authentication.
-        
-        Returns:
-            dict with health status of each component
-        """
-        # Use base URL without /api/v1 for health check
+        """Check system health status (DB, Redis, doc_engine, storage)."""
         base_url = settings.ragflow_base_url
         async with httpx.AsyncClient(timeout=10) as client:
             try:
@@ -613,19 +560,8 @@ class RAGFlowClient:
                     "error": str(e),
                 }
 
-    # Session management for chat assistants
     async def list_chat_sessions(self, chat_id: str, page: int = 1, page_size: int = 30) -> dict:
-        """
-        List sessions for a chat assistant.
-        
-        Args:
-            chat_id: The ID of the chat assistant
-            page: Page number
-            page_size: Number of items per page
-        
-        Returns:
-            dict with items list and total count
-        """
+        """List sessions for a chat assistant."""
         params = {
             "page": page,
             "page_size": page_size,
@@ -640,16 +576,7 @@ class RAGFlowClient:
         raise RAGFlowAPIError(result.get("message", "Failed to list chat sessions"))
 
     async def delete_chat_sessions(self, chat_id: str, session_ids: list) -> dict:
-        """
-        Delete sessions for a chat assistant.
-        
-        Args:
-            chat_id: The ID of the chat assistant
-            session_ids: List of session IDs to delete
-        
-        Returns:
-            dict with result
-        """
+        """Delete sessions for a chat assistant."""
         result = await self._delete(
             f"/chats/{chat_id}/sessions",
             json={"ids": session_ids}

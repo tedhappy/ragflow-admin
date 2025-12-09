@@ -4,6 +4,12 @@
 // Licensed under the Apache License, Version 2.0
 //
 
+/**
+ * Users Management Page
+ *
+ * User administration with create, status toggle, and password reset.
+ */
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, Space, Card, message, Input, Typography, Spin, Tag, Badge, Modal, Form, Avatar, Select } from 'antd';
@@ -27,14 +33,10 @@ const Users: React.FC = () => {
   const [searchEmail, setSearchEmail] = useState('');
   const [searchNickname, setSearchNickname] = useState('');
   const [searchStatus, setSearchStatus] = useState<string | undefined>(undefined);
-  
-  // Modal states
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [selectedUserEmail, setSelectedUserEmail] = useState<string>('');
-  
-  // Form instances
   const [createForm] = Form.useForm();
   const [passwordForm] = Form.useForm();
 
@@ -64,7 +66,6 @@ const Users: React.FC = () => {
     });
   };
 
-  // Sort by create_time descending
   const sortedData = [...data].sort((a, b) => 
     new Date(b.create_time || 0).getTime() - new Date(a.create_time || 0).getTime()
   );

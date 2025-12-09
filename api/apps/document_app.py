@@ -14,24 +14,17 @@ logger = logging.getLogger(__name__)
 
 manager = Blueprint("document", __name__)
 
-# Allowed file extensions for upload (consistent with RAGFlow)
-# Reference: ragflow/api/utils/file_utils.py - filename_type()
+# Allowed file extensions (consistent with RAGFlow)
 ALLOWED_EXTENSIONS = {
-    # PDF
     'pdf',
-    # Documents
     'msg', 'eml', 'doc', 'docx', 'ppt', 'pptx', 'yml', 'xml', 'htm', 
     'json', 'jsonl', 'ldjson', 'csv', 'txt', 'ini', 'xls', 'xlsx', 
     'wps', 'rtf', 'hlp', 'pages', 'numbers', 'key', 'md',
-    # Code files
     'py', 'js', 'java', 'c', 'cpp', 'h', 'php', 'go', 'ts', 'sh', 'cs', 'kt', 'html', 'sql',
-    # Audio
     'wav', 'flac', 'ape', 'alac', 'wavpack', 'wv', 'mp3', 'aac', 'ogg', 'vorbis', 'opus',
-    # Visual (Images)
     'jpg', 'jpeg', 'png', 'tif', 'gif', 'pcx', 'tga', 'exif', 'fpx', 'svg', 
     'psd', 'cdr', 'pcd', 'dxf', 'ufo', 'eps', 'ai', 'raw', 'wmf', 'webp', 
     'avif', 'apng', 'icon', 'ico',
-    # Visual (Videos)
     'mpg', 'mpeg', 'avi', 'rm', 'rmvb', 'mov', 'wmv', 'asf', 'dat', 
     'asx', 'wvx', 'mpe', 'mpa', 'mp4', 'mkv',
 }
@@ -80,7 +73,6 @@ async def list_documents(dataset_id: str):
     run_status = request.args.get("run", None)
     
     try:
-        # Use MySQL for document listing (no RAGFlow API required)
         kwargs = {}
         if keywords:
             kwargs["keywords"] = keywords
@@ -135,9 +127,6 @@ async def batch_delete_documents(dataset_id: str):
         return jsonify({"code": -1, "message": "ids is required"}), 400
     
     try:
-        # Use MySQL for document deletion (no RAGFlow API required)
-        # Cleans up: document, task, file2document tables
-        # Note: ES chunks and MinIO files are NOT deleted without RAGFlow API
         result = await mysql_client.delete_documents(dataset_id=dataset_id, document_ids=ids)
         return jsonify({
             "code": 0, 
@@ -184,7 +173,6 @@ async def upload_documents(dataset_id: str):
         if not file_list:
             return jsonify({"code": -1, "message": "No files provided"}), 400
         
-        # Validate and prepare files
         files_to_upload = []
         invalid_files = []
         
@@ -196,7 +184,6 @@ async def upload_documents(dataset_id: str):
                 invalid_files.append(file.filename)
                 continue
             
-            # Read file content
             content = file.read()
             content_type = mimetypes.guess_type(file.filename)[0] or 'application/octet-stream'
             files_to_upload.append((file.filename, content, content_type))
@@ -210,7 +197,6 @@ async def upload_documents(dataset_id: str):
                 }), 400
             return jsonify({"code": -1, "message": "No valid files provided"}), 400
         
-        # Upload files
         result = await ragflow_client.upload_documents(dataset_id=dataset_id, files=files_to_upload)
         
         response_data = {

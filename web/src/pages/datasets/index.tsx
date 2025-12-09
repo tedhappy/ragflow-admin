@@ -1,4 +1,16 @@
-﻿import React, { useState } from 'react';
+﻿//
+// Copyright 2024 RAGFlow Admin Authors.
+//
+// Licensed under the Apache License, Version 2.0
+//
+
+/**
+ * Datasets Management Page
+ *
+ * Lists and manages knowledge base datasets with document counts.
+ */
+
+import React, { useState } from 'react';
 import { Table, Button, Space, Card, message, Input, Typography, Spin, Select, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
@@ -21,7 +33,6 @@ const Datasets: React.FC = () => {
   const [searchName, setSearchName] = useState('');
   const [filterChunkMethod, setFilterChunkMethod] = useState<string | undefined>(undefined);
 
-  // Chunk method options
   const chunkMethodOptions = [
     { value: 'naive', label: t('datasets.chunkMethods.naive') },
     { value: 'manual', label: t('datasets.chunkMethods.manual') },
@@ -62,7 +73,6 @@ const Datasets: React.FC = () => {
     setFilterChunkMethod(chunkMethod);
   };
 
-  // Sort by create_time descending, then filter by parser_id
   const sortedData = [...data].sort((a, b) => 
     new Date(b.create_time || 0).getTime() - new Date(a.create_time || 0).getTime()
   );
@@ -93,7 +103,7 @@ const Datasets: React.FC = () => {
       title: t('datasets.documents'), 
       dataIndex: 'doc_num', 
       key: 'doc_num',
-      width: 70,
+      width: 80,
       align: 'center',
       sorter: (a, b) => (a.doc_num || 0) - (b.doc_num || 0),
       showSorterTooltip: false,
@@ -103,7 +113,7 @@ const Datasets: React.FC = () => {
       title: t('datasets.chunks'), 
       dataIndex: 'chunk_num', 
       key: 'chunk_num',
-      width: 70,
+      width: 80,
       align: 'center',
       render: (val) => <Tag color="green">{val || 0}</Tag>,
     },
@@ -111,7 +121,7 @@ const Datasets: React.FC = () => {
       title: t('datasets.chunkMethod'),
       dataIndex: 'parser_id',
       key: 'parser_id',
-      width: 100,
+      width: 120,
       align: 'center',
       render: (val) => {
         const method = chunkMethodOptions.find(m => m.value === val);

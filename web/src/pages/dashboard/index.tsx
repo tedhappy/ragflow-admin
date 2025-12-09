@@ -1,4 +1,16 @@
-﻿import React, { useEffect, useState } from 'react';
+﻿//
+// Copyright 2024 RAGFlow Admin Authors.
+//
+// Licensed under the Apache License, Version 2.0
+//
+
+/**
+ * Dashboard Page
+ *
+ * Overview page displaying system statistics and quick navigation.
+ */
+
+import React, { useEffect, useState } from 'react';
 import { Card, Typography, Spin, message } from 'antd';
 import { 
   DatabaseOutlined, 

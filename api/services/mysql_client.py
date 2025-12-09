@@ -4,6 +4,14 @@
 #  Licensed under the Apache License, Version 2.0
 #
 
+"""
+MySQL client for RAGFlow database operations.
+
+Provides async database access for user management, dataset operations,
+chat sessions, and agent management through direct MySQL queries.
+"""
+
+import json
 import logging
 import time
 import base64
@@ -76,18 +84,9 @@ class MySQLClient:
             self._pool.release(conn)
 
     async def _execute_transaction(self, operations):
-        """
-        Execute multiple operations in a transaction.
-        
-        Args:
-            operations: async function that takes cursor and performs operations
-        
-        Returns:
-            Result from operations function
-        """
+        """Execute multiple operations in a transaction with auto-rollback on failure."""
         conn = await self._get_connection()
         try:
-            # Disable autocommit for transaction
             await conn.autocommit(False)
             try:
                 async with conn.cursor() as cursor:
@@ -98,7 +97,6 @@ class MySQLClient:
                 await conn.rollback()
                 raise e
             finally:
-                # Re-enable autocommit
                 await conn.autocommit(True)
         finally:
             await self._release_connection(conn)
@@ -119,11 +117,9 @@ class MySQLClient:
                     await cursor.execute("SELECT 1")
                     await cursor.fetchone()
                     
-                    # Get database info
                     await cursor.execute("SELECT VERSION()")
                     version = (await cursor.fetchone())[0]
                     
-                    # Check if user table exists
                     await cursor.execute("""
                         SELECT COUNT(*) FROM information_schema.tables 
                         WHERE table_schema = %s AND table_name = 'user'
@@ -151,7 +147,6 @@ class MySQLClient:
         conn = await self._get_connection()
         try:
             async with conn.cursor() as cursor:
-                # Build query with multiple filters
                 conditions = []
                 params = []
                 
@@ -169,12 +164,10 @@ class MySQLClient:
                 if conditions:
                     where_clause = "WHERE " + " AND ".join(conditions)
                 
-                # Get total count
                 count_sql = f"SELECT COUNT(*) FROM user {where_clause}"
                 await cursor.execute(count_sql, params)
                 total = (await cursor.fetchone())[0]
                 
-                # Get users with pagination
                 offset = (page - 1) * page_size
                 query_sql = f"""
                     SELECT id, email, nickname, avatar, status, is_superuser, 
@@ -250,13 +243,11 @@ class MySQLClient:
         conn = await self._get_connection()
         try:
             async with conn.cursor() as cursor:
-                # Get total count
                 await cursor.execute("""
                     SELECT COUNT(*) FROM knowledgebase WHERE tenant_id = %s
                 """, (user_id,))
                 total = (await cursor.fetchone())[0]
                 
-                # Get datasets with pagination
                 offset = (page - 1) * page_size
                 await cursor.execute("""
                     SELECT id, name, description, chunk_num, doc_num, token_num,
@@ -296,14 +287,11 @@ class MySQLClient:
         conn = await self._get_connection()
         try:
             async with conn.cursor() as cursor:
-                # Get total count from user_canvas table
                 await cursor.execute("""
                     SELECT COUNT(*) FROM user_canvas WHERE user_id = %s
                 """, (user_id,))
                 total = (await cursor.fetchone())[0]
                 
-                # Get agents with pagination
-                # Note: canvas_category contains the actual type (agent_canvas, dataflow_canvas)
                 offset = (page - 1) * page_size
                 await cursor.execute("""
                     SELECT id, title, description, canvas_category, create_time, update_time
@@ -333,47 +321,28 @@ class MySQLClient:
             await self._release_connection(conn)
 
     def _hash_password(self, password: str) -> str:
-        """Hash password using the same method as RAGFlow.
-        
-        RAGFlow stores passwords as hash of base64-encoded password:
-        1. Frontend encrypts password with RSA
-        2. Backend decrypts and gets base64-encoded password
-        3. Database stores hash of the base64-encoded password
-        
-        So we need: generate_password_hash(base64_encode(password))
-        """
-        # Base64 encode the password first (as RAGFlow does)
+        """Hash password using RAGFlow method: hash(base64(password))."""
         password_b64 = base64.b64encode(password.encode('utf-8')).decode('utf-8')
         return generate_password_hash(password_b64)
 
     async def create_user(self, email: str, password: str, nickname: str = None) -> Dict[str, Any]:
-        """Create a new user using the same method as RAGFlow.
-        
-        RAGFlow requires creating records in multiple tables:
-        1. user - User account
-        2. tenant - Tenant/workspace for the user
-        3. user_tenant - Links user to tenant with OWNER role
-        """
+        """Create a new user with tenant and user_tenant records (RAGFlow compatible)."""
         import uuid
         
         async def operations(cursor):
-            # Check if user already exists
             await cursor.execute("SELECT id FROM user WHERE email = %s", (email,))
             if await cursor.fetchone():
                 raise MySQLClientError("User with this email already exists")
             
             user_id = str(uuid.uuid4()).replace("-", "")
             user_tenant_id = str(uuid.uuid4()).replace("-", "")
-            nick = nickname  # nickname is required
-            
-            # Hash password using RAGFlow's method (base64 encode + hash)
+            nick = nickname
             hashed_password = self._hash_password(password)
-            logger.info(f"Creating user {email} with password hash: {hashed_password[:50]}...")
-            now_timestamp = int(time.time() * 1000)  # Timestamp in milliseconds
-            now_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Formatted date string
+            logger.info(f"Creating user {email}")
+            now_timestamp = int(time.time() * 1000)
+            now_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             access_token = str(uuid.uuid4()).replace("-", "")
             
-            # 1. Create user record with default values (matching RAGFlow registration)
             await cursor.execute("""
                 INSERT INTO user (id, email, password, nickname, status, 
                                   create_time, create_date, update_time, update_date,
@@ -386,7 +355,6 @@ class MySQLClient:
                   access_token, "1", "1", "0", "password", 0, now_date,
                   "English", "Bright", "UTC+8\tAsia/Shanghai"))
             
-            # 2. Create tenant record (user's workspace)
             tenant_name = f"{nick}'s Kingdom"
             await cursor.execute("""
                 INSERT INTO tenant (id, name, llm_id, embd_id, asr_id, img2txt_id, rerank_id, tts_id,
@@ -395,7 +363,6 @@ class MySQLClient:
             """, (user_id, tenant_name, "", "", "", "", "", "", "", 0,
                   now_timestamp, now_date, now_timestamp, now_date, "1"))
             
-            # 3. Create user_tenant record (link user to tenant as OWNER)
             await cursor.execute("""
                 INSERT INTO user_tenant (id, user_id, tenant_id, role, status,
                                          create_time, create_date, update_time, update_date, invited_by)
@@ -408,20 +375,15 @@ class MySQLClient:
         return await self._execute_transaction(operations)
 
     async def update_user_status(self, user_id: str, status: str) -> bool:
-        """Update user status (1=active, 0=inactive) with transaction.
-        
-        Updates both user.status and user_tenant.status for complete access control.
-        """
+        """Update user status (1=active, 0=inactive). Updates both user and user_tenant."""
         async def operations(cursor):
-            now_timestamp = int(time.time() * 1000)  # Timestamp in milliseconds
-            now_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Formatted date string
+            now_timestamp = int(time.time() * 1000)
+            now_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             
-            # 1. Update user status and is_active
             await cursor.execute("""
                 UPDATE user SET status = %s, is_active = %s, update_time = %s, update_date = %s WHERE id = %s
             """, (status, status, now_timestamp, now_date, user_id))
             
-            # 2. Update user_tenant status (sync with user status)
             await cursor.execute("""
                 UPDATE user_tenant SET status = %s, update_time = %s, update_date = %s 
                 WHERE user_id = %s OR tenant_id = %s
@@ -432,14 +394,13 @@ class MySQLClient:
         return await self._execute_transaction(operations)
 
     async def update_user_password(self, user_id: str, new_password: str) -> bool:
-        """Update user password using the same method as RAGFlow."""
+        """Update user password (RAGFlow compatible)."""
         conn = await self._get_connection()
         try:
             async with conn.cursor() as cursor:
-                # Hash password using RAGFlow's method (base64 encode + hash)
                 hashed_password = self._hash_password(new_password)
-                now_timestamp = int(time.time() * 1000)  # Timestamp in milliseconds
-                now_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Formatted date string
+                now_timestamp = int(time.time() * 1000)
+                now_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 await cursor.execute("""
                     UPDATE user SET password = %s, update_time = %s, update_date = %s WHERE id = %s
                 """, (hashed_password, now_timestamp, now_date, user_id))
@@ -452,23 +413,7 @@ class MySQLClient:
         return await self.delete_users([user_id])
 
     async def delete_users(self, user_ids: List[str]) -> Dict[str, int]:
-        """
-        Delete multiple users and ALL their related data (with transaction).
-        
-        Cleans up (in order):
-        1. task - document parsing tasks
-        2. file - file records
-        3. file2document - file-document relations
-        4. document - documents
-        5. knowledgebase - knowledge bases
-        6. conversation - chat sessions
-        7. dialog - chat assistants
-        8. user_canvas_version - agent versions
-        9. user_canvas - agents
-        10. user_tenant - user-tenant relations
-        11. tenant - user's tenant/workspace
-        12. user - user record
-        """
+        """Delete users and all related data (datasets, documents, chats, agents, etc.)."""
         if not user_ids:
             return {"users": 0}
         
@@ -480,131 +425,66 @@ class MySQLClient:
                 "chats": 0, "conversations": 0, "agents": 0, "agent_versions": 0,
             }
             
-            # 1. Get all knowledge base IDs owned by these users (tenant_id = user_id)
-            await cursor.execute(
-                f"SELECT id FROM knowledgebase WHERE tenant_id IN ({placeholders})",
-                user_ids
-            )
+            await cursor.execute(f"SELECT id FROM knowledgebase WHERE tenant_id IN ({placeholders})", user_ids)
             kb_rows = await cursor.fetchall()
             kb_ids = [row[0] for row in kb_rows]
             
             if kb_ids:
                 kb_placeholders = ",".join(["%s"] * len(kb_ids))
                 
-                # 2. Get all document IDs in these knowledge bases
-                await cursor.execute(
-                    f"SELECT id FROM document WHERE kb_id IN ({kb_placeholders})",
-                    kb_ids
-                )
+                await cursor.execute(f"SELECT id FROM document WHERE kb_id IN ({kb_placeholders})", kb_ids)
                 doc_rows = await cursor.fetchall()
                 doc_ids = [row[0] for row in doc_rows]
                 
                 if doc_ids:
                     doc_placeholders = ",".join(["%s"] * len(doc_ids))
                     
-                    # 3. Delete tasks
-                    await cursor.execute(
-                        f"DELETE FROM task WHERE doc_id IN ({doc_placeholders})",
-                        doc_ids
-                    )
+                    await cursor.execute(f"DELETE FROM task WHERE doc_id IN ({doc_placeholders})", doc_ids)
                     result["tasks"] = cursor.rowcount
                     
-                    # 4. Get file IDs before deleting relations
-                    await cursor.execute(
-                        f"SELECT file_id FROM file2document WHERE document_id IN ({doc_placeholders})",
-                        doc_ids
-                    )
+                    await cursor.execute(f"SELECT file_id FROM file2document WHERE document_id IN ({doc_placeholders})", doc_ids)
                     file_rows = await cursor.fetchall()
                     file_ids = [row[0] for row in file_rows if row[0]]
                     
-                    # 5. Delete file-document relations
-                    await cursor.execute(
-                        f"DELETE FROM file2document WHERE document_id IN ({doc_placeholders})",
-                        doc_ids
-                    )
+                    await cursor.execute(f"DELETE FROM file2document WHERE document_id IN ({doc_placeholders})", doc_ids)
                     result["file_relations"] = cursor.rowcount
                     
-                    # 6. Delete file records
                     if file_ids:
                         file_placeholders = ",".join(["%s"] * len(file_ids))
-                        await cursor.execute(
-                            f"DELETE FROM file WHERE id IN ({file_placeholders}) AND source_type = 'knowledgebase'",
-                            file_ids
-                        )
+                        await cursor.execute(f"DELETE FROM file WHERE id IN ({file_placeholders}) AND source_type = 'knowledgebase'", file_ids)
                         result["files"] = cursor.rowcount
                 
-                # 7. Delete documents
-                await cursor.execute(
-                    f"DELETE FROM document WHERE kb_id IN ({kb_placeholders})",
-                    kb_ids
-                )
+                await cursor.execute(f"DELETE FROM document WHERE kb_id IN ({kb_placeholders})", kb_ids)
                 result["documents"] = cursor.rowcount
                 
-                # 8. Delete knowledge bases
-                await cursor.execute(
-                    f"DELETE FROM knowledgebase WHERE id IN ({kb_placeholders})",
-                    kb_ids
-                )
+                await cursor.execute(f"DELETE FROM knowledgebase WHERE id IN ({kb_placeholders})", kb_ids)
                 result["datasets"] = cursor.rowcount
             
-            # 9. Delete conversations (chat sessions) for dialogs owned by these users
-            await cursor.execute(
-                f"DELETE FROM conversation WHERE dialog_id IN (SELECT id FROM dialog WHERE tenant_id IN ({placeholders}))",
-                user_ids
-            )
+            await cursor.execute(f"DELETE FROM conversation WHERE dialog_id IN (SELECT id FROM dialog WHERE tenant_id IN ({placeholders}))", user_ids)
             result["conversations"] = cursor.rowcount
             
-            # 10. Delete dialogs (chats) owned by these users
-            await cursor.execute(
-                f"DELETE FROM dialog WHERE tenant_id IN ({placeholders})",
-                user_ids
-            )
+            await cursor.execute(f"DELETE FROM dialog WHERE tenant_id IN ({placeholders})", user_ids)
             result["chats"] = cursor.rowcount
             
-            # 11. Get all agent IDs owned by these users
-            await cursor.execute(
-                f"SELECT id FROM user_canvas WHERE user_id IN ({placeholders})",
-                user_ids
-            )
+            await cursor.execute(f"SELECT id FROM user_canvas WHERE user_id IN ({placeholders})", user_ids)
             agent_rows = await cursor.fetchall()
             agent_ids = [row[0] for row in agent_rows]
             
             if agent_ids:
                 agent_placeholders = ",".join(["%s"] * len(agent_ids))
-                
-                # 12. Delete agent versions
-                await cursor.execute(
-                    f"DELETE FROM user_canvas_version WHERE user_canvas_id IN ({agent_placeholders})",
-                    agent_ids
-                )
+                await cursor.execute(f"DELETE FROM user_canvas_version WHERE user_canvas_id IN ({agent_placeholders})", agent_ids)
                 result["agent_versions"] = cursor.rowcount
             
-            # 13. Delete agents
-            await cursor.execute(
-                f"DELETE FROM user_canvas WHERE user_id IN ({placeholders})",
-                user_ids
-            )
+            await cursor.execute(f"DELETE FROM user_canvas WHERE user_id IN ({placeholders})", user_ids)
             result["agents"] = cursor.rowcount
             
-            # 14. Delete user_tenant records
-            await cursor.execute(
-                f"DELETE FROM user_tenant WHERE user_id IN ({placeholders}) OR tenant_id IN ({placeholders})", 
-                user_ids + user_ids
-            )
+            await cursor.execute(f"DELETE FROM user_tenant WHERE user_id IN ({placeholders}) OR tenant_id IN ({placeholders})", user_ids + user_ids)
             result["user_tenants"] = cursor.rowcount
             
-            # 15. Delete tenant records (user_id = tenant_id for owner)
-            await cursor.execute(
-                f"DELETE FROM tenant WHERE id IN ({placeholders})",
-                user_ids
-            )
+            await cursor.execute(f"DELETE FROM tenant WHERE id IN ({placeholders})", user_ids)
             result["tenants"] = cursor.rowcount
             
-            # 16. Delete user records
-            await cursor.execute(
-                f"DELETE FROM user WHERE id IN ({placeholders})",
-                user_ids
-            )
+            await cursor.execute(f"DELETE FROM user WHERE id IN ({placeholders})", user_ids)
             result["users"] = cursor.rowcount
             
             return result
@@ -612,15 +492,12 @@ class MySQLClient:
         return await self._execute_transaction(operations)
 
 
-    # ==================== Global List Methods ====================
-    
     async def list_all_datasets(self, page: int = 1, page_size: int = 20, 
                                  name: str = None, status: str = None) -> Dict[str, Any]:
         """List all datasets from all users with pagination and filtering."""
         conn = await self._get_connection()
         try:
             async with conn.cursor() as cursor:
-                # Build WHERE clause
                 conditions = []
                 params = []
                 if name:
@@ -632,13 +509,9 @@ class MySQLClient:
                 
                 where_clause = " AND ".join(conditions) if conditions else "1=1"
                 
-                # Get total count
-                await cursor.execute(f"""
-                    SELECT COUNT(*) FROM knowledgebase kb WHERE {where_clause}
-                """, params)
+                await cursor.execute(f"SELECT COUNT(*) FROM knowledgebase kb WHERE {where_clause}", params)
                 total = (await cursor.fetchone())[0]
                 
-                # Get datasets with user info
                 offset = (page - 1) * page_size
                 await cursor.execute(f"""
                     SELECT kb.id, kb.name, kb.description, kb.chunk_num, kb.doc_num, 
@@ -685,7 +558,6 @@ class MySQLClient:
         conn = await self._get_connection()
         try:
             async with conn.cursor() as cursor:
-                # Build WHERE clause
                 conditions = []
                 params = []
                 if title:
@@ -694,13 +566,9 @@ class MySQLClient:
                 
                 where_clause = " AND ".join(conditions) if conditions else "1=1"
                 
-                # Get total count
-                await cursor.execute(f"""
-                    SELECT COUNT(*) FROM user_canvas uc WHERE {where_clause}
-                """, params)
+                await cursor.execute(f"SELECT COUNT(*) FROM user_canvas uc WHERE {where_clause}", params)
                 total = (await cursor.fetchone())[0]
                 
-                # Get agents with user info
                 offset = (page - 1) * page_size
                 await cursor.execute(f"""
                     SELECT uc.id, uc.title, uc.description, uc.canvas_category,
@@ -742,7 +610,6 @@ class MySQLClient:
         conn = await self._get_connection()
         try:
             async with conn.cursor() as cursor:
-                # Build WHERE clause
                 conditions = []
                 params = []
                 if name:
@@ -751,13 +618,9 @@ class MySQLClient:
                 
                 where_clause = " AND ".join(conditions) if conditions else "1=1"
                 
-                # Get total count
-                await cursor.execute(f"""
-                    SELECT COUNT(*) FROM dialog d WHERE {where_clause}
-                """, params)
+                await cursor.execute(f"SELECT COUNT(*) FROM dialog d WHERE {where_clause}", params)
                 total = (await cursor.fetchone())[0]
                 
-                # Get chats with user info and session count
                 offset = (page - 1) * page_size
                 await cursor.execute(f"""
                     SELECT d.id, d.name, d.description, d.icon, d.language,
@@ -802,13 +665,9 @@ class MySQLClient:
         conn = await self._get_connection()
         try:
             async with conn.cursor() as cursor:
-                # Get total count
-                await cursor.execute("""
-                    SELECT COUNT(*) FROM conversation WHERE dialog_id = %s
-                """, (chat_id,))
+                await cursor.execute("SELECT COUNT(*) FROM conversation WHERE dialog_id = %s", (chat_id,))
                 total = (await cursor.fetchone())[0]
                 
-                # Get sessions
                 offset = (page - 1) * page_size
                 await cursor.execute("""
                     SELECT id, name, message, create_time, update_time
@@ -821,13 +680,11 @@ class MySQLClient:
                 
                 sessions = []
                 for row in rows:
-                    # Parse message to get count
-                    import json
                     messages = []
                     try:
                         if row[2]:
                             messages = json.loads(row[2])
-                    except:
+                    except (json.JSONDecodeError, TypeError):
                         pass
                     
                     sessions.append({
@@ -851,7 +708,6 @@ class MySQLClient:
         conn = await self._get_connection()
         try:
             async with conn.cursor() as cursor:
-                # Get counts
                 await cursor.execute("SELECT COUNT(*) FROM knowledgebase")
                 dataset_count = (await cursor.fetchone())[0]
                 
@@ -882,16 +738,7 @@ class MySQLClient:
         return await self.delete_datasets([dataset_id])
 
     async def delete_datasets(self, dataset_ids: List[str]) -> Dict[str, int]:
-        """
-        Delete multiple datasets and all related data (with transaction).
-        
-        Cleans up:
-        1. task table - parsing tasks for documents in these datasets
-        2. file table - file records
-        3. file2document table - file-document relations
-        4. document table - documents in these datasets
-        5. knowledgebase table - the datasets themselves
-        """
+        """Delete datasets and all related data (tasks, files, documents)."""
         if not dataset_ids:
             return {"datasets": 0, "documents": 0, "tasks": 0, "files": 0, "file_relations": 0}
         
@@ -899,60 +746,32 @@ class MySQLClient:
             placeholders = ",".join(["%s"] * len(dataset_ids))
             result = {"datasets": 0, "documents": 0, "tasks": 0, "files": 0, "file_relations": 0}
             
-            # 1. Get all document IDs in these datasets
-            await cursor.execute(
-                f"SELECT id FROM document WHERE kb_id IN ({placeholders})",
-                dataset_ids
-            )
+            await cursor.execute(f"SELECT id FROM document WHERE kb_id IN ({placeholders})", dataset_ids)
             doc_rows = await cursor.fetchall()
             doc_ids = [row[0] for row in doc_rows]
             
             if doc_ids:
                 doc_placeholders = ",".join(["%s"] * len(doc_ids))
                 
-                # 2. Delete related tasks
-                await cursor.execute(
-                    f"DELETE FROM task WHERE doc_id IN ({doc_placeholders})",
-                    doc_ids
-                )
+                await cursor.execute(f"DELETE FROM task WHERE doc_id IN ({doc_placeholders})", doc_ids)
                 result["tasks"] = cursor.rowcount
                 
-                # 3. Get file IDs before deleting relations
-                await cursor.execute(
-                    f"SELECT file_id FROM file2document WHERE document_id IN ({doc_placeholders})",
-                    doc_ids
-                )
+                await cursor.execute(f"SELECT file_id FROM file2document WHERE document_id IN ({doc_placeholders})", doc_ids)
                 file_rows = await cursor.fetchall()
                 file_ids = [row[0] for row in file_rows if row[0]]
                 
-                # 4. Delete file-document relations
-                await cursor.execute(
-                    f"DELETE FROM file2document WHERE document_id IN ({doc_placeholders})",
-                    doc_ids
-                )
+                await cursor.execute(f"DELETE FROM file2document WHERE document_id IN ({doc_placeholders})", doc_ids)
                 result["file_relations"] = cursor.rowcount
                 
-                # 5. Delete file records
                 if file_ids:
                     file_placeholders = ",".join(["%s"] * len(file_ids))
-                    await cursor.execute(
-                        f"DELETE FROM file WHERE id IN ({file_placeholders}) AND source_type = 'knowledgebase'",
-                        file_ids
-                    )
+                    await cursor.execute(f"DELETE FROM file WHERE id IN ({file_placeholders}) AND source_type = 'knowledgebase'", file_ids)
                     result["files"] = cursor.rowcount
                 
-                # 6. Delete documents
-                await cursor.execute(
-                    f"DELETE FROM document WHERE id IN ({doc_placeholders})",
-                    doc_ids
-                )
+                await cursor.execute(f"DELETE FROM document WHERE id IN ({doc_placeholders})", doc_ids)
                 result["documents"] = cursor.rowcount
             
-            # 7. Delete datasets
-            await cursor.execute(
-                f"DELETE FROM knowledgebase WHERE id IN ({placeholders})",
-                dataset_ids
-            )
+            await cursor.execute(f"DELETE FROM knowledgebase WHERE id IN ({placeholders})", dataset_ids)
             result["datasets"] = cursor.rowcount
             
             return result
@@ -964,13 +783,7 @@ class MySQLClient:
         return await self.delete_agents([agent_id])
 
     async def delete_agents(self, agent_ids: List[str]) -> Dict[str, int]:
-        """
-        Delete multiple agents and related data (with transaction).
-        
-        Cleans up:
-        1. user_canvas_version table - version history
-        2. user_canvas table - the agents themselves
-        """
+        """Delete agents and their version history."""
         if not agent_ids:
             return {"agents": 0, "versions": 0}
         
@@ -978,18 +791,10 @@ class MySQLClient:
             placeholders = ",".join(["%s"] * len(agent_ids))
             result = {"agents": 0, "versions": 0}
             
-            # 1. Delete version history
-            await cursor.execute(
-                f"DELETE FROM user_canvas_version WHERE user_canvas_id IN ({placeholders})",
-                agent_ids
-            )
+            await cursor.execute(f"DELETE FROM user_canvas_version WHERE user_canvas_id IN ({placeholders})", agent_ids)
             result["versions"] = cursor.rowcount
             
-            # 2. Delete agents
-            await cursor.execute(
-                f"DELETE FROM user_canvas WHERE id IN ({placeholders})",
-                agent_ids
-            )
+            await cursor.execute(f"DELETE FROM user_canvas WHERE id IN ({placeholders})", agent_ids)
             result["agents"] = cursor.rowcount
             
             return result
@@ -1009,11 +814,9 @@ class MySQLClient:
             placeholders = ",".join(["%s"] * len(chat_ids))
             result = {"chats": 0, "conversations": 0}
             
-            # Delete conversations first
             await cursor.execute(f"DELETE FROM conversation WHERE dialog_id IN ({placeholders})", chat_ids)
             result["conversations"] = cursor.rowcount
             
-            # Delete dialogs
             await cursor.execute(f"DELETE FROM dialog WHERE id IN ({placeholders})", chat_ids)
             result["chats"] = cursor.rowcount
             
@@ -1029,7 +832,6 @@ class MySQLClient:
         try:
             async with conn.cursor() as cursor:
                 placeholders = ",".join(["%s"] * len(session_ids))
-                # Delete conversations that belong to the specified chat and have the given IDs
                 await cursor.execute(
                     f"DELETE FROM conversation WHERE dialog_id = %s AND id IN ({placeholders})",
                     [chat_id] + session_ids
@@ -1039,18 +841,7 @@ class MySQLClient:
             await self._release_connection(conn)
 
     async def delete_documents(self, dataset_id: str, document_ids: List[str]) -> Dict[str, int]:
-        """
-        Delete documents and related data by IDs (with transaction).
-        
-        Cleans up:
-        1. task table - parsing tasks
-        2. file table - file records (via file2document)
-        3. file2document table - file-document relations
-        4. document table - main document records
-        5. knowledgebase counts - doc_num, chunk_num, token_num
-        
-        Note: Elasticsearch chunks and MinIO storage files are NOT deleted (requires RAGFlow API)
-        """
+        """Delete documents and related data. Note: ES chunks and MinIO files require RAGFlow API."""
         if not document_ids:
             return {"documents": 0, "tasks": 0, "files": 0, "file_relations": 0}
         
@@ -1058,7 +849,6 @@ class MySQLClient:
             placeholders = ",".join(["%s"] * len(document_ids))
             result = {"documents": 0, "tasks": 0, "files": 0, "file_relations": 0}
             
-            # 0. Get chunk_num and token_num sum for documents to be deleted
             await cursor.execute(
                 f"SELECT COALESCE(SUM(chunk_num), 0), COALESCE(SUM(token_num), 0) FROM document WHERE kb_id = %s AND id IN ({placeholders})",
                 [dataset_id] + document_ids
@@ -1067,45 +857,24 @@ class MySQLClient:
             total_chunks = int(row[0]) if row else 0
             total_tokens = int(row[1]) if row else 0
             
-            # 1. Delete related tasks
-            await cursor.execute(
-                f"DELETE FROM task WHERE doc_id IN ({placeholders})",
-                document_ids
-            )
+            await cursor.execute(f"DELETE FROM task WHERE doc_id IN ({placeholders})", document_ids)
             result["tasks"] = cursor.rowcount
             
-            # 2. Get file IDs from file2document before deleting relations
-            await cursor.execute(
-                f"SELECT file_id FROM file2document WHERE document_id IN ({placeholders})",
-                document_ids
-            )
+            await cursor.execute(f"SELECT file_id FROM file2document WHERE document_id IN ({placeholders})", document_ids)
             file_rows = await cursor.fetchall()
             file_ids = [row[0] for row in file_rows if row[0]]
             
-            # 3. Delete file-document relations
-            await cursor.execute(
-                f"DELETE FROM file2document WHERE document_id IN ({placeholders})",
-                document_ids
-            )
+            await cursor.execute(f"DELETE FROM file2document WHERE document_id IN ({placeholders})", document_ids)
             result["file_relations"] = cursor.rowcount
             
-            # 4. Delete file records (only knowledgebase source files)
             if file_ids:
                 file_placeholders = ",".join(["%s"] * len(file_ids))
-                await cursor.execute(
-                    f"DELETE FROM file WHERE id IN ({file_placeholders}) AND source_type = 'knowledgebase'",
-                    file_ids
-                )
+                await cursor.execute(f"DELETE FROM file WHERE id IN ({file_placeholders}) AND source_type = 'knowledgebase'", file_ids)
                 result["files"] = cursor.rowcount
             
-            # 5. Delete documents (with dataset_id check for safety)
-            await cursor.execute(
-                f"DELETE FROM document WHERE kb_id = %s AND id IN ({placeholders})",
-                [dataset_id] + document_ids
-            )
+            await cursor.execute(f"DELETE FROM document WHERE kb_id = %s AND id IN ({placeholders})", [dataset_id] + document_ids)
             result["documents"] = cursor.rowcount
             
-            # 6. Update knowledgebase counts (doc_num, chunk_num, token_num)
             if result["documents"] > 0:
                 await cursor.execute(
                     """UPDATE knowledgebase SET 
@@ -1121,20 +890,10 @@ class MySQLClient:
         return await self._execute_transaction(operations)
 
     async def list_documents(self, dataset_id: str, page: int = 1, page_size: int = 20, **kwargs) -> Dict[str, Any]:
-        """
-        List documents in a dataset with pagination and filtering.
-        
-        Args:
-            dataset_id: The dataset (knowledgebase) ID
-            page: Page number (1-indexed)
-            page_size: Number of items per page
-            keywords: Filter by document name (partial match)
-            run: Filter by status (UNSTART, RUNNING, CANCEL, DONE, FAIL)
-        """
+        """List documents with pagination. Supports keywords and run status filters."""
         conn = await self._get_connection()
         try:
             async with conn.cursor() as cursor:
-                # Build query conditions
                 conditions = ["kb_id = %s"]
                 params: List[Any] = [dataset_id]
                 
@@ -1143,11 +902,8 @@ class MySQLClient:
                     conditions.append("name LIKE %s")
                     params.append(f"%{keywords}%")
                 
-                # Map string status to numeric for filtering
-                # RAGFlow uses: 0=UNSTART, 1=RUNNING, 2=CANCEL, 3=DONE, 4=FAIL
-                status_to_num = {
-                    'UNSTART': '0', 'RUNNING': '1', 'CANCEL': '2', 'DONE': '3', 'FAIL': '4'
-                }
+                # RAGFlow status: 0=UNSTART, 1=RUNNING, 2=CANCEL, 3=DONE, 4=FAIL
+                status_to_num = {'UNSTART': '0', 'RUNNING': '1', 'CANCEL': '2', 'DONE': '3', 'FAIL': '4'}
                 run_status = kwargs.get("run")
                 if run_status:
                     run_num = status_to_num.get(run_status, run_status)
@@ -1156,11 +912,9 @@ class MySQLClient:
                 
                 where_clause = " AND ".join(conditions)
                 
-                # Get total count
                 await cursor.execute(f"SELECT COUNT(*) FROM document WHERE {where_clause}", params)
                 total = (await cursor.fetchone())[0]
                 
-                # Get paginated documents
                 offset = (page - 1) * page_size
                 query_params = params + [page_size, offset]
                 await cursor.execute(f"""
@@ -1175,14 +929,9 @@ class MySQLClient:
                 """, query_params)
                 rows = await cursor.fetchall()
                 
-                # Map run status from numeric to string
-                # RAGFlow uses: 0=UNSTART, 1=RUNNING, 2=CANCEL, 3=DONE, 4=FAIL
                 run_status_map = {
-                    '0': 'UNSTART', 0: 'UNSTART',
-                    '1': 'RUNNING', 1: 'RUNNING',
-                    '2': 'CANCEL', 2: 'CANCEL',
-                    '3': 'DONE', 3: 'DONE',
-                    '4': 'FAIL', 4: 'FAIL',
+                    '0': 'UNSTART', 0: 'UNSTART', '1': 'RUNNING', 1: 'RUNNING',
+                    '2': 'CANCEL', 2: 'CANCEL', '3': 'DONE', 3: 'DONE', '4': 'FAIL', 4: 'FAIL',
                 }
                 
                 documents = []

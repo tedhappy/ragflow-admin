@@ -4,6 +4,13 @@
 // Licensed under the Apache License, Version 2.0
 //
 
+/**
+ * Login Page
+ *
+ * User authentication page with username/password form,
+ * remember me functionality, and language/theme switching.
+ */
+
 import React, { useState, useEffect } from 'react';
 import { Form, Input, Button, Checkbox, message } from 'antd';
 import { EyeInvisibleOutlined, EyeTwoTone } from '@ant-design/icons';
@@ -30,7 +37,6 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const { login, isAuthenticated } = useAuthStore();
 
-  // Load saved credentials on mount
   useEffect(() => {
     const saved = getSavedCredentials();
     if (saved) {
@@ -42,7 +48,6 @@ const Login: React.FC = () => {
     }
   }, [form]);
 
-  // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
       navigate('/dashboard', { replace: true });
@@ -54,7 +59,6 @@ const Login: React.FC = () => {
       setLoading(true);
       await login(values.username, values.password);
       
-      // Save or clear credentials based on remember checkbox
       if (values.remember) {
         saveCredentials(values.username, values.password);
       } else {

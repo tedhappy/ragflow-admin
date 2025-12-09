@@ -4,6 +4,12 @@
 // Licensed under the Apache License, Version 2.0
 //
 
+/**
+ * System Settings Page
+ *
+ * Configuration page for MySQL database and RAGFlow API connections.
+ */
+
 import React, { useEffect, useState } from 'react';
 import { Form, Input, InputNumber, Button, Space, message, Typography, Spin, Tooltip, Card, Row, Col } from 'antd';
 import { 
@@ -50,18 +56,13 @@ const Settings: React.FC = () => {
   const [mysqlForm] = Form.useForm<MySQLForm>();
   const [ragflowForm] = Form.useForm<RagflowForm>();
   const [loading, setLoading] = useState(true);
-  
-  // MySQL state
   const [mysqlSaving, setMysqlSaving] = useState(false);
   const [mysqlTesting, setMysqlTesting] = useState(false);
   const [mysqlStatus, setMysqlStatus] = useState<ConnectionStatus>({ status: 'untested' });
-  
-  // RAGFlow state
   const [ragflowSaving, setRagflowSaving] = useState(false);
   const [ragflowTesting, setRagflowTesting] = useState(false);
   const [ragflowStatus, setRagflowStatus] = useState<ConnectionStatus>({ status: 'untested' });
 
-  // Load settings
   useEffect(() => {
     const loadSettings = async () => {
       try {
@@ -99,7 +100,6 @@ const Settings: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mysqlForm, ragflowForm]);
 
-  // MySQL handlers
   const handleMysqlTest = async () => {
     try {
       const values = await mysqlForm.validateFields();
@@ -137,7 +137,6 @@ const Settings: React.FC = () => {
     }
   };
 
-  // RAGFlow handlers
   const handleRagflowTest = async () => {
     try {
       const values = await ragflowForm.validateFields();
@@ -175,7 +174,6 @@ const Settings: React.FC = () => {
     }
   };
 
-  // Status badge component
   const StatusBadge: React.FC<{ status: ConnectionStatus }> = ({ status }) => {
     const config: Record<ConnectionStatusType, { color: string; icon: React.ReactNode; text: string }> = {
       connected: { color: 'var(--success-color)', icon: <CheckCircleOutlined />, text: t('settings.status.connected') },
@@ -193,7 +191,6 @@ const Settings: React.FC = () => {
     );
   };
 
-  // Card header component
   const CardHeader: React.FC<{ 
     icon: React.ReactNode; 
     gradient: string; 

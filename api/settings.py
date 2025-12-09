@@ -4,9 +4,19 @@
 #  Licensed under the Apache License, Version 2.0
 #
 
+"""
+Application settings and configuration management.
+
+Loads configuration from YAML files and environment variables,
+providing a singleton Settings instance for the application.
+"""
+
 import os
+import logging
 import yaml
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 class Settings:
@@ -33,7 +43,7 @@ class Settings:
         elif example_path.exists():
             with open(example_path, "r", encoding="utf-8") as f:
                 self._config = yaml.safe_load(f)
-            print("Warning: Using config.example.yaml. Please create conf/config.yaml")
+            logger.warning("Using config.example.yaml. Please create conf/config.yaml")
         else:
             raise FileNotFoundError("Config file not found")
 
@@ -42,10 +52,9 @@ class Settings:
         self._config = None
         self._load_config()
 
-    # RAGFlow API settings (used for document upload/parse operations)
     @property
     def ragflow_base_url(self) -> str:
-        """Get RAGFlow base URL for document operations."""
+        """Get RAGFlow base URL."""
         env_url = os.getenv("RAGFLOW_BASE_URL")
         if env_url:
             return env_url
@@ -126,7 +135,7 @@ ragflow:
             
             return True
         except Exception as e:
-            print(f"Failed to save RAGFlow config: {e}")
+            logger.error(f"Failed to save RAGFlow config: {e}")
             return False
 
     @property
@@ -261,7 +270,7 @@ mysql:
             
             return True
         except Exception as e:
-            print(f"Failed to save MySQL config: {e}")
+            logger.error(f"Failed to save MySQL config: {e}")
             return False
 
 

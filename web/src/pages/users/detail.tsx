@@ -4,6 +4,12 @@
 // Licensed under the Apache License, Version 2.0
 //
 
+/**
+ * User Detail Page
+ *
+ * Displays detailed user information including datasets and agents.
+ */
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
@@ -29,20 +35,15 @@ const UserDetailPage: React.FC = () => {
   
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<UserDetail | null>(null);
-  
-  // Datasets state
   const [datasets, setDatasets] = useState<UserDataset[]>([]);
   const [datasetsLoading, setDatasetsLoading] = useState(false);
   const [datasetsTotal, setDatasetsTotal] = useState(0);
   const [datasetsPage, setDatasetsPage] = useState(1);
-  
-  // Agents state
   const [agents, setAgents] = useState<UserAgent[]>([]);
   const [agentsLoading, setAgentsLoading] = useState(false);
   const [agentsTotal, setAgentsTotal] = useState(0);
   const [agentsPage, setAgentsPage] = useState(1);
 
-  // Load user detail
   useEffect(() => {
     if (userId) {
       loadUser();
@@ -91,7 +92,6 @@ const UserDetailPage: React.FC = () => {
     }
   };
 
-  // Dataset columns - optimized widths for best display
   const datasetColumns: ColumnsType<UserDataset> = [
     {
       title: t('common.name'),
@@ -103,7 +103,7 @@ const UserDetailPage: React.FC = () => {
       title: t('datasets.documents'),
       dataIndex: 'doc_num',
       key: 'doc_num',
-      width: 60,
+      width: 70,
       align: 'center',
       render: (val) => <Tag color="blue">{val || 0}</Tag>,
     },
@@ -111,7 +111,7 @@ const UserDetailPage: React.FC = () => {
       title: t('datasets.chunks'),
       dataIndex: 'chunk_num',
       key: 'chunk_num',
-      width: 60,
+      width: 80,
       align: 'center',
       render: (val) => <Tag color="green">{val || 0}</Tag>,
     },
@@ -119,7 +119,7 @@ const UserDetailPage: React.FC = () => {
       title: 'Tokens',
       dataIndex: 'token_num',
       key: 'token_num',
-      width: 70,
+      width: 85,
       align: 'right',
       render: (val) => {
         if (!val) return '-';
@@ -132,7 +132,7 @@ const UserDetailPage: React.FC = () => {
       title: t('users.detail.permission'),
       dataIndex: 'permission',
       key: 'permission',
-      width: 65,
+      width: 100,
       align: 'center',
       render: (val) => {
         const permMap: Record<string, { color: string; text: string }> = {
@@ -152,7 +152,6 @@ const UserDetailPage: React.FC = () => {
     },
   ];
 
-  // Agent columns - optimized widths for best display
   const agentColumns: ColumnsType<UserAgent> = [
     {
       title: t('common.name'),

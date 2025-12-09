@@ -4,18 +4,38 @@
 #  Licensed under the Apache License, Version 2.0
 #
 
-from quart import Blueprint, Quart, jsonify
+"""
+RAGFlow Admin API Application Factory.
+
+This module creates and configures the Quart application instance,
+registers all blueprints, and sets up Swagger documentation.
+"""
+
+from quart import Quart, jsonify
 from quart_cors import cors
 from flasgger import Swagger
 
 from api.settings import settings
+from api.apps.auth_app import manager as auth_bp
+from api.apps.dashboard_app import manager as dashboard_bp
+from api.apps.dataset_app import manager as dataset_bp
+from api.apps.document_app import manager as document_bp
+from api.apps.chat_app import manager as chat_bp
+from api.apps.agent_app import manager as agent_bp
+from api.apps.system_app import manager as system_bp
+from api.apps.user_app import manager as user_bp
 
 __all__ = ["app"]
 
+# Create Quart application instance
 app = Quart(__name__)
 app = cors(app, allow_origin="*")
 
-# Swagger配置
+# Application configuration
+app.config["SECRET_KEY"] = settings.secret_key
+app.config["MAX_CONTENT_LENGTH"] = 1024 * 1024 * 1024  # 1GB max upload size
+
+# Swagger/OpenAPI configuration
 swagger_config = {
     "headers": [],
     "specs": [
@@ -38,24 +58,13 @@ swagger = Swagger(
         "swagger": "2.0",
         "info": {
             "title": "RAGFlow Admin API",
-            "description": "RAGFlow Admin Console API",
+            "description": "Administration API for RAGFlow management console",
             "version": "1.0.0",
         },
     },
 )
 
-app.config["SECRET_KEY"] = settings.secret_key
-
-# Register blueprints
-from api.apps.auth_app import manager as auth_bp
-from api.apps.dashboard_app import manager as dashboard_bp
-from api.apps.dataset_app import manager as dataset_bp
-from api.apps.document_app import manager as document_bp
-from api.apps.chat_app import manager as chat_bp
-from api.apps.agent_app import manager as agent_bp
-from api.apps.system_app import manager as system_bp
-from api.apps.user_app import manager as user_bp
-
+# Register API blueprints
 app.register_blueprint(auth_bp, url_prefix="/api/v1/auth")
 app.register_blueprint(dashboard_bp, url_prefix="/api/v1/dashboard")
 app.register_blueprint(dataset_bp, url_prefix="/api/v1/datasets")
@@ -68,4 +77,5 @@ app.register_blueprint(user_bp, url_prefix="/api/v1/users")
 
 @app.route("/health")
 async def health():
+    """Health check endpoint."""
     return jsonify({"status": "ok"})

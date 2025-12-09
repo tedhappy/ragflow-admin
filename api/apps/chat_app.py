@@ -7,21 +7,11 @@
 import logging
 from quart import Blueprint, jsonify, request
 from api.services.mysql_client import mysql_client, MySQLClientError
+from api.utils import check_mysql_configured
 
 logger = logging.getLogger(__name__)
 
 manager = Blueprint("chat", __name__)
-
-
-def _check_mysql_config():
-    """Check if MySQL is configured."""
-    from api.settings import settings
-    return all([
-        settings.mysql_host,
-        settings.mysql_port,
-        settings.mysql_database,
-        settings.mysql_user,
-    ])
 
 
 @manager.route("", methods=["GET"])
@@ -48,7 +38,7 @@ async def list_chats():
       200:
         description: Chat assistant list
     """
-    if not _check_mysql_config():
+    if not check_mysql_configured():
         return jsonify({"code": -1, "message": "MySQL not configured"}), 500
     
     page = request.args.get("page", 1, type=int)
@@ -92,7 +82,7 @@ async def batch_delete_chats():
       200:
         description: Chats deleted successfully
     """
-    if not _check_mysql_config():
+    if not check_mysql_configured():
         return jsonify({"code": -1, "message": "MySQL not configured"}), 500
     
     data = await request.get_json()
@@ -142,7 +132,7 @@ async def list_chat_sessions(chat_id: str):
       200:
         description: Session list
     """
-    if not _check_mysql_config():
+    if not check_mysql_configured():
         return jsonify({"code": -1, "message": "MySQL not configured"}), 500
     
     page = request.args.get("page", 1, type=int)
@@ -185,7 +175,7 @@ async def delete_chat_sessions(chat_id: str):
       200:
         description: Sessions deleted
     """
-    if not _check_mysql_config():
+    if not check_mysql_configured():
         return jsonify({"code": -1, "message": "MySQL not configured"}), 500
     
     data = await request.get_json()

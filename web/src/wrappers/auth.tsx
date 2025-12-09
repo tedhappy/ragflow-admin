@@ -4,15 +4,18 @@
 // Licensed under the Apache License, Version 2.0
 //
 
+/**
+ * Authentication Wrapper
+ *
+ * Route wrapper that verifies user authentication status
+ * and redirects to login page if not authenticated.
+ */
+
 import React, { useEffect, useState } from 'react';
 import { Outlet, useNavigate } from 'umi';
 import { Spin } from 'antd';
 import { useAuthStore } from '@/stores/auth';
 
-/**
- * Auth wrapper component that protects routes.
- * Redirects to login page if user is not authenticated.
- */
 const AuthWrapper: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated, checkAuth } = useAuthStore();
@@ -32,7 +35,6 @@ const AuthWrapper: React.FC = () => {
     verify();
   }, [checkAuth, navigate]);
 
-  // Show loading while checking auth
   if (checking || !shouldRender) {
     return (
       <div style={{

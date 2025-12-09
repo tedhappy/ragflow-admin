@@ -4,6 +4,13 @@
 // Licensed under the Apache License, Version 2.0
 //
 
+/**
+ * Confirm Delete Component
+ *
+ * A reusable delete button with confirmation popover
+ * to prevent accidental deletions.
+ */
+
 import React from 'react';
 import { Popconfirm, Button } from 'antd';
 import type { PopconfirmProps, ButtonProps } from 'antd';
@@ -16,20 +23,14 @@ interface ConfirmDeleteProps {
   description?: string;
   children?: React.ReactNode;
   disabled?: boolean;
-  // Button props when using default button
   buttonText?: string;
   buttonType?: ButtonProps['type'];
   buttonSize?: ButtonProps['size'];
   buttonDanger?: boolean;
   showIcon?: boolean;
-  // Popconfirm placement
   placement?: PopconfirmProps['placement'];
 }
 
-/**
- * Confirm delete component with popconfirm dialog.
- * Can wrap any children or render a default delete button.
- */
 const ConfirmDelete: React.FC<ConfirmDeleteProps> = ({
   onConfirm,
   title,
@@ -48,7 +49,6 @@ const ConfirmDelete: React.FC<ConfirmDeleteProps> = ({
   const defaultTitle = title || t('common.deleteConfirm');
   const defaultButtonText = buttonText || t('common.delete');
 
-  // Default delete button if no children provided
   const trigger = children || (
     <Button
       type={buttonType}

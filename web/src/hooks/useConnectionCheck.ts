@@ -13,8 +13,20 @@ interface ConnectionCheckResult {
 }
 
 /**
- * Hook to check MySQL connection status.
- * Redirects to Settings page if not connected.
+ * Hook to verify MySQL database connection status on component mount.
+ * Automatically redirects to Settings page if the connection is not established.
+ * 
+ * @returns Object containing connection check status
+ * @returns {boolean} checking - True while connection check is in progress
+ * @returns {boolean} connected - True if MySQL connection is established
+ * 
+ * @example
+ * ```tsx
+ * const { checking, connected } = useConnectionCheck();
+ * 
+ * if (checking) return <Loading />;
+ * if (!connected) return null; // Will redirect to settings
+ * ```
  */
 export function useConnectionCheck(): ConnectionCheckResult {
   const [checking, setChecking] = useState(true);
@@ -22,7 +34,6 @@ export function useConnectionCheck(): ConnectionCheckResult {
   const hasRedirected = useRef(false);
 
   useEffect(() => {
-    // Skip if already redirecting or on settings page
     if (hasRedirected.current || window.location.pathname === '/settings') {
       setChecking(false);
       return;
@@ -38,12 +49,10 @@ export function useConnectionCheck(): ConnectionCheckResult {
           setChecking(false);
         } else {
           hasRedirected.current = true;
-          // Redirect with reason parameter
           window.location.href = '/settings?reason=not_connected';
         }
       } catch (error) {
         hasRedirected.current = true;
-        // Redirect with reason parameter
         window.location.href = '/settings?reason=connection_failed';
       }
     };

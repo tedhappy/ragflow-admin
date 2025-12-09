@@ -4,16 +4,20 @@
 // Licensed under the Apache License, Version 2.0
 //
 
+/**
+ * Authentication Store
+ *
+ * Zustand store for managing authentication state including
+ * login, logout, and session verification.
+ */
+
 import { create } from 'zustand';
 import { authApi, getToken, setToken, removeToken, UserInfo } from '@/services/api';
 
 interface AuthState {
-  // State
   isAuthenticated: boolean;
   user: UserInfo | null;
   loading: boolean;
-  
-  // Actions
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<boolean>;

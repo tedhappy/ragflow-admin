@@ -1,4 +1,10 @@
-﻿import React, { useState } from 'react';
+﻿//
+// Copyright 2024 RAGFlow Admin Authors.
+//
+// Licensed under the Apache License, Version 2.0
+//
+
+import React, { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'umi';
 import { Layout, Menu, Avatar, Dropdown, Space, theme, ConfigProvider, message } from 'antd';
 import type { MenuProps } from 'antd';
@@ -28,7 +34,6 @@ import styles from './BasicLayout.less';
 
 const { Header, Sider, Content } = Layout;
 
-// Inner layout component that uses theme context
 const LayoutContent: React.FC = () => {
   const { t, i18n } = useTranslation();
   const location = useLocation();
@@ -37,11 +42,8 @@ const LayoutContent: React.FC = () => {
   const { token } = theme.useToken();
   const { isDark } = useTheme();
   const { user, logout } = useAuthStore();
-
-  // Get Ant Design locale based on current language
   const antdLocale = i18n.language === Language.Zh ? zhCN : enUS;
   
-  // Ant Design theme config for dark mode
   const antdTheme = {
     algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
     token: {
@@ -49,7 +51,6 @@ const LayoutContent: React.FC = () => {
     },
   };
 
-  // Handle user menu click
   const handleUserMenuClick: MenuProps['onClick'] = async ({ key }) => {
     if (key === 'logout') {
       await logout();
@@ -166,7 +167,6 @@ const LayoutContent: React.FC = () => {
   );
 };
 
-// Main layout component that wraps with ThemeProvider
 const BasicLayout: React.FC = () => {
   return (
     <ThemeProvider>

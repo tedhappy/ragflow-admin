@@ -5,7 +5,6 @@
 //
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { message } from 'antd';
 
 export interface ListParams {
   page: number;
@@ -42,14 +41,31 @@ export interface UseTableListReturn<T, P extends ListParams> {
 }
 
 /**
- * Common hook for table list with pagination, search, and selection.
+ * Generic hook for managing table data with pagination, search, and row selection.
+ * 
+ * @template T - The type of items in the list
+ * @template P - The type of parameters (extends ListParams)
+ * 
+ * @param options - Configuration options for the table list
+ * @param options.fetchFn - Async function to fetch data
+ * @param options.defaultParams - Default query parameters
+ * @param options.defaultPageSize - Default page size (default: 10)
+ * @param options.enabled - Whether to enable initial fetch (default: true)
+ * 
+ * @returns Table list state and control functions
+ * 
+ * @example
+ * ```tsx
+ * const { data, loading, refresh, handlePageChange } = useTableList({
+ *   fetchFn: (params) => api.list(params),
+ *   defaultPageSize: 20,
+ * });
+ * ```
  */
 export function useTableList<T, P extends ListParams = ListParams>(
   options: UseTableListOptions<T, P>
 ): UseTableListReturn<T, P> {
   const { fetchFn, defaultParams = {}, defaultPageSize = 10, enabled = true } = options;
-
-  // Use ref to store fetchFn to avoid infinite loop
   const fetchFnRef = useRef(fetchFn);
   fetchFnRef.current = fetchFn;
 
@@ -76,7 +92,7 @@ export function useTableList<T, P extends ListParams = ListParams>(
         setInitialLoading(false);
       }
     } catch (error: any) {
-      message.error(error.message || 'Failed to fetch data');
+      // Let calling component handle error display with i18n
       setData([]);
       setTotal(0);
       if (isInitial) {
@@ -87,14 +103,11 @@ export function useTableList<T, P extends ListParams = ListParams>(
     }
   }, []);
 
-  // Initial fetch on mount only (if enabled)
   useEffect(() => {
     if (!enabled) {
-      // When disabled, set initialLoading to false to avoid infinite spinning
       setInitialLoading(false);
       return;
     }
-    // Reset initial loading state when enabled
     setInitialLoading(true);
     const initialParams = {
       page: 1,
@@ -123,7 +136,6 @@ export function useTableList<T, P extends ListParams = ListParams>(
 
   const handleSearch = useCallback((searchParams?: Partial<P>) => {
     setPage(1);
-    // Merge current params with new search params, reset to page 1
     const newParams = { ...params, ...searchParams, page: 1 } as P;
     setParamsState(newParams);
     fetchData(newParams);

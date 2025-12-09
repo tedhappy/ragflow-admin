@@ -223,8 +223,6 @@ async def test_mysql_connection():
         }), 500
 
 
-# ==================== RAGFlow API Configuration ====================
-
 @manager.route("/ragflow/config", methods=["GET"])
 async def get_ragflow_config():
     """

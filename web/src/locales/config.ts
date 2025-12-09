@@ -4,6 +4,13 @@
 // Licensed under the Apache License, Version 2.0
 //
 
+/**
+ * Internationalization (i18n) Configuration
+ *
+ * Configures i18next with language detection and provides
+ * English and Chinese translations for the application.
+ */
+
 import i18n from 'i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import { initReactI18next } from 'react-i18next';

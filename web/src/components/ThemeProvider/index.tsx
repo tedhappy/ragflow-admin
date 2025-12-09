@@ -4,15 +4,20 @@
 // Licensed under the Apache License, Version 2.0
 //
 
+/**
+ * Theme Provider Component
+ *
+ * Provides dark/light theme context to the application
+ * with persistence to localStorage.
+ */
+
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 
-// Theme enum matching RAGFlow's implementation
 export enum ThemeEnum {
   Dark = 'dark',
   Light = 'light',
 }
 
-// Storage key for theme persistence
 const THEME_STORAGE_KEY = 'ragflow_admin_theme';
 
 interface ThemeProviderState {
@@ -38,7 +43,6 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
     return (stored as ThemeEnum) || defaultTheme;
   });
 
-  // Apply theme class to document root
   useEffect(() => {
     const root = window.document.documentElement;
     root.classList.remove(ThemeEnum.Light, ThemeEnum.Dark);
@@ -68,7 +72,6 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   );
 };
 
-// Hook to use theme context
 export const useTheme = (): ThemeProviderState => {
   const context = useContext(ThemeProviderContext);
   if (!context) {
@@ -77,7 +80,6 @@ export const useTheme = (): ThemeProviderState => {
   return context;
 };
 
-// Hook to check if dark theme
 export const useIsDarkTheme = (): boolean => {
   const { isDark } = useTheme();
   return isDark;

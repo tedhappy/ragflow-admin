@@ -4,35 +4,35 @@
 // Licensed under the Apache License, Version 2.0
 //
 
+/**
+ * API Client Module
+ *
+ * Provides axios-based HTTP client for all API requests,
+ * authentication helpers, and typed API interfaces.
+ */
+
 import axios from 'axios';
 
-// Auth token storage key
 const TOKEN_KEY = 'ragflow_admin_token';
 const CREDENTIALS_KEY = 'ragflow_admin_credentials';
 
-// Get stored token
 export const getToken = (): string | null => {
   return localStorage.getItem(TOKEN_KEY);
 };
 
-// Set token
 export const setToken = (token: string): void => {
   localStorage.setItem(TOKEN_KEY, token);
 };
 
-// Remove token
 export const removeToken = (): void => {
   localStorage.removeItem(TOKEN_KEY);
 };
 
-// Save credentials (remember password)
 export const saveCredentials = (username: string, password: string): void => {
-  // Base64 encode for basic obfuscation (not secure encryption, but better than plaintext)
   const encoded = btoa(JSON.stringify({ username, password }));
   localStorage.setItem(CREDENTIALS_KEY, encoded);
 };
 
-// Get saved credentials
 export const getSavedCredentials = (): { username: string; password: string } | null => {
   const encoded = localStorage.getItem(CREDENTIALS_KEY);
   if (!encoded) return null;
@@ -43,7 +43,6 @@ export const getSavedCredentials = (): { username: string; password: string } | 
   }
 };
 
-// Clear saved credentials
 export const clearCredentials = (): void => {
   localStorage.removeItem(CREDENTIALS_KEY);
 };
@@ -53,7 +52,6 @@ const request = axios.create({
   timeout: 30000,
 });
 
-// Request interceptor - add auth token
 request.interceptors.request.use(
   (config) => {
     const token = getToken();
@@ -67,7 +65,6 @@ request.interceptors.request.use(
   }
 );
 
-// Response interceptor
 request.interceptors.response.use(
   (response) => {
     const { data } = response;
@@ -77,10 +74,8 @@ request.interceptors.response.use(
     return Promise.reject(new Error(data.message || 'Request failed'));
   },
   (error) => {
-    // Handle 401 Unauthorized
     if (error.response?.status === 401) {
       removeToken();
-      // Redirect to login page if not already there
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
       }

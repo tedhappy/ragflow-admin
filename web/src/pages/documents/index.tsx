@@ -4,6 +4,12 @@
 // Licensed under the Apache License, Version 2.0
 //
 
+/**
+ * Documents Management Page
+ *
+ * Lists, uploads, parses, and manages documents within a dataset.
+ */
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Table, Button, Space, Card, message, Input, Typography, Spin, Tag, Progress, Select, Upload, Modal, Alert } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -22,7 +28,6 @@ import dayjs from 'dayjs';
 
 const { Title } = Typography;
 
-// Format file size
 const formatSize = (bytes?: number): string => {
   if (!bytes) return '-';
   if (bytes < 1024) return `${bytes} B`;
@@ -31,7 +36,6 @@ const formatSize = (bytes?: number): string => {
   return `${(bytes / 1024 / 1024 / 1024).toFixed(1)} GB`;
 };
 
-// Status tag component
 const StatusTag: React.FC<{ status?: string }> = ({ status }) => {
   const { t } = useTranslation();
   const statusMap: Record<string, { color: string; text: string }> = {
@@ -57,21 +61,13 @@ const Documents: React.FC = () => {
   const [searchKeywords, setSearchKeywords] = useState('');
   const [filterStatus, setFilterStatus] = useState<string | undefined>(undefined);
   
-  // RAGFlow API config state
   const [ragflowConfigured, setRagflowConfigured] = useState<boolean | null>(null);
-  
-  // Upload modal state
   const [uploadModalVisible, setUploadModalVisible] = useState(false);
   const [uploadFileList, setUploadFileList] = useState<UploadFile[]>([]);
   const [uploading, setUploading] = useState(false);
-  
-  // Parse state
   const [parsing, setParsing] = useState(false);
-  
-  // Auto-refresh interval ref
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Check RAGFlow API configuration
   useEffect(() => {
     const checkRagflowConfig = async () => {
       try {
@@ -84,7 +80,6 @@ const Documents: React.FC = () => {
     checkRagflowConfig();
   }, []);
 
-  // Status options for filter
   const statusOptions = [
     { value: 'DONE', label: t('documents.status.done') },
     { value: 'RUNNING', label: t('documents.status.running') },
@@ -111,24 +106,20 @@ const Documents: React.FC = () => {
     enabled: connected && !!datasetId,
   });
 
-  // Auto-refresh when there are RUNNING documents
   useEffect(() => {
     const hasRunningDocs = data.some((doc) => doc.run === 'RUNNING');
     
-    // Clear existing interval first (to handle refresh function changes)
     if (refreshIntervalRef.current) {
       clearInterval(refreshIntervalRef.current);
       refreshIntervalRef.current = null;
     }
     
-    // Start new interval if there are running docs
     if (hasRunningDocs) {
       refreshIntervalRef.current = setInterval(() => {
         refresh();
       }, 3000);
     }
 
-    // Cleanup on unmount
     return () => {
       if (refreshIntervalRef.current) {
         clearInterval(refreshIntervalRef.current);
@@ -144,7 +135,6 @@ const Documents: React.FC = () => {
     });
   };
 
-  // Handle status filter change - trigger search immediately
   const onFilterStatusChange = (value: string | undefined) => {
     setFilterStatus(value);
     handleSearch({ 
@@ -153,7 +143,6 @@ const Documents: React.FC = () => {
     });
   };
 
-  // Sort by create_time descending (server already filters by status)
   const sortedData = [...data].sort((a, b) => 
     new Date(b.create_time || 0).getTime() - new Date(a.create_time || 0).getTime()
   );
@@ -169,7 +158,6 @@ const Documents: React.FC = () => {
     }
   };
 
-  // Check RAGFlow API before upload/parse operations
   const checkRagflowApi = (): boolean => {
     if (!ragflowConfigured) {
       message.warning(t('documents.ragflowNotConfigured'));
@@ -178,7 +166,6 @@ const Documents: React.FC = () => {
     return true;
   };
 
-  // Upload handlers
   const handleUpload = async () => {
     if (!checkRagflowApi()) return;
     
@@ -212,7 +199,6 @@ const Documents: React.FC = () => {
     multiple: true,
     fileList: uploadFileList,
     beforeUpload: (file) => {
-      // Create UploadFile object with originFileObj properly set
       const uploadFile: UploadFile = {
         uid: file.uid,
         name: file.name,
@@ -221,14 +207,13 @@ const Documents: React.FC = () => {
         originFileObj: file as any,
       };
       setUploadFileList((prev) => [...prev, uploadFile]);
-      return false; // Prevent auto upload
+      return false;
     },
     onRemove: (file) => {
       setUploadFileList((prev) => prev.filter((f) => f.uid !== file.uid));
     },
   };
 
-  // Parse handlers
   const handleParse = async (ids: string[]) => {
     if (!checkRagflowApi()) return;
     
@@ -271,21 +256,17 @@ const Documents: React.FC = () => {
     }
   };
 
-  // Open upload modal with RAGFlow check
   const openUploadModal = () => {
     if (!checkRagflowApi()) return;
     setUploadModalVisible(true);
   };
 
-  // Get parseable documents (UNSTART or FAIL status)
-  // Note: CANCEL documents with partial progress (0 < progress < 1) cannot be re-parsed due to RAGFlow API limitation
   const getParseableDocuments = () => {
     return sortedData.filter(
       (doc) => doc.run === 'UNSTART' || doc.run === 'FAIL'
     );
   };
 
-  // Get selected parseable documents
   const getSelectedParseableIds = () => {
     return selectedRowKeys.filter((id) => {
       const doc = data.find((d) => d.id === id);
@@ -293,7 +274,6 @@ const Documents: React.FC = () => {
     }) as string[];
   };
 
-  // Get running documents for stop parsing
   const getRunningDocumentIds = () => {
     return selectedRowKeys.filter((id) => {
       const doc = data.find((d) => d.id === id);
@@ -323,7 +303,7 @@ const Documents: React.FC = () => {
       title: t('documents.chunks'), 
       dataIndex: 'chunk_count', 
       key: 'chunk_count',
-      width: 70,
+      width: 80,
       align: 'center',
       sorter: (a, b) => (a.chunk_count || 0) - (b.chunk_count || 0),
       showSorterTooltip: false,
@@ -357,7 +337,7 @@ const Documents: React.FC = () => {
       title: t('documents.statusLabel'), 
       dataIndex: 'run', 
       key: 'run',
-      width: 80,
+      width: 90,
       align: 'center',
       render: (val) => <StatusTag status={val} />,
     },
