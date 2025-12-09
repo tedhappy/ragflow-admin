@@ -465,7 +465,7 @@ export interface BatchTaskRequest {
 }
 
 export const taskApi = {
-  list: (params?: PaginationParams & { status?: string; dataset_name?: string; doc_name?: string }) =>
+  list: (params?: PaginationParams & { status?: string; dataset_name?: string; doc_name?: string; owner?: string }) =>
     request.get<any, ListResponse<ParsingTask>>('/tasks', { params }),
   getStats: () =>
     request.get<any, TaskStats>('/tasks/stats'),
