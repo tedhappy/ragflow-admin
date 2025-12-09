@@ -5,6 +5,7 @@
 //
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Table, Button, Space, Card, message, Input, Typography, Spin, Tag, Badge, Modal, Form, Alert, Avatar, Select } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { ReloadOutlined, SearchOutlined, UserOutlined, PlusOutlined, KeyOutlined, SettingOutlined } from '@ant-design/icons';
@@ -20,6 +21,7 @@ const { Title } = Typography;
 
 const Users: React.FC = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [searchEmail, setSearchEmail] = useState('');
   const [searchNickname, setSearchNickname] = useState('');
   const [searchStatus, setSearchStatus] = useState<string | undefined>(undefined);
@@ -429,6 +431,17 @@ const Users: React.FC = () => {
                 selectedRowKeys,
                 onChange: setSelectedRowKeys,
               }}
+              onRow={(record) => ({
+                onClick: (e) => {
+                  // Prevent navigation when clicking on checkbox or action buttons
+                  const target = e.target as HTMLElement;
+                  if (target.closest('.ant-checkbox-wrapper') || target.closest('button') || target.closest('a')) {
+                    return;
+                  }
+                  navigate(`/users/${record.id}`);
+                },
+                style: { cursor: 'pointer' },
+              })}
               pagination={{
                 current: page,
                 pageSize: pageSize,

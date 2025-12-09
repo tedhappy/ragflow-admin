@@ -400,3 +400,117 @@ async def batch_delete_users():
     except Exception as e:
         logger.exception("Failed to delete users")
         return jsonify({"code": -1, "message": str(e)}), 500
+
+
+@manager.route("/<user_id>", methods=["GET"])
+async def get_user(user_id: str):
+    """
+    Get user detail by ID
+    ---
+    tags:
+      - User
+    parameters:
+      - name: user_id
+        in: path
+        type: string
+        required: true
+    responses:
+      200:
+        description: User detail
+    """
+    if not settings.is_mysql_configured:
+        return jsonify({"code": -1, "message": "MySQL not configured"}), 400
+    
+    try:
+        user = await mysql_client.get_user(user_id)
+        if not user:
+            return jsonify({"code": -1, "message": "User not found"}), 404
+        return jsonify({"code": 0, "data": user})
+    except MySQLClientError as e:
+        logger.error(f"Failed to get user: {e.message}")
+        return jsonify({"code": e.code, "message": e.message}), 500
+    except Exception as e:
+        logger.exception("Unexpected error getting user")
+        return jsonify({"code": -1, "message": str(e)}), 500
+
+
+@manager.route("/<user_id>/datasets", methods=["GET"])
+async def get_user_datasets(user_id: str):
+    """
+    Get datasets owned by a user
+    ---
+    tags:
+      - User
+    parameters:
+      - name: user_id
+        in: path
+        type: string
+        required: true
+      - name: page
+        in: query
+        type: integer
+        default: 1
+      - name: page_size
+        in: query
+        type: integer
+        default: 20
+    responses:
+      200:
+        description: User's datasets
+    """
+    if not settings.is_mysql_configured:
+        return jsonify({"code": -1, "message": "MySQL not configured"}), 400
+    
+    page = request.args.get("page", 1, type=int)
+    page_size = request.args.get("page_size", 20, type=int)
+    
+    try:
+        result = await mysql_client.get_user_datasets(user_id, page=page, page_size=page_size)
+        return jsonify({"code": 0, "data": result})
+    except MySQLClientError as e:
+        logger.error(f"Failed to get user datasets: {e.message}")
+        return jsonify({"code": e.code, "message": e.message}), 500
+    except Exception as e:
+        logger.exception("Unexpected error getting user datasets")
+        return jsonify({"code": -1, "message": str(e)}), 500
+
+
+@manager.route("/<user_id>/agents", methods=["GET"])
+async def get_user_agents(user_id: str):
+    """
+    Get agents owned by a user
+    ---
+    tags:
+      - User
+    parameters:
+      - name: user_id
+        in: path
+        type: string
+        required: true
+      - name: page
+        in: query
+        type: integer
+        default: 1
+      - name: page_size
+        in: query
+        type: integer
+        default: 20
+    responses:
+      200:
+        description: User's agents
+    """
+    if not settings.is_mysql_configured:
+        return jsonify({"code": -1, "message": "MySQL not configured"}), 400
+    
+    page = request.args.get("page", 1, type=int)
+    page_size = request.args.get("page_size", 20, type=int)
+    
+    try:
+        result = await mysql_client.get_user_agents(user_id, page=page, page_size=page_size)
+        return jsonify({"code": 0, "data": result})
+    except MySQLClientError as e:
+        logger.error(f"Failed to get user agents: {e.message}")
+        return jsonify({"code": e.code, "message": e.message}), 500
+    except Exception as e:
+        logger.exception("Unexpected error getting user agents")
+        return jsonify({"code": -1, "message": str(e)}), 500

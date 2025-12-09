@@ -21,6 +21,7 @@ export default defineConfig({
         { path: '/chat', component: '@/pages/chat' },
         { path: '/agents', component: '@/pages/agents' },
         { path: '/users', component: '@/pages/users' },
+        { path: '/users/:userId', component: '@/pages/users/detail' },
         { path: '/settings', component: '@/pages/settings' },
       ],
     },

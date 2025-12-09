@@ -256,6 +256,40 @@ export interface MySQLTestResult {
   error?: string;
 }
 
+// User detail with extended info
+export interface UserDetail extends RagflowUser {
+  last_login_time?: string;
+  language?: string;
+  color_schema?: string;
+  timezone?: string;
+  is_anonymous?: string;
+}
+
+// User's dataset
+export interface UserDataset {
+  id: string;
+  name: string;
+  description?: string;
+  chunk_num: number;
+  doc_num: number;
+  token_num: number;
+  parser_id?: string;
+  permission?: string;
+  status?: string;
+  create_time?: string;
+  update_time?: string;
+}
+
+// User's agent
+export interface UserAgent {
+  id: string;
+  title: string;
+  description?: string;
+  canvas_type?: string;
+  create_time?: string;
+  update_time?: string;
+}
+
 export const userApi = {
   // MySQL config
   getConfig: () => request.get<any, MySQLConfig>('/users/config'),
@@ -267,6 +301,8 @@ export const userApi = {
   // User CRUD
   list: (params?: PaginationParams & { email?: string; nickname?: string; status?: string }) =>
     request.get<any, ListResponse<RagflowUser>>('/users', { params }),
+  get: (userId: string) =>
+    request.get<any, UserDetail>(`/users/${userId}`),
   create: (data: { email: string; password: string; nickname?: string }) =>
     request.post<any, { id: string; email: string }>('/users', data),
   updateStatus: (userId: string, status: string) =>
@@ -275,6 +311,12 @@ export const userApi = {
     request.put<any, { message: string }>(`/users/${userId}/password`, { password }),
   batchDelete: (ids: string[]) =>
     request.post('/users/batch-delete', { ids }),
+  
+  // User's resources
+  getDatasets: (userId: string, params?: PaginationParams) =>
+    request.get<any, ListResponse<UserDataset>>(`/users/${userId}/datasets`, { params }),
+  getAgents: (userId: string, params?: PaginationParams) =>
+    request.get<any, ListResponse<UserAgent>>(`/users/${userId}/agents`, { params }),
 };
 
 // Dashboard API

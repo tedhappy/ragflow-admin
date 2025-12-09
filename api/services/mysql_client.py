@@ -183,13 +183,14 @@ class MySQLClient:
             await self._release_connection(conn)
 
     async def get_user(self, user_id: str) -> Optional[Dict[str, Any]]:
-        """Get user by ID."""
+        """Get user by ID with detailed information."""
         conn = await self._get_connection()
         try:
             async with conn.cursor() as cursor:
                 await cursor.execute("""
                     SELECT id, email, nickname, avatar, status, is_superuser,
-                           login_channel, create_time, update_time
+                           login_channel, create_time, update_time, last_login_time,
+                           language, color_schema, timezone, is_anonymous
                     FROM user WHERE id = %s
                 """, (user_id,))
                 row = await cursor.fetchone()
@@ -207,6 +208,111 @@ class MySQLClient:
                     "login_channel": row[6],
                     "create_time": format_datetime(row[7]),
                     "update_time": format_datetime(row[8]),
+                    "last_login_time": format_datetime(row[9]) if row[9] else None,
+                    "language": row[10],
+                    "color_schema": row[11],
+                    "timezone": row[12],
+                    "is_anonymous": row[13],
+                }
+        finally:
+            await self._release_connection(conn)
+
+    async def get_user_datasets(self, user_id: str, page: int = 1, page_size: int = 20) -> Dict[str, Any]:
+        """Get datasets (knowledgebases) owned by a user."""
+        conn = await self._get_connection()
+        try:
+            async with conn.cursor() as cursor:
+                # Get total count
+                await cursor.execute("""
+                    SELECT COUNT(*) FROM knowledgebase WHERE tenant_id = %s
+                """, (user_id,))
+                total = (await cursor.fetchone())[0]
+                
+                # Get datasets with pagination
+                offset = (page - 1) * page_size
+                await cursor.execute("""
+                    SELECT id, name, description, chunk_num, doc_num, token_num,
+                           parser_id, permission, status, create_time, update_time
+                    FROM knowledgebase 
+                    WHERE tenant_id = %s
+                    ORDER BY create_time DESC
+                    LIMIT %s OFFSET %s
+                """, (user_id, page_size, offset))
+                rows = await cursor.fetchall()
+                
+                datasets = []
+                for row in rows:
+                    datasets.append({
+                        "id": row[0],
+                        "name": row[1],
+                        "description": row[2],
+                        "chunk_num": row[3] or 0,
+                        "doc_num": row[4] or 0,
+                        "token_num": row[5] or 0,
+                        "parser_id": row[6],
+                        "permission": row[7],
+                        "status": row[8],
+                        "create_time": format_datetime(row[9]),
+                        "update_time": format_datetime(row[10]),
+                    })
+                
+                return {
+                    "items": datasets,
+                    "total": total,
+                }
+        finally:
+            await self._release_connection(conn)
+
+    async def get_user_agents(self, user_id: str, page: int = 1, page_size: int = 20) -> Dict[str, Any]:
+        """Get agents owned by a user. Tries 'canvas' table first, falls back gracefully if not exists."""
+        conn = await self._get_connection()
+        try:
+            async with conn.cursor() as cursor:
+                # Check if canvas table exists
+                await cursor.execute("""
+                    SELECT COUNT(*) FROM information_schema.tables 
+                    WHERE table_schema = DATABASE() AND table_name = 'canvas'
+                """)
+                table_exists = (await cursor.fetchone())[0] > 0
+                
+                if not table_exists:
+                    # Canvas table doesn't exist in this RAGFlow version
+                    return {
+                        "items": [],
+                        "total": 0,
+                    }
+                
+                # Get total count
+                await cursor.execute("""
+                    SELECT COUNT(*) FROM canvas WHERE user_id = %s
+                """, (user_id,))
+                total = (await cursor.fetchone())[0]
+                
+                # Get agents with pagination
+                offset = (page - 1) * page_size
+                await cursor.execute("""
+                    SELECT id, title, description, canvas_type, create_time, update_time
+                    FROM canvas 
+                    WHERE user_id = %s
+                    ORDER BY create_time DESC
+                    LIMIT %s OFFSET %s
+                """, (user_id, page_size, offset))
+                rows = await cursor.fetchall()
+                
+                agents = []
+                for row in rows:
+                    agents.append({
+                        "id": row[0],
+                        "title": row[1],
+                        "description": row[2],
+                        "canvas_type": row[3],
+                        "create_time": format_datetime(row[4]),
+                        "update_time": format_datetime(row[5]),
+                    })
+                
+                return {
+                    "items": agents,
+                    "total": total,
                 }
         finally:
             await self._release_connection(conn)
