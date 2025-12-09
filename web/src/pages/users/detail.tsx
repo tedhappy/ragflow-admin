@@ -91,7 +91,7 @@ const UserDetailPage: React.FC = () => {
     }
   };
 
-  // Dataset columns
+  // Dataset columns - optimized widths for best display
   const datasetColumns: ColumnsType<UserDataset> = [
     {
       title: t('common.name'),
@@ -103,7 +103,7 @@ const UserDetailPage: React.FC = () => {
       title: t('datasets.documents'),
       dataIndex: 'doc_num',
       key: 'doc_num',
-      width: 70,
+      width: 60,
       align: 'center',
       render: (val) => <Tag color="blue">{val || 0}</Tag>,
     },
@@ -111,7 +111,7 @@ const UserDetailPage: React.FC = () => {
       title: t('datasets.chunks'),
       dataIndex: 'chunk_num',
       key: 'chunk_num',
-      width: 70,
+      width: 60,
       align: 'center',
       render: (val) => <Tag color="green">{val || 0}</Tag>,
     },
@@ -119,7 +119,7 @@ const UserDetailPage: React.FC = () => {
       title: 'Tokens',
       dataIndex: 'token_num',
       key: 'token_num',
-      width: 80,
+      width: 70,
       align: 'right',
       render: (val) => {
         if (!val) return '-';
@@ -132,7 +132,7 @@ const UserDetailPage: React.FC = () => {
       title: t('users.detail.permission'),
       dataIndex: 'permission',
       key: 'permission',
-      width: 70,
+      width: 65,
       align: 'center',
       render: (val) => {
         const permMap: Record<string, { color: string; text: string }> = {
@@ -147,39 +147,39 @@ const UserDetailPage: React.FC = () => {
       title: t('common.updated'),
       dataIndex: 'update_time',
       key: 'update_time',
-      width: 110,
-      render: (val) => val ? dayjs(val).format('MM-DD HH:mm') : '-',
+      width: 130,
+      render: (val) => val ? dayjs(val).format('YYYY-MM-DD HH:mm') : '-',
     },
   ];
 
-  // Agent columns
+  // Agent columns - optimized widths for best display
   const agentColumns: ColumnsType<UserAgent> = [
     {
       title: t('common.name'),
       dataIndex: 'title',
       key: 'title',
-      width: 200,
       ellipsis: true,
     },
     {
       title: t('users.detail.agentType'),
       dataIndex: 'canvas_type',
       key: 'canvas_type',
-      width: 90,
+      width: 80,
       align: 'center',
       render: (val) => {
         const typeMap: Record<string, { color: string; text: string }> = {
-          'chatbot': { color: 'blue', text: 'Chatbot' },
-          'agent': { color: 'purple', text: 'Agent' },
+          'agent_canvas': { color: 'purple', text: t('users.detail.typeAgent') },
+          'dataflow_canvas': { color: 'blue', text: t('users.detail.typeFlow') },
         };
         const info = typeMap[val] || { color: 'default', text: val || '-' };
-        return <Tag color={info.color}>{info.text}</Tag>;
+        return val ? <Tag color={info.color}>{info.text}</Tag> : '-';
       },
     },
     {
       title: t('common.description'),
       dataIndex: 'description',
       key: 'description',
+      width: 200,
       ellipsis: true,
       render: (val) => val || '-',
     },
@@ -187,8 +187,8 @@ const UserDetailPage: React.FC = () => {
       title: t('common.updated'),
       dataIndex: 'update_time',
       key: 'update_time',
-      width: 110,
-      render: (val) => val ? dayjs(val).format('MM-DD HH:mm') : '-',
+      width: 130,
+      render: (val) => val ? dayjs(val).format('YYYY-MM-DD HH:mm') : '-',
     },
   ];
 

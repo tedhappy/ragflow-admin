@@ -224,6 +224,8 @@ export default {
         permissionPrivate: 'Private',
         permissionTeam: 'Team',
         agentType: 'Type',
+        typeAgent: 'Agent',
+        typeFlow: 'Flow',
       },
     },
     settings: {

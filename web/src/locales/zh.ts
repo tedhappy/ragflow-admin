@@ -224,6 +224,8 @@ export default {
         permissionPrivate: '私有',
         permissionTeam: '团队',
         agentType: '类型',
+        typeAgent: '智能体',
+        typeFlow: '工作流',
       },
     },
     settings: {

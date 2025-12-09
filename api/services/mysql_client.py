@@ -264,35 +264,22 @@ class MySQLClient:
             await self._release_connection(conn)
 
     async def get_user_agents(self, user_id: str, page: int = 1, page_size: int = 20) -> Dict[str, Any]:
-        """Get agents owned by a user. Tries 'canvas' table first, falls back gracefully if not exists."""
+        """Get agents (user_canvas) owned by a user."""
         conn = await self._get_connection()
         try:
             async with conn.cursor() as cursor:
-                # Check if canvas table exists
+                # Get total count from user_canvas table
                 await cursor.execute("""
-                    SELECT COUNT(*) FROM information_schema.tables 
-                    WHERE table_schema = DATABASE() AND table_name = 'canvas'
-                """)
-                table_exists = (await cursor.fetchone())[0] > 0
-                
-                if not table_exists:
-                    # Canvas table doesn't exist in this RAGFlow version
-                    return {
-                        "items": [],
-                        "total": 0,
-                    }
-                
-                # Get total count
-                await cursor.execute("""
-                    SELECT COUNT(*) FROM canvas WHERE user_id = %s
+                    SELECT COUNT(*) FROM user_canvas WHERE user_id = %s
                 """, (user_id,))
                 total = (await cursor.fetchone())[0]
                 
                 # Get agents with pagination
+                # Note: canvas_category contains the actual type (agent_canvas, dataflow_canvas)
                 offset = (page - 1) * page_size
                 await cursor.execute("""
-                    SELECT id, title, description, canvas_type, create_time, update_time
-                    FROM canvas 
+                    SELECT id, title, description, canvas_category, create_time, update_time
+                    FROM user_canvas 
                     WHERE user_id = %s
                     ORDER BY create_time DESC
                     LIMIT %s OFFSET %s
@@ -305,7 +292,7 @@ class MySQLClient:
                         "id": row[0],
                         "title": row[1],
                         "description": row[2],
-                        "canvas_type": row[3],
+                        "canvas_type": row[3],  # canvas_category value
                         "create_time": format_datetime(row[4]),
                         "update_time": format_datetime(row[5]),
                     })
