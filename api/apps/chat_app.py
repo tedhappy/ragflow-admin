@@ -6,17 +6,28 @@
 
 import logging
 from quart import Blueprint, jsonify, request
-from api.services.ragflow_client import ragflow_client, RAGFlowAPIError
+from api.services.mysql_client import mysql_client, MySQLClientError
 
 logger = logging.getLogger(__name__)
 
 manager = Blueprint("chat", __name__)
 
 
+def _check_mysql_config():
+    """Check if MySQL is configured."""
+    from api.settings import settings
+    return all([
+        settings.mysql_host,
+        settings.mysql_port,
+        settings.mysql_database,
+        settings.mysql_user,
+    ])
+
+
 @manager.route("", methods=["GET"])
 async def list_chats():
     """
-    List all chat assistants
+    List all chat assistants from all users (MySQL)
     ---
     tags:
       - Chat
@@ -37,17 +48,21 @@ async def list_chats():
       200:
         description: Chat assistant list
     """
+    if not _check_mysql_config():
+        return jsonify({"code": -1, "message": "MySQL not configured"}), 500
+    
     page = request.args.get("page", 1, type=int)
     page_size = request.args.get("page_size", 20, type=int)
     name = request.args.get("name", None)
     
     try:
-        kwargs = {}
-        if name:
-            kwargs["name"] = name
-        result = await ragflow_client.list_chats(page=page, page_size=page_size, **kwargs)
+        result = await mysql_client.list_all_chats(
+            page=page, 
+            page_size=page_size, 
+            name=name
+        )
         return jsonify({"code": 0, "data": result})
-    except RAGFlowAPIError as e:
+    except MySQLClientError as e:
         logger.error(f"Failed to list chats: {e.message}")
         return jsonify({"code": e.code, "message": e.message}), 500
     except Exception as e:
@@ -58,7 +73,7 @@ async def list_chats():
 @manager.route("/batch-delete", methods=["POST"])
 async def batch_delete_chats():
     """
-    Delete chat assistants in batch
+    Delete chat assistants in batch (MySQL)
     ---
     tags:
       - Chat
@@ -77,6 +92,9 @@ async def batch_delete_chats():
       200:
         description: Chats deleted successfully
     """
+    if not _check_mysql_config():
+        return jsonify({"code": -1, "message": "MySQL not configured"}), 500
+    
     data = await request.get_json()
     ids = data.get("ids", [])
     
@@ -84,9 +102,9 @@ async def batch_delete_chats():
         return jsonify({"code": -1, "message": "ids is required"}), 400
     
     try:
-        await ragflow_client.delete_chats(ids=ids)
-        return jsonify({"code": 0, "message": "success"})
-    except RAGFlowAPIError as e:
+        deleted = await mysql_client.delete_chats(ids)
+        return jsonify({"code": 0, "message": "success", "deleted": deleted})
+    except MySQLClientError as e:
         logger.error(f"Failed to delete chats: {e.message}")
         return jsonify({"code": e.code, "message": e.message}), 500
     except Exception as e:
@@ -97,7 +115,7 @@ async def batch_delete_chats():
 @manager.route("/<chat_id>/sessions", methods=["GET"])
 async def list_chat_sessions(chat_id: str):
     """
-    List sessions for a chat assistant
+    List sessions for a chat assistant (MySQL)
     ---
     tags:
       - Chat
@@ -118,58 +136,18 @@ async def list_chat_sessions(chat_id: str):
       200:
         description: Session list
     """
+    if not _check_mysql_config():
+        return jsonify({"code": -1, "message": "MySQL not configured"}), 500
+    
     page = request.args.get("page", 1, type=int)
     page_size = request.args.get("page_size", 30, type=int)
     
     try:
-        result = await ragflow_client.list_chat_sessions(chat_id, page=page, page_size=page_size)
+        result = await mysql_client.get_chat_sessions(chat_id, page=page, page_size=page_size)
         return jsonify({"code": 0, "data": result})
-    except RAGFlowAPIError as e:
+    except MySQLClientError as e:
         logger.error(f"Failed to list chat sessions: {e.message}")
         return jsonify({"code": e.code, "message": e.message}), 500
     except Exception as e:
         logger.exception("Unexpected error listing chat sessions")
-        return jsonify({"code": -1, "message": str(e)}), 500
-
-
-@manager.route("/<chat_id>/sessions", methods=["DELETE"])
-async def delete_chat_sessions(chat_id: str):
-    """
-    Delete sessions for a chat assistant
-    ---
-    tags:
-      - Chat
-    parameters:
-      - name: chat_id
-        in: path
-        type: string
-        required: true
-      - name: body
-        in: body
-        required: true
-        schema:
-          type: object
-          properties:
-            ids:
-              type: array
-              items:
-                type: string
-    responses:
-      200:
-        description: Sessions deleted successfully
-    """
-    data = await request.get_json()
-    session_ids = data.get("ids", [])
-    
-    if not session_ids:
-        return jsonify({"code": -1, "message": "ids is required"}), 400
-    
-    try:
-        await ragflow_client.delete_chat_sessions(chat_id, session_ids=session_ids)
-        return jsonify({"code": 0, "message": "success"})
-    except RAGFlowAPIError as e:
-        logger.error(f"Failed to delete chat sessions: {e.message}")
-        return jsonify({"code": e.code, "message": e.message}), 500
-    except Exception as e:
-        logger.exception("Unexpected error deleting chat sessions")
         return jsonify({"code": -1, "message": str(e)}), 500

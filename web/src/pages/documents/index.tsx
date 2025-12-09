@@ -5,14 +5,14 @@
 //
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Table, Button, Space, Card, message, Input, Typography, Spin, Tag, Progress, Select, Upload, Modal } from 'antd';
+import { Table, Button, Space, Card, message, Input, Typography, Spin, Tag, Progress, Select, Upload, Modal, Alert } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { UploadFile, UploadProps } from 'antd/es/upload';
-import { ReloadOutlined, SearchOutlined, ArrowLeftOutlined, UploadOutlined, PlayCircleOutlined, PauseCircleOutlined, InboxOutlined } from '@ant-design/icons';
+import { ReloadOutlined, SearchOutlined, ArrowLeftOutlined, UploadOutlined, PlayCircleOutlined, PauseCircleOutlined, InboxOutlined, SettingOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'umi';
+import { Link, useNavigate } from 'umi';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { documentApi, Document } from '@/services/api';
+import { documentApi, Document, systemApi } from '@/services/api';
 import { useTableList } from '@/hooks/useTableList';
 import { useConnectionCheck } from '@/hooks/useConnectionCheck';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -49,12 +49,16 @@ const { Dragger } = Upload;
 
 const Documents: React.FC = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { datasetId } = useParams<{ datasetId: string }>();
   const [searchParams] = useSearchParams();
   const datasetName = searchParams.get('name') || datasetId;
   const { checking, connected } = useConnectionCheck();
   const [searchKeywords, setSearchKeywords] = useState('');
   const [filterStatus, setFilterStatus] = useState<string | undefined>(undefined);
+  
+  // RAGFlow API config state
+  const [ragflowConfigured, setRagflowConfigured] = useState<boolean | null>(null);
   
   // Upload modal state
   const [uploadModalVisible, setUploadModalVisible] = useState(false);
@@ -66,6 +70,19 @@ const Documents: React.FC = () => {
   
   // Auto-refresh interval ref
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Check RAGFlow API configuration
+  useEffect(() => {
+    const checkRagflowConfig = async () => {
+      try {
+        const config = await systemApi.getRagflowConfig();
+        setRagflowConfigured(config.is_configured);
+      } catch {
+        setRagflowConfigured(false);
+      }
+    };
+    checkRagflowConfig();
+  }, []);
 
   // Status options for filter
   const statusOptions = [
@@ -357,6 +374,21 @@ const Documents: React.FC = () => {
             </Link>
             <Title level={4} style={{ margin: 0 }}>{datasetName}</Title>
           </div>
+          
+          {ragflowConfigured === false && (
+            <Alert
+              message={t('documents.ragflowNotConfigured')}
+              description={t('documents.ragflowNotConfiguredDesc')}
+              type="warning"
+              showIcon
+              style={{ marginBottom: 16 }}
+              action={
+                <Button size="small" icon={<SettingOutlined />} onClick={() => navigate('/settings')}>
+                  {t('documents.configureRagflow')}
+                </Button>
+              }
+            />
+          )}
           
           <Card>
             <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>

@@ -4,14 +4,15 @@
 // Licensed under the Apache License, Version 2.0
 //
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, Button, Space, Card, message, Input, Typography, Spin, Tag, Badge, Modal, Form, Alert, Avatar, Select } from 'antd';
+import { Table, Button, Space, Card, message, Input, Typography, Spin, Tag, Badge, Modal, Form, Avatar, Select } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { ReloadOutlined, SearchOutlined, UserOutlined, PlusOutlined, KeyOutlined, SettingOutlined } from '@ant-design/icons';
+import { ReloadOutlined, SearchOutlined, UserOutlined, PlusOutlined, KeyOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import { userApi, RagflowUser, MySQLConfig } from '@/services/api';
+import { userApi, RagflowUser } from '@/services/api';
 import { useTableList } from '@/hooks/useTableList';
+import { useConnectionCheck } from '@/hooks/useConnectionCheck';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import ConfirmDelete from '@/components/ConfirmDelete';
 import { translateErrorMessage } from '@/utils/i18n';
@@ -22,53 +23,20 @@ const { Title } = Typography;
 const Users: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { checking, connected } = useConnectionCheck();
   const [searchEmail, setSearchEmail] = useState('');
   const [searchNickname, setSearchNickname] = useState('');
   const [searchStatus, setSearchStatus] = useState<string | undefined>(undefined);
-  const [mysqlConfig, setMysqlConfig] = useState<MySQLConfig | null>(null);
-  const [configLoading, setConfigLoading] = useState(true);
   
   // Modal states
-  const [configModalVisible, setConfigModalVisible] = useState(false);
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [selectedUserEmail, setSelectedUserEmail] = useState<string>('');
   
   // Form instances
-  const [configForm] = Form.useForm();
   const [createForm] = Form.useForm();
   const [passwordForm] = Form.useForm();
-  
-  // Test connection state
-  const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
-
-  // Load MySQL config
-  useEffect(() => {
-    loadConfig();
-  }, []);
-
-  const loadConfig = async () => {
-    try {
-      setConfigLoading(true);
-      const config = await userApi.getConfig();
-      setMysqlConfig(config);
-      if (config.configured) {
-        configForm.setFieldsValue({
-          host: config.host,
-          port: config.port,
-          database: config.database,
-          user: config.user,
-          password: '',
-        });
-      }
-    } catch (error) {
-      console.error('Failed to load MySQL config:', error);
-    } finally {
-      setConfigLoading(false);
-    }
-  };
 
   const {
     data,
@@ -85,7 +53,7 @@ const Users: React.FC = () => {
   } = useTableList<RagflowUser>({
     fetchFn: (params) => userApi.list(params),
     defaultPageSize: 10,
-    enabled: mysqlConfig?.configured || false,
+    enabled: connected,
   });
 
   const onSearch = () => {
@@ -120,55 +88,6 @@ const Users: React.FC = () => {
       refresh();
     } catch (error: any) {
       message.error(translateErrorMessage(error.message, t) || t('users.statusUpdateFailed'));
-    }
-  };
-
-  const handleTestConnection = async () => {
-    try {
-      const values = await configForm.validateFields();
-      setTesting(true);
-      setTestResult(null);
-      
-      const result = await userApi.testConnection(values);
-      
-      if (result.connected) {
-        setTestResult({
-          success: true,
-          message: `${t('users.connectionSuccess')} (MySQL ${result.version})`,
-        });
-      } else {
-        setTestResult({
-          success: false,
-          message: result.error || t('users.connectionFailed'),
-        });
-      }
-    } catch (error: any) {
-      setTestResult({
-        success: false,
-        message: error.message || t('users.connectionFailed'),
-      });
-    } finally {
-      setTesting(false);
-    }
-  };
-
-  const handleSaveConfig = async () => {
-    // Must test connection first
-    if (!testResult?.success) {
-      message.warning(t('users.testConnectionFirst'));
-      return;
-    }
-    
-    try {
-      const values = await configForm.validateFields();
-      await userApi.saveConfig(values);
-      message.success(t('users.configSaved'));
-      setConfigModalVisible(false);
-      setTestResult(null);  // Reset test result
-      loadConfig();
-      refresh();
-    } catch (error: any) {
-      message.error(translateErrorMessage(error.message, t) || t('users.configSaveFailed'));
     }
   };
 
@@ -283,79 +202,7 @@ const Users: React.FC = () => {
     },
   ];
 
-  const isLoading = configLoading || initialLoading;
-
-  // If MySQL not configured, show configuration prompt
-  if (!configLoading && !mysqlConfig?.configured) {
-    return (
-      <ErrorBoundary>
-        <div style={{ marginBottom: 16 }}>
-          <Title level={4} style={{ margin: 0 }}>{t('users.title')}</Title>
-        </div>
-        <Card>
-          <Alert
-            message={t('users.mysqlNotConfigured')}
-            description={t('users.mysqlNotConfiguredDesc')}
-            type="warning"
-            showIcon
-            action={
-              <Button type="primary" onClick={() => setConfigModalVisible(true)} style={{ marginTop: 4 }}>
-                {t('users.configureMySQL')}
-              </Button>
-            }
-            style={{ alignItems: 'center' }}
-          />
-        </Card>
-        
-        {/* Config Modal */}
-        <Modal
-          title={t('users.mysqlConfig')}
-          open={configModalVisible}
-          onOk={handleSaveConfig}
-          onCancel={() => {
-            setConfigModalVisible(false);
-            setTestResult(null);
-          }}
-          okText={t('common.save')}
-          okButtonProps={{ disabled: !testResult?.success }}
-          width={500}
-        >
-          <Form 
-            form={configForm} 
-            layout="vertical"
-            initialValues={{ host: 'localhost', port: 5455, database: 'rag_flow', user: 'root' }}
-          >
-            <Form.Item name="host" label={t('users.mysqlHost')} rules={[{ required: true }]}>
-              <Input placeholder="localhost" />
-            </Form.Item>
-            <Form.Item name="port" label={t('users.mysqlPort')} rules={[{ required: true }]}>
-              <Input type="number" placeholder="5455" />
-            </Form.Item>
-            <Form.Item name="database" label={t('users.mysqlDatabase')} rules={[{ required: true }]}>
-              <Input placeholder="rag_flow" />
-            </Form.Item>
-            <Form.Item name="user" label={t('users.mysqlUser')} rules={[{ required: true }]}>
-              <Input placeholder="root" />
-            </Form.Item>
-            <Form.Item name="password" label={t('users.mysqlPassword')}>
-              <Input.Password placeholder="infini_rag_flow" />
-            </Form.Item>
-            
-            <Space>
-              <Button onClick={handleTestConnection} loading={testing}>
-                {t('users.testConnection')}
-              </Button>
-              {testResult && (
-                <Tag color={testResult.success ? 'success' : 'error'}>
-                  {testResult.message}
-                </Tag>
-              )}
-            </Space>
-          </Form>
-        </Modal>
-      </ErrorBoundary>
-    );
-  }
+  const isLoading = checking || initialLoading;
 
   return (
     <ErrorBoundary>
@@ -408,9 +255,6 @@ const Users: React.FC = () => {
                 <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalVisible(true)}>
                   {t('users.createUser')}
                 </Button>
-                <Button icon={<SettingOutlined />} onClick={() => setConfigModalVisible(true)}>
-                  {t('users.mysqlConfig')}
-                </Button>
                 <Button icon={<ReloadOutlined />} onClick={refresh}>{t('common.refresh')}</Button>
                 <ConfirmDelete
                   onConfirm={() => handleDelete(selectedRowKeys as string[])}
@@ -455,53 +299,6 @@ const Users: React.FC = () => {
           </Card>
         </div>
       </Spin>
-
-      {/* Config Modal */}
-      <Modal
-        title={t('users.mysqlConfig')}
-        open={configModalVisible}
-        onOk={handleSaveConfig}
-        onCancel={() => {
-          setConfigModalVisible(false);
-          setTestResult(null);
-        }}
-        okText={t('common.save')}
-        okButtonProps={{ disabled: !testResult?.success }}
-        width={500}
-      >
-        <Form 
-          form={configForm} 
-          layout="vertical" 
-          initialValues={{ host: 'localhost', port: 5455, database: 'rag_flow', user: 'root' }}
-        >
-          <Form.Item name="host" label={t('users.mysqlHost')} rules={[{ required: true }]}>
-            <Input placeholder="localhost" />
-          </Form.Item>
-          <Form.Item name="port" label={t('users.mysqlPort')} rules={[{ required: true }]}>
-            <Input type="number" placeholder="5455" />
-          </Form.Item>
-          <Form.Item name="database" label={t('users.mysqlDatabase')} rules={[{ required: true }]}>
-            <Input placeholder="rag_flow" />
-          </Form.Item>
-          <Form.Item name="user" label={t('users.mysqlUser')} rules={[{ required: true }]}>
-            <Input placeholder="root" />
-          </Form.Item>
-          <Form.Item name="password" label={t('users.mysqlPassword')}>
-            <Input.Password placeholder="infini_rag_flow" />
-          </Form.Item>
-          
-          <Space>
-            <Button onClick={handleTestConnection} loading={testing}>
-              {t('users.testConnection')}
-            </Button>
-            {testResult && (
-              <Tag color={testResult.success ? 'success' : 'error'}>
-                {testResult.message}
-              </Tag>
-            )}
-          </Space>
-        </Form>
-      </Modal>
 
       {/* Create User Modal */}
       <Modal

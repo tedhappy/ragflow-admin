@@ -63,13 +63,12 @@ const Agents: React.FC = () => {
       key: 'title',
       width: '20%',
       ellipsis: true,
-      render: (val, record) => (
+      render: (val) => (
         <Space>
           <Avatar 
-            src={record.avatar} 
-            icon={!record.avatar && <RobotOutlined />}
+            icon={<RobotOutlined />}
             size="small"
-            style={{ backgroundColor: !record.avatar ? '#722ed1' : undefined }}
+            style={{ backgroundColor: '#722ed1' }}
           />
           <span>{val}</span>
         </Space>
@@ -79,29 +78,31 @@ const Agents: React.FC = () => {
       title: t('common.description'), 
       dataIndex: 'description', 
       key: 'description',
-      width: '30%',
+      width: '25%',
       ellipsis: true,
       render: (val) => val || '-',
     },
     {
-      title: t('agents.components'),
-      key: 'components',
+      title: t('agents.type'),
+      dataIndex: 'canvas_type',
+      key: 'canvas_type',
       width: 100,
       align: 'center',
-      render: (_, record) => {
-        const count = record.dsl?.components ? Object.keys(record.dsl.components).length : 0;
-        return <Tag color="purple">{count}</Tag>;
+      render: (val) => {
+        const typeMap: Record<string, { color: string; text: string }> = {
+          'agent_canvas': { color: 'purple', text: t('users.detail.typeAgent') },
+          'dataflow_canvas': { color: 'blue', text: t('users.detail.typeFlow') },
+        };
+        const info = typeMap[val] || { color: 'default', text: val || '-' };
+        return val ? <Tag color={info.color}>{info.text}</Tag> : '-';
       },
     },
     {
-      title: t('agents.nodes'),
-      key: 'nodes',
-      width: 100,
-      align: 'center',
-      render: (_, record) => {
-        const count = record.dsl?.graph?.nodes?.length || 0;
-        return <Tag color="blue">{count}</Tag>;
-      },
+      title: t('agents.owner'),
+      key: 'owner',
+      width: 180,
+      ellipsis: true,
+      render: (_, record) => record.owner_email || record.owner_nickname || '-',
     },
     { 
       title: t('common.created'), 

@@ -42,8 +42,27 @@ class Settings:
         self._config = None
         self._load_config()
 
+    # RAGFlow API settings (used for document upload/parse operations)
+    @property
+    def ragflow_base_url(self) -> str:
+        """Get RAGFlow base URL for document operations."""
+        env_url = os.getenv("RAGFLOW_BASE_URL")
+        if env_url:
+            return env_url
+        ragflow_config = self._config.get("ragflow", {})
+        return ragflow_config.get("base_url", "") or ""
+
+    @property
+    def ragflow_api_key(self) -> str:
+        """Get RAGFlow API key for document operations."""
+        env_key = os.getenv("RAGFLOW_API_KEY")
+        if env_key:
+            return env_key
+        ragflow_config = self._config.get("ragflow", {})
+        return ragflow_config.get("api_key", "") or ""
+
     def update_ragflow_config(self, base_url: str, api_key: str) -> bool:
-        """Update RAGFlow configuration and save to config.yaml."""
+        """Update RAGFlow API configuration and save to config.yaml."""
         try:
             # Ensure ragflow section exists
             if "ragflow" not in self._config:
@@ -53,55 +72,62 @@ class Settings:
             self._config["ragflow"]["base_url"] = base_url
             self._config["ragflow"]["api_key"] = api_key
             
-            # Read original file to preserve comments
-            original_lines = []
+            # Read original file
+            original_content = ""
             if self._config_path.exists():
                 with open(self._config_path, "r", encoding="utf-8") as f:
-                    original_lines = f.readlines()
+                    original_content = f.read()
             
-            # Update specific lines while preserving structure
-            new_lines = []
-            for line in original_lines:
-                if line.strip().startswith("base_url:"):
-                    indent = len(line) - len(line.lstrip())
-                    new_lines.append(f"{' ' * indent}base_url: \"{base_url}\"\n")
-                elif line.strip().startswith("api_key:") and "ragflow" in "".join(new_lines[-5:]):
-                    indent = len(line) - len(line.lstrip())
-                    new_lines.append(f"{' ' * indent}api_key: \"{api_key}\"\n")
-                else:
-                    new_lines.append(line)
-            
-            # Save to config file
-            with open(self._config_path, "w", encoding="utf-8") as f:
-                f.writelines(new_lines)
+            # Check if ragflow section exists
+            if "ragflow:" not in original_content:
+                # Find position after comments and add ragflow section
+                lines = original_content.split("\n")
+                insert_idx = 0
+                for i, line in enumerate(lines):
+                    if line.strip() and not line.strip().startswith("#"):
+                        insert_idx = i
+                        break
+                ragflow_section = f"""# RAGFlow API settings (for document upload/parse)
+ragflow:
+  base_url: "{base_url}"
+  api_key: "{api_key}"
+
+"""
+                lines.insert(insert_idx, ragflow_section)
+                with open(self._config_path, "w", encoding="utf-8") as f:
+                    f.write("\n".join(lines))
+            else:
+                # Update existing ragflow section
+                lines = original_content.split("\n")
+                new_lines = []
+                in_ragflow_section = False
+                
+                for line in lines:
+                    if line.strip() == "ragflow:":
+                        in_ragflow_section = True
+                        new_lines.append(line)
+                    elif in_ragflow_section and line.strip() and not line.startswith(" ") and not line.startswith("\t"):
+                        in_ragflow_section = False
+                        new_lines.append(line)
+                    elif in_ragflow_section:
+                        if line.strip().startswith("base_url:"):
+                            indent = len(line) - len(line.lstrip())
+                            new_lines.append(f"{' ' * indent}base_url: \"{base_url}\"")
+                        elif line.strip().startswith("api_key:"):
+                            indent = len(line) - len(line.lstrip())
+                            new_lines.append(f"{' ' * indent}api_key: \"{api_key}\"")
+                        else:
+                            new_lines.append(line)
+                    else:
+                        new_lines.append(line)
+                
+                with open(self._config_path, "w", encoding="utf-8") as f:
+                    f.write("\n".join(new_lines))
             
             return True
         except Exception as e:
-            print(f"Failed to save config: {e}")
+            print(f"Failed to save RAGFlow config: {e}")
             return False
-
-    @property
-    def ragflow_base_url(self) -> str:
-        """Get RAGFlow base URL. Returns empty string if not configured."""
-        env_url = os.getenv("RAGFLOW_BASE_URL")
-        if env_url:
-            return env_url
-        ragflow_config = self._config.get("ragflow", {})
-        return ragflow_config.get("base_url", "") or ""
-
-    @property
-    def ragflow_api_key(self) -> str:
-        """Get RAGFlow API key. Returns empty string if not configured."""
-        env_key = os.getenv("RAGFLOW_API_KEY")
-        if env_key:
-            return env_key
-        ragflow_config = self._config.get("ragflow", {})
-        return ragflow_config.get("api_key", "") or ""
-
-    @property
-    def is_ragflow_configured(self) -> bool:
-        """Check if RAGFlow connection is configured."""
-        return bool(self.ragflow_base_url and self.ragflow_api_key)
 
     @property
     def server_host(self) -> str:

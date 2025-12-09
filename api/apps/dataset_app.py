@@ -6,17 +6,28 @@
 
 import logging
 from quart import Blueprint, jsonify, request
-from api.services.ragflow_client import ragflow_client, RAGFlowAPIError
+from api.services.mysql_client import mysql_client, MySQLClientError
 
 logger = logging.getLogger(__name__)
 
 manager = Blueprint("dataset", __name__)
 
 
+def _check_mysql_config():
+    """Check if MySQL is configured."""
+    from api.settings import settings
+    return all([
+        settings.mysql_host,
+        settings.mysql_port,
+        settings.mysql_database,
+        settings.mysql_user,
+    ])
+
+
 @manager.route("", methods=["GET"])
 async def list_datasets():
     """
-    List all datasets
+    List all datasets from all users (MySQL)
     ---
     tags:
       - Dataset
@@ -37,17 +48,21 @@ async def list_datasets():
       200:
         description: Dataset list
     """
+    if not _check_mysql_config():
+        return jsonify({"code": -1, "message": "MySQL not configured"}), 500
+    
     page = request.args.get("page", 1, type=int)
     page_size = request.args.get("page_size", 20, type=int)
     name = request.args.get("name", None)
     
     try:
-        kwargs = {}
-        if name:
-            kwargs["name"] = name
-        result = await ragflow_client.list_datasets(page=page, page_size=page_size, **kwargs)
+        result = await mysql_client.list_all_datasets(
+            page=page, 
+            page_size=page_size, 
+            name=name
+        )
         return jsonify({"code": 0, "data": result})
-    except RAGFlowAPIError as e:
+    except MySQLClientError as e:
         logger.error(f"Failed to list datasets: {e.message}")
         return jsonify({"code": e.code, "message": e.message}), 500
     except Exception as e:
@@ -55,50 +70,10 @@ async def list_datasets():
         return jsonify({"code": -1, "message": str(e)}), 500
 
 
-@manager.route("", methods=["POST"])
-async def create_dataset():
-    """
-    Create a new dataset
-    ---
-    tags:
-      - Dataset
-    parameters:
-      - name: body
-        in: body
-        required: true
-        schema:
-          type: object
-          properties:
-            name:
-              type: string
-            description:
-              type: string
-    responses:
-      200:
-        description: Dataset created successfully
-    """
-    data = await request.get_json()
-    name = data.get("name")
-    description = data.get("description", "")
-    
-    if not name:
-        return jsonify({"code": -1, "message": "name is required"}), 400
-    
-    try:
-        dataset = await ragflow_client.create_dataset(name=name, description=description)
-        return jsonify({"code": 0, "data": dataset})
-    except RAGFlowAPIError as e:
-        logger.error(f"Failed to create dataset: {e.message}")
-        return jsonify({"code": e.code, "message": e.message}), 500
-    except Exception as e:
-        logger.exception("Unexpected error creating dataset")
-        return jsonify({"code": -1, "message": str(e)}), 500
-
-
 @manager.route("/batch-delete", methods=["POST"])
 async def batch_delete_datasets():
     """
-    Delete datasets in batch
+    Delete datasets in batch (MySQL)
     ---
     tags:
       - Dataset
@@ -117,6 +92,9 @@ async def batch_delete_datasets():
       200:
         description: Datasets deleted successfully
     """
+    if not _check_mysql_config():
+        return jsonify({"code": -1, "message": "MySQL not configured"}), 500
+    
     data = await request.get_json()
     ids = data.get("ids", [])
     
@@ -124,9 +102,9 @@ async def batch_delete_datasets():
         return jsonify({"code": -1, "message": "ids is required"}), 400
     
     try:
-        await ragflow_client.delete_datasets(ids=ids)
-        return jsonify({"code": 0, "message": "success"})
-    except RAGFlowAPIError as e:
+        deleted = await mysql_client.delete_datasets(ids)
+        return jsonify({"code": 0, "message": "success", "deleted": deleted})
+    except MySQLClientError as e:
         logger.error(f"Failed to delete datasets: {e.message}")
         return jsonify({"code": e.code, "message": e.message}), 500
     except Exception as e:

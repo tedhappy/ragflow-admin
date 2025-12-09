@@ -6,17 +6,28 @@
 
 import logging
 from quart import Blueprint, jsonify, request
-from api.services.ragflow_client import ragflow_client, RAGFlowAPIError
+from api.services.mysql_client import mysql_client, MySQLClientError
 
 logger = logging.getLogger(__name__)
 
 manager = Blueprint("agent", __name__)
 
 
+def _check_mysql_config():
+    """Check if MySQL is configured."""
+    from api.settings import settings
+    return all([
+        settings.mysql_host,
+        settings.mysql_port,
+        settings.mysql_database,
+        settings.mysql_user,
+    ])
+
+
 @manager.route("", methods=["GET"])
 async def list_agents():
     """
-    List all agents
+    List all agents from all users (MySQL)
     ---
     tags:
       - Agent
@@ -37,17 +48,21 @@ async def list_agents():
       200:
         description: Agent list
     """
+    if not _check_mysql_config():
+        return jsonify({"code": -1, "message": "MySQL not configured"}), 500
+    
     page = request.args.get("page", 1, type=int)
     page_size = request.args.get("page_size", 20, type=int)
     title = request.args.get("title", None)
     
     try:
-        kwargs = {}
-        if title:
-            kwargs["title"] = title
-        result = await ragflow_client.list_agents(page=page, page_size=page_size, **kwargs)
+        result = await mysql_client.list_all_agents(
+            page=page, 
+            page_size=page_size, 
+            title=title
+        )
         return jsonify({"code": 0, "data": result})
-    except RAGFlowAPIError as e:
+    except MySQLClientError as e:
         logger.error(f"Failed to list agents: {e.message}")
         return jsonify({"code": e.code, "message": e.message}), 500
     except Exception as e:
@@ -58,7 +73,7 @@ async def list_agents():
 @manager.route("/batch-delete", methods=["POST"])
 async def batch_delete_agents():
     """
-    Delete agents in batch
+    Delete agents in batch (MySQL)
     ---
     tags:
       - Agent
@@ -77,6 +92,9 @@ async def batch_delete_agents():
       200:
         description: Agents deleted successfully
     """
+    if not _check_mysql_config():
+        return jsonify({"code": -1, "message": "MySQL not configured"}), 500
+    
     data = await request.get_json()
     ids = data.get("ids", [])
     
@@ -84,9 +102,9 @@ async def batch_delete_agents():
         return jsonify({"code": -1, "message": "ids is required"}), 400
     
     try:
-        await ragflow_client.delete_agents(ids=ids)
-        return jsonify({"code": 0, "message": "success"})
-    except RAGFlowAPIError as e:
+        deleted = await mysql_client.delete_agents(ids)
+        return jsonify({"code": 0, "message": "success", "deleted": deleted})
+    except MySQLClientError as e:
         logger.error(f"Failed to delete agents: {e.message}")
         return jsonify({"code": e.code, "message": e.message}), 500
     except Exception as e:

@@ -13,7 +13,7 @@ interface ConnectionCheckResult {
 }
 
 /**
- * Hook to check RAGFlow connection status.
+ * Hook to check MySQL connection status.
  * Redirects to Settings page if not connected.
  */
 export function useConnectionCheck(): ConnectionCheckResult {
@@ -33,7 +33,7 @@ export function useConnectionCheck(): ConnectionCheckResult {
         setChecking(true);
         const status = await systemApi.getStatus();
         
-        if (status.ragflow_status === 'connected') {
+        if (status.mysql_status === 'connected') {
           setConnected(true);
           setChecking(false);
         } else {

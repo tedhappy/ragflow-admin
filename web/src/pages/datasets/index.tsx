@@ -1,5 +1,5 @@
 ﻿import React, { useState } from 'react';
-import { Table, Button, Space, Card, message, Input, Typography, Spin, Select } from 'antd';
+import { Table, Button, Space, Card, message, Input, Typography, Spin, Select, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
@@ -62,12 +62,12 @@ const Datasets: React.FC = () => {
     setFilterChunkMethod(chunkMethod);
   };
 
-  // Sort by create_time descending, then filter by chunk_method
+  // Sort by create_time descending, then filter by parser_id
   const sortedData = [...data].sort((a, b) => 
     new Date(b.create_time || 0).getTime() - new Date(a.create_time || 0).getTime()
   );
   const filteredData = filterChunkMethod 
-    ? sortedData.filter(item => item.chunk_method === filterChunkMethod)
+    ? sortedData.filter(item => item.parser_id === filterChunkMethod)
     : sortedData;
 
   const handleDelete = async (ids: string[]) => {
@@ -86,37 +86,33 @@ const Datasets: React.FC = () => {
       title: t('common.name'), 
       dataIndex: 'name', 
       key: 'name',
-      width: '25%',
-      ellipsis: true,
-    },
-    { 
-      title: t('datasets.chunkMethod'), 
-      dataIndex: 'chunk_method', 
-      key: 'chunk_method',
-      width: 100,
-      align: 'center',
-      render: (val) => {
-        const method = val || 'naive';
-        return t(`datasets.chunkMethods.${method}`) as string || method;
-      },
-    },
-    { 
-      title: t('datasets.embeddingModel'), 
-      dataIndex: 'embedding_model', 
-      key: 'embedding_model',
       width: '20%',
       ellipsis: true,
-      render: (val) => val?.split('@')[0] || '-',
     },
     { 
       title: t('datasets.documents'), 
-      dataIndex: 'document_count', 
-      key: 'document_count',
-      width: 80,
+      dataIndex: 'doc_num', 
+      key: 'doc_num',
+      width: 70,
       align: 'center',
-      sorter: (a, b) => (a.document_count || 0) - (b.document_count || 0),
+      sorter: (a, b) => (a.doc_num || 0) - (b.doc_num || 0),
       showSorterTooltip: false,
-      render: (val) => val || 0,
+      render: (val) => <Tag color="blue">{val || 0}</Tag>,
+    },
+    { 
+      title: t('datasets.chunks'), 
+      dataIndex: 'chunk_num', 
+      key: 'chunk_num',
+      width: 70,
+      align: 'center',
+      render: (val) => <Tag color="green">{val || 0}</Tag>,
+    },
+    {
+      title: t('datasets.owner'),
+      key: 'owner',
+      width: 180,
+      ellipsis: true,
+      render: (_, record) => record.owner_email || record.owner_nickname || '-',
     },
     { 
       title: t('common.created'), 

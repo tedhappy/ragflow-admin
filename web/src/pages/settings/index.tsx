@@ -1,358 +1,426 @@
-﻿import React, { useEffect, useState } from 'react';
-import { Card, Form, Input, Button, Space, Tag, message, Typography, Spin, Row, Col } from 'antd';
+﻿//
+// Copyright 2024 RAGFlow Admin Authors.
+//
+// Licensed under the Apache License, Version 2.0
+//
+
+import React, { useEffect, useState } from 'react';
+import { Form, Input, InputNumber, Button, Space, message, Typography, Spin, Tooltip, Card, Row, Col } from 'antd';
 import { 
   CheckCircleOutlined, 
   CloseCircleOutlined, 
   ExclamationCircleOutlined,
-  ApiOutlined,
   SaveOutlined,
+  DatabaseOutlined,
   LinkOutlined,
   KeyOutlined,
-  LoadingOutlined,
-  ReloadOutlined,
-  DatabaseOutlined,
+  QuestionCircleOutlined,
   CloudServerOutlined,
-  HddOutlined,
-  ThunderboltOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import { systemApi, SystemHealth } from '@/services/api';
+import { systemApi, MySQLTestResult, RagflowTestResult } from '@/services/api';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { translateErrorMessage } from '@/utils/i18n';
 
 const { Title, Text } = Typography;
 
-// Storage key for settings
-const SETTINGS_KEY = 'ragflow_admin_settings';
+interface MySQLForm {
+  host: string;
+  port: number;
+  database: string;
+  user: string;
+  password: string;
+}
 
-interface SettingsForm {
-  ragflow_url: string;
+interface RagflowForm {
+  base_url: string;
   api_key: string;
 }
 
+type ConnectionStatusType = 'connected' | 'error' | 'untested' | 'not_configured';
+
 interface ConnectionStatus {
-  status: 'connected' | 'disconnected' | 'error' | 'timeout' | 'unknown' | 'untested' | 'not_configured';
+  status: ConnectionStatusType;
   message?: string;
+  version?: string;
 }
 
 const Settings: React.FC = () => {
   const { t } = useTranslation();
-  const [form] = Form.useForm<SettingsForm>();
+  const [mysqlForm] = Form.useForm<MySQLForm>();
+  const [ragflowForm] = Form.useForm<RagflowForm>();
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [testing, setTesting] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({ status: 'untested' });
-  const [healthLoading, setHealthLoading] = useState(false);
-  const [health, setHealth] = useState<SystemHealth | null>(null);
+  
+  // MySQL state
+  const [mysqlSaving, setMysqlSaving] = useState(false);
+  const [mysqlTesting, setMysqlTesting] = useState(false);
+  const [mysqlStatus, setMysqlStatus] = useState<ConnectionStatus>({ status: 'untested' });
+  
+  // RAGFlow state
+  const [ragflowSaving, setRagflowSaving] = useState(false);
+  const [ragflowTesting, setRagflowTesting] = useState(false);
+  const [ragflowStatus, setRagflowStatus] = useState<ConnectionStatus>({ status: 'untested' });
 
-  // Check if redirected from other pages and show message
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const reason = params.get('reason');
-    
-    if (reason === 'not_connected') {
-      message.warning(t('connection.notConnected'));
-      // Clean URL
-      window.history.replaceState({}, '', '/settings');
-    } else if (reason === 'connection_failed') {
-      message.error(t('connection.failed'));
-      window.history.replaceState({}, '', '/settings');
-    }
-  }, [t]);
-
-  // Load settings from localStorage or backend on mount
+  // Load settings
   useEffect(() => {
     const loadSettings = async () => {
       try {
         setLoading(true);
+        const config = await systemApi.getConfig();
+        mysqlForm.setFieldsValue({
+          host: config.mysql_host || '',
+          port: config.mysql_port || 3306,
+          database: config.mysql_database || '',
+          user: config.mysql_user || '',
+          password: '',
+        });
         
-        // First try localStorage for form values
-        const saved = localStorage.getItem(SETTINGS_KEY);
-        if (saved) {
-          const settings = JSON.parse(saved);
-          form.setFieldsValue(settings);
-        }
-        
-        // Always check backend status to show actual connection state
-        try {
+        if (config.is_configured) {
           const status = await systemApi.getStatus();
-          
-          // If localStorage is empty, use backend URL
-          if (!saved && status.ragflow_url) {
-            form.setFieldsValue({
-              ragflow_url: status.ragflow_url,
-              api_key: '', // Don't fill API key for security
-            });
-          }
-          
-          // Show actual connection status from backend
-          const validStatuses = ['connected', 'disconnected', 'error', 'timeout', 'not_configured'] as const;
-          type ValidStatus = typeof validStatuses[number];
-          
-          if (status.ragflow_status && validStatuses.includes(status.ragflow_status as ValidStatus)) {
-            setConnectionStatus({
-              status: status.ragflow_status as ConnectionStatus['status'],
-              message: status.error_message || undefined,
-            });
-          }
-        } catch {
-          // Backend not available, keep untested status
+          setMysqlStatus({ 
+            status: status.mysql_status === 'connected' ? 'connected' : 
+                   status.mysql_status === 'not_configured' ? 'not_configured' : 'error',
+            message: status.error_message || undefined 
+          });
+        } else {
+          setMysqlStatus({ status: 'not_configured' });
         }
+        
+        const ragflowConfig = await systemApi.getRagflowConfig();
+        ragflowForm.setFieldsValue({ base_url: ragflowConfig.base_url || '', api_key: '' });
+        setRagflowStatus({ status: ragflowConfig.is_configured ? 'connected' : 'not_configured' });
+      } catch (error: any) {
+        message.error(translateErrorMessage(error.message, t) || t('common.error'));
       } finally {
         setLoading(false);
       }
     };
     loadSettings();
-  }, [form]);
+  }, [mysqlForm, ragflowForm, t]);
 
-  // Test connection with user-provided values
-  const handleTestConnection = async () => {
+  // MySQL handlers
+  const handleMysqlTest = async () => {
     try {
-      const values = await form.validateFields();
-      setTesting(true);
-
-      const result = await systemApi.testConnection({
-        ragflow_url: values.ragflow_url,
-        api_key: values.api_key,
-      });
-
-      const translatedError = translateErrorMessage(result.error_message || undefined, t);
-      
-      setConnectionStatus({
-        status: result.ragflow_status,
-        message: translatedError || undefined,
-      });
-
-      if (result.ragflow_status === 'connected') {
-        message.success(t('common.success'));
+      const values = await mysqlForm.validateFields();
+      setMysqlTesting(true);
+      const result: MySQLTestResult = await systemApi.testConnection(values);
+      if (result.connected) {
+        setMysqlStatus({ status: 'connected', version: result.version });
+        message.success(t('users.connectionSuccess'));
       } else {
-        message.error(translatedError || t('common.error'));
+        setMysqlStatus({ status: 'error', message: result.error });
+        message.error(result.error || t('users.connectionFailed'));
       }
     } catch (error: any) {
-      const translatedError = translateErrorMessage(error.message, t);
-      setConnectionStatus({
-        status: 'error',
-        message: translatedError,
-      });
-      message.error(translatedError || t('common.error'));
+      setMysqlStatus({ status: 'error', message: error.message });
+      message.error(translateErrorMessage(error.message, t) || t('common.error'));
     } finally {
-      setTesting(false);
+      setMysqlTesting(false);
     }
   };
 
-  // Save settings to backend and config.yaml
-  const handleSave = async () => {
-    // Must test connection first
-    if (connectionStatus.status !== 'connected') {
-      message.warning(t('settings.testConnectionFirst'));
+  const handleMysqlSave = async () => {
+    if (mysqlStatus.status !== 'connected') {
+      message.warning(t('users.testConnectionFirst'));
       return;
     }
-    
     try {
-      const values = await form.validateFields();
-      setSaving(true);
-      
-      // Save to backend (updates config.yaml)
-      await systemApi.saveConfig({
-        ragflow_url: values.ragflow_url,
-        api_key: values.api_key,
-      });
-      
-      // Also save to localStorage for form persistence
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(values));
-      
-      message.success(t('settings.saveSuccess'));
+      const values = await mysqlForm.validateFields();
+      setMysqlSaving(true);
+      await systemApi.saveConfig(values);
+      message.success(t('users.configSaved'));
     } catch (error: any) {
-      message.error(error.message || t('settings.saveFailed'));
+      message.error(error.message || t('users.configSaveFailed'));
     } finally {
-      setSaving(false);
+      setMysqlSaving(false);
     }
   };
 
-  // Check system health
-  const handleCheckHealth = async () => {
+  // RAGFlow handlers
+  const handleRagflowTest = async () => {
     try {
-      setHealthLoading(true);
-      const result = await systemApi.checkHealth();
-      setHealth(result);
+      const values = await ragflowForm.validateFields();
+      setRagflowTesting(true);
+      const result: RagflowTestResult = await systemApi.testRagflowConnection(values);
+      if (result.connected) {
+        setRagflowStatus({ status: 'connected' });
+        message.success(t('users.connectionSuccess'));
+      } else {
+        setRagflowStatus({ status: 'error', message: result.error });
+        message.error(result.error || t('users.connectionFailed'));
+      }
     } catch (error: any) {
-      setHealth({
-        healthy: false,
-        status: 'error',
-        error: error.message,
-      });
+      setRagflowStatus({ status: 'error', message: error.message });
+      message.error(translateErrorMessage(error.message, t) || t('common.error'));
     } finally {
-      setHealthLoading(false);
+      setRagflowTesting(false);
     }
   };
 
-  // Render health status item
-  const renderHealthItem = (name: string, status: string | undefined, icon: React.ReactNode) => {
-    const isOk = status === 'ok';
-    return (
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'space-between',
-        padding: '12px 16px',
-        borderRadius: 8,
-        background: 'rgba(0,0,0,0.02)',
-        marginBottom: 8,
-      }}>
-        <Space>
-          {icon}
-          <Text>{name}</Text>
-        </Space>
-        <Tag color={isOk ? 'success' : status === 'unknown' ? 'default' : 'error'}>
-          {isOk ? t('settings.health.ok') : status === 'unknown' ? t('settings.health.unknown') : t('settings.health.error')}
-        </Tag>
-      </div>
-    );
+  const handleRagflowSave = async () => {
+    if (ragflowStatus.status !== 'connected') {
+      message.warning(t('users.testConnectionFirst'));
+      return;
+    }
+    try {
+      const values = await ragflowForm.validateFields();
+      setRagflowSaving(true);
+      await systemApi.saveRagflowConfig(values);
+      message.success(t('users.configSaved'));
+    } catch (error: any) {
+      message.error(error.message || t('users.configSaveFailed'));
+    } finally {
+      setRagflowSaving(false);
+    }
   };
 
-  // Render connection status tag
-  const renderStatusTag = () => {
-    const { status, message: msg } = connectionStatus;
-    
-    const statusConfig = {
-      connected: { icon: <CheckCircleOutlined />, color: 'success', text: t('settings.status.connected') },
-      disconnected: { icon: <CloseCircleOutlined />, color: 'error', text: t('settings.status.disconnected') },
-      error: { icon: <CloseCircleOutlined />, color: 'error', text: t('settings.status.error') },
-      timeout: { icon: <ExclamationCircleOutlined />, color: 'warning', text: t('settings.status.timeout') },
-      unknown: { icon: <LoadingOutlined />, color: 'default', text: t('settings.status.unknown') },
-      untested: { icon: <ApiOutlined />, color: 'default', text: t('settings.status.untested') },
-      not_configured: { icon: <ExclamationCircleOutlined />, color: 'warning', text: t('settings.status.notConfigured') },
+  // Status badge component
+  const StatusBadge: React.FC<{ status: ConnectionStatus }> = ({ status }) => {
+    const config: Record<ConnectionStatusType, { color: string; icon: React.ReactNode; text: string }> = {
+      connected: { color: 'var(--success-color)', icon: <CheckCircleOutlined />, text: t('settings.status.connected') },
+      error: { color: 'var(--error-color)', icon: <CloseCircleOutlined />, text: t('settings.status.error') },
+      untested: { color: 'var(--text-secondary)', icon: <ExclamationCircleOutlined />, text: t('settings.status.untested') },
+      not_configured: { color: 'var(--warning-color)', icon: <ExclamationCircleOutlined />, text: t('settings.status.notConfigured') },
     };
-
-    const config = statusConfig[status] || statusConfig.unknown;
-    const translatedMsg = translateErrorMessage(msg, t);
-    
+    const c = config[status.status];
     return (
-      <Space>
-        <Tag icon={config.icon} color={config.color}>
-          {config.text}
-        </Tag>
-        {translatedMsg && <Text type="danger">{translatedMsg}</Text>}
-      </Space>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: c.color, fontSize: 13 }}>
+        {c.icon}
+        <span>{c.text}</span>
+        {status.version && <span style={{ opacity: 0.7 }}>v{status.version}</span>}
+      </span>
     );
   };
+
+  // Card header component
+  const CardHeader: React.FC<{ 
+    icon: React.ReactNode; 
+    gradient: string; 
+    title: string; 
+    tag: string;
+    tagColor?: string;
+    status: ConnectionStatus;
+  }> = ({ icon, gradient, title, tag, tagColor, status }) => (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ 
+          width: 32, height: 32, borderRadius: 8, 
+          background: gradient,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          {icon}
+        </div>
+        <span style={{ fontWeight: 600, fontSize: 15, color: 'var(--text-primary)' }}>{title}</span>
+        <span style={{ 
+          fontSize: 11, padding: '2px 6px', borderRadius: 4, 
+          background: tagColor || 'var(--bg-card)', 
+          color: tagColor ? '#fff' : 'var(--text-secondary)',
+        }}>{tag}</span>
+      </div>
+      <StatusBadge status={status} />
+    </div>
+  );
 
   return (
     <ErrorBoundary>
       <Spin spinning={loading} size="large">
-        <div style={{ minHeight: loading ? 400 : 'auto', visibility: loading ? 'hidden' : 'visible', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <Title level={4} style={{ marginBottom: 8, textAlign: 'center' }}>{t('settings.title')}</Title>
-          <Text type="secondary" style={{ display: 'block', marginBottom: 24, textAlign: 'center' }}>
-            {t('settings.subtitle')}
-          </Text>
-
-          <Card style={{ width: '100%', maxWidth: 560 }}>
-            <Form
-              form={form}
-              layout="vertical"
-              requiredMark={false}
+        <div style={{ minHeight: loading ? 400 : 'auto', visibility: loading ? 'hidden' : 'visible' }}>
+          {/* Page Header */}
+          <div style={{ marginBottom: 24 }}>
+            <Title level={4} style={{ margin: 0 }}>{t('settings.title')}</Title>
+            <Text type="secondary">{t('settings.subtitle')}</Text>
+          </div>
+          
+          <div style={{ maxWidth: 720, margin: '0 auto' }}>
+            {/* MySQL Configuration */}
+            <Card 
+              title={
+                <CardHeader
+                  icon={<DatabaseOutlined style={{ color: '#fff', fontSize: 16 }} />}
+                  gradient="linear-gradient(135deg, #1677ff 0%, #4096ff 100%)"
+                  title={t('settings.mysqlTitle')}
+                  tag={t('settings.mysqlRequired')}
+                  tagColor="#1677ff"
+                  status={mysqlStatus}
+                />
+              }
+              style={{ marginBottom: 16 }}
+              styles={{ header: { borderBottom: '1px solid var(--border-default)' }, body: { padding: 20 } }}
             >
-              {/* Connection Status */}
-              <div style={{ marginBottom: 24, padding: '16px', background: 'rgba(0,0,0,0.02)', borderRadius: 8 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text strong>{t('settings.connectionStatus')}</Text>
-                  {renderStatusTag()}
-                </div>
-              </div>
-
-              {/* RAGFlow URL */}
-              <Form.Item
-                name="ragflow_url"
-                label={t('settings.ragflowUrl')}
-                rules={[
-                  { required: true, message: t('settings.ragflowUrlRequired') },
-                  { type: 'url', message: t('settings.ragflowUrlInvalid') },
-                ]}
-                tooltip={t('settings.ragflowUrlTooltip')}
-                style={{ marginBottom: 20 }}
-              >
-                <Input 
-                  prefix={<LinkOutlined style={{ opacity: 0.45 }} />}
-                  placeholder={t('settings.ragflowUrlPlaceholder')}
-                  onChange={() => setConnectionStatus({ status: 'untested' })}
-                />
-              </Form.Item>
-
-              {/* API Key */}
-              <Form.Item
-                name="api_key"
-                label={t('settings.apiKey')}
-                rules={[
-                  { required: true, message: t('settings.apiKeyRequired') },
-                ]}
-                tooltip={t('settings.apiKeyTooltip')}
-                style={{ marginBottom: 24 }}
-              >
-                <Input.Password 
-                  prefix={<KeyOutlined style={{ opacity: 0.45 }} />}
-                  placeholder={t('settings.apiKeyPlaceholder')}
-                  onChange={() => setConnectionStatus({ status: 'untested' })}
-                />
-              </Form.Item>
-
-              {/* Action Buttons */}
-              <Form.Item style={{ marginBottom: 0, marginTop: 8 }}>
-                <div style={{ display: 'flex', justifyContent: 'center', gap: 16 }}>
-                  <Button
-                    icon={<ApiOutlined />}
-                    onClick={handleTestConnection}
-                    loading={testing}
-                    size="large"
-                  >
-                    {t('settings.testConnection')}
-                  </Button>
-                  <Button
-                    type="primary"
-                    icon={<SaveOutlined />}
-                    onClick={handleSave}
-                    loading={saving}
-                    size="large"
-                    disabled={connectionStatus.status !== 'connected'}
-                    title={connectionStatus.status !== 'connected' ? t('settings.testConnectionFirst') : ''}
-                  >
-                    {t('settings.saveSettings')}
-                  </Button>
-                </div>
-              </Form.Item>
-
-            </Form>
-          </Card>
-
-          {/* System Health Card */}
-          <Card 
-            title={t('settings.health.title')} 
-            style={{ width: '100%', maxWidth: 560, marginTop: 24 }}
-            extra={
-              <Button 
-                icon={<ReloadOutlined />} 
-                onClick={handleCheckHealth}
-                loading={healthLoading}
-              >
-                {t('settings.health.check')}
-              </Button>
-            }
-          >
-            {health ? (
-              <>
-                {renderHealthItem(t('settings.health.database'), health.db, <DatabaseOutlined style={{ color: '#1677ff' }} />)}
-                {renderHealthItem('Redis', health.redis, <ThunderboltOutlined style={{ color: '#eb2f96' }} />)}
-                {renderHealthItem(t('settings.health.docEngine'), health.doc_engine, <CloudServerOutlined style={{ color: '#52c41a' }} />)}
-                {renderHealthItem(t('settings.health.storage'), health.storage, <HddOutlined style={{ color: '#fa8c16' }} />)}
-                {health.error && (
-                  <Text type="danger" style={{ display: 'block', marginTop: 8 }}>
-                    {health.error}
-                  </Text>
+                {mysqlStatus.message && (
+                  <div style={{ 
+                    color: 'var(--error-color)', fontSize: 12, marginBottom: 16, 
+                    padding: '8px 12px', background: 'rgba(255, 77, 79, 0.1)', borderRadius: 6 
+                  }}>
+                    {mysqlStatus.message}
+                  </div>
                 )}
-              </>
-            ) : (
-              <Text type="secondary">{t('settings.health.clickToCheck')}</Text>
-            )}
-          </Card>
+                <Form form={mysqlForm} layout="vertical" requiredMark={false} size="middle">
+                  <Row gutter={12}>
+                    <Col span={18}>
+                      <Form.Item 
+                        name="host" 
+                        label={
+                          <span>
+                            {t('users.mysqlHost')}
+                            <Tooltip title={t('settings.mysqlHostTip')}>
+                              <QuestionCircleOutlined style={{ marginLeft: 4, color: 'var(--text-secondary)' }} />
+                            </Tooltip>
+                          </span>
+                        } 
+                        rules={[{ required: true }]} 
+                        style={{ marginBottom: 12 }}
+                      >
+                        <Input placeholder="localhost" onChange={() => setMysqlStatus({ status: 'untested' })} />
+                      </Form.Item>
+                    </Col>
+                    <Col span={6}>
+                      <Form.Item 
+                        name="port" 
+                        label={
+                          <span>
+                            {t('users.mysqlPort')}
+                            <Tooltip title={t('settings.mysqlPortTip')}>
+                              <QuestionCircleOutlined style={{ marginLeft: 4, color: 'var(--text-secondary)' }} />
+                            </Tooltip>
+                          </span>
+                        } 
+                        rules={[{ required: true }]} 
+                        style={{ marginBottom: 12 }}
+                      >
+                        <InputNumber style={{ width: '100%' }} min={1} max={65535} placeholder="5455" onChange={() => setMysqlStatus({ status: 'untested' })} />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                  <Form.Item 
+                    name="database" 
+                    label={
+                      <span>
+                        {t('users.mysqlDatabase')}
+                        <Tooltip title={t('settings.mysqlDatabaseTip')}>
+                          <QuestionCircleOutlined style={{ marginLeft: 4, color: 'var(--text-secondary)' }} />
+                        </Tooltip>
+                      </span>
+                    } 
+                    rules={[{ required: true }]} 
+                    style={{ marginBottom: 12 }}
+                  >
+                    <Input placeholder="rag_flow" onChange={() => setMysqlStatus({ status: 'untested' })} />
+                  </Form.Item>
+                  <Row gutter={12}>
+                    <Col span={12}>
+                      <Form.Item 
+                        name="user" 
+                        label={
+                          <span>
+                            {t('users.mysqlUser')}
+                            <Tooltip title={t('settings.mysqlUserTip')}>
+                              <QuestionCircleOutlined style={{ marginLeft: 4, color: 'var(--text-secondary)' }} />
+                            </Tooltip>
+                          </span>
+                        } 
+                        rules={[{ required: true }]} 
+                        style={{ marginBottom: 12 }}
+                      >
+                        <Input placeholder="root" onChange={() => setMysqlStatus({ status: 'untested' })} />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item 
+                        name="password" 
+                        label={
+                          <span>
+                            {t('users.mysqlPassword')}
+                            <Tooltip title={t('settings.mysqlPasswordTip')}>
+                              <QuestionCircleOutlined style={{ marginLeft: 4, color: 'var(--text-secondary)' }} />
+                            </Tooltip>
+                          </span>
+                        } 
+                        style={{ marginBottom: 12 }}
+                      >
+                        <Input.Password placeholder="••••••••" onChange={() => setMysqlStatus({ status: 'untested' })} />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                  <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 16 }}>{t('settings.mysqlHelp')}</Text>
+                  <Space>
+                    <Button onClick={handleMysqlTest} loading={mysqlTesting}>{t('users.testConnection')}</Button>
+                    <Button type="primary" icon={<SaveOutlined />} onClick={handleMysqlSave} loading={mysqlSaving} disabled={mysqlStatus.status !== 'connected'}>
+                      {t('common.save')}
+                    </Button>
+                  </Space>
+                </Form>
+            </Card>
+
+            {/* RAGFlow API Configuration */}
+            <Card 
+              title={
+                <CardHeader
+                  icon={<CloudServerOutlined style={{ color: '#fff', fontSize: 16 }} />}
+                  gradient="linear-gradient(135deg, #722ed1 0%, #9254de 100%)"
+                  title={t('settings.ragflowTitle')}
+                  tag={t('settings.ragflowOptional')}
+                  status={ragflowStatus}
+                />
+              }
+              style={{ marginBottom: 16 }}
+              styles={{ header: { borderBottom: '1px solid var(--border-default)' }, body: { padding: 20 } }}
+            >
+              {ragflowStatus.message && (
+                <div style={{ 
+                  color: 'var(--error-color)', fontSize: 12, marginBottom: 16, 
+                  padding: '8px 12px', background: 'rgba(255, 77, 79, 0.1)', borderRadius: 6 
+                }}>
+                  {ragflowStatus.message}
+                </div>
+              )}
+              <Form form={ragflowForm} layout="vertical" requiredMark={false} size="middle">
+                <Row gutter={12}>
+                  <Col span={16}>
+                    <Form.Item 
+                      name="base_url" 
+                      label={
+                        <span>
+                          {t('settings.ragflowUrl')}
+                          <Tooltip title={t('settings.ragflowUrlTip')}>
+                            <QuestionCircleOutlined style={{ marginLeft: 4, color: 'var(--text-secondary)' }} />
+                          </Tooltip>
+                        </span>
+                      } 
+                      rules={[{ required: true }, { type: 'url', message: t('settings.ragflowUrlInvalid') }]} 
+                      style={{ marginBottom: 12 }}
+                    >
+                      <Input prefix={<LinkOutlined style={{ color: 'var(--text-disabled)' }} />} placeholder="http://localhost:9380" onChange={() => setRagflowStatus({ status: 'untested' })} />
+                    </Form.Item>
+                  </Col>
+                  <Col span={8}>
+                    <Form.Item 
+                      name="api_key" 
+                      label={
+                        <span>
+                          {t('settings.ragflowApiKey')}
+                          <Tooltip title={t('settings.ragflowApiKeyTip')}>
+                            <QuestionCircleOutlined style={{ marginLeft: 4, color: 'var(--text-secondary)' }} />
+                          </Tooltip>
+                        </span>
+                      } 
+                      rules={[{ required: true }]} 
+                      style={{ marginBottom: 12 }}
+                    >
+                      <Input.Password prefix={<KeyOutlined style={{ color: 'var(--text-disabled)' }} />} placeholder="ragflow-xxx" onChange={() => setRagflowStatus({ status: 'untested' })} />
+                    </Form.Item>
+                  </Col>
+                </Row>
+                <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 16 }}>{t('settings.ragflowHelp')}</Text>
+                <Space>
+                  <Button onClick={handleRagflowTest} loading={ragflowTesting}>{t('users.testConnection')}</Button>
+                  <Button type="primary" icon={<SaveOutlined />} onClick={handleRagflowSave} loading={ragflowSaving} disabled={ragflowStatus.status !== 'connected'}>
+                    {t('common.save')}
+                  </Button>
+                </Space>
+              </Form>
+            </Card>
+          </div>
         </div>
       </Spin>
     </ErrorBoundary>

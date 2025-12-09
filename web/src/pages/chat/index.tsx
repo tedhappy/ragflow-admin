@@ -141,35 +141,31 @@ const ChatPage: React.FC = () => {
       key: 'name',
       width: 180,
       ellipsis: true,
-      render: (val, record) => (
+      render: (val) => (
         <Space>
           <Avatar 
-            src={record.avatar} 
-            icon={!record.avatar && <MessageOutlined />}
+            icon={<MessageOutlined />}
             size="small"
-            style={{ backgroundColor: !record.avatar ? '#722ed1' : undefined }}
+            style={{ backgroundColor: '#722ed1' }}
           />
           <span>{val}</span>
         </Space>
       ),
     },
     { 
-      title: t('chat.llmModel'), 
-      dataIndex: ['llm', 'model_name'], 
-      key: 'llm_model',
-      width: 160,
+      title: t('common.description'), 
+      dataIndex: 'description', 
+      key: 'description',
+      width: 200,
       ellipsis: true,
       render: (val) => val || '-',
     },
-    { 
-      title: t('chat.linkedDatasets'), 
-      dataIndex: 'datasets', 
-      key: 'datasets',
-      width: 100,
-      align: 'center',
-      render: (val: any[]) => (
-        <Tag color="blue">{val?.length || 0}</Tag>
-      ),
+    {
+      title: t('chat.owner'),
+      key: 'owner',
+      width: 180,
+      ellipsis: true,
+      render: (_, record) => record.owner_email || record.owner_nickname || '-',
     },
     {
       title: t('chat.status'),

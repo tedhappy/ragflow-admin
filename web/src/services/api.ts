@@ -99,19 +99,22 @@ export interface ListResponse<T> {
   total: number;
 }
 
-// Dataset API
+// Dataset API (MySQL)
 export interface Dataset {
   id: string;
   name: string;
   description?: string;
-  avatar?: string;
-  chunk_count?: number;
-  document_count?: number;
-  chunk_method?: string;
-  embedding_model?: string;
+  chunk_num?: number;
+  doc_num?: number;
+  token_num?: number;
+  parser_id?: string;
   permission?: string;
+  status?: string;
   create_time?: string;
   update_time?: string;
+  tenant_id?: string;
+  owner_email?: string;
+  owner_nickname?: string;
 }
 
 export const datasetApi = {
@@ -164,32 +167,20 @@ export const documentApi = {
     request.post(`/datasets/${datasetId}/documents/stop-parse`, { document_ids: documentIds }),
 };
 
-// Chat API
+// Chat API (MySQL)
 export interface Chat {
   id: string;
   name: string;
-  avatar?: string;
   description?: string;
+  icon?: string;
   language?: string;
+  llm_id?: string;
   status?: string;
-  prompt_type?: string;
-  top_k?: number;
   create_time?: string;
   update_time?: string;
-  datasets?: Array<{
-    id: string;
-    name?: string;
-    chunk_num?: number;
-  }>;
-  llm?: {
-    model_name?: string;
-    temperature?: number;
-    top_p?: number;
-  };
-  prompt?: {
-    top_n?: number;
-    similarity_threshold?: number;
-  };
+  tenant_id?: string;
+  owner_email?: string;
+  owner_nickname?: string;
 }
 
 export const chatApi = {
@@ -200,22 +191,18 @@ export const chatApi = {
     request.post('/chats/batch-delete', { ids }),
 };
 
-// Agent API
+// Agent API (MySQL)
 export interface Agent {
   id: string;
   title: string;
   description?: string;
-  avatar?: string;
   canvas_type?: string;
+  permission?: string;
   create_time?: string;
   update_time?: string;
-  dsl?: {
-    components?: Record<string, any>;
-    graph?: {
-      nodes?: any[];
-      edges?: any[];
-    };
-  };
+  user_id?: string;
+  owner_email?: string;
+  owner_nickname?: string;
 }
 
 export const agentApi = {
@@ -238,14 +225,6 @@ export interface RagflowUser {
   create_time?: string;
   update_time?: string;
   has_token?: boolean;
-}
-
-export interface MySQLConfig {
-  configured: boolean;
-  host: string;
-  port: number;
-  database: string;
-  user: string;
 }
 
 export interface MySQLTestResult {
@@ -291,13 +270,6 @@ export interface UserAgent {
 }
 
 export const userApi = {
-  // MySQL config
-  getConfig: () => request.get<any, MySQLConfig>('/users/config'),
-  saveConfig: (data: { host: string; port: number; database: string; user: string; password: string }) =>
-    request.post<any, { message: string }>('/users/config', data),
-  testConnection: (data: { host: string; port: number; database: string; user: string; password: string }) =>
-    request.post<any, MySQLTestResult>('/users/config/test', data),
-  
   // User CRUD
   list: (params?: PaginationParams & { email?: string; nickname?: string; status?: string }) =>
     request.get<any, ListResponse<RagflowUser>>('/users', { params }),
@@ -332,38 +304,53 @@ export const dashboardApi = {
   getStats: () => request.get<any, DashboardStats>('/dashboard/stats'),
 };
 
-// System API
+// System API (MySQL-based)
 export interface SystemStatus {
-  ragflow_url: string;
-  ragflow_status: 'connected' | 'disconnected' | 'error' | 'timeout' | 'unknown';
-  api_key_masked: string;
+  mysql_status: 'connected' | 'not_configured' | 'error' | 'unknown';
+  mysql_host: string;
+  mysql_database: string;
   error_message: string | null;
 }
 
-export interface TestConnectionResult {
-  ragflow_status: 'connected' | 'disconnected' | 'error' | 'timeout' | 'unknown';
-  error_message: string | null;
-}
-
-export interface SystemHealth {
-  healthy: boolean;
-  status: string;
-  db?: string;
-  redis?: string;
-  doc_engine?: string;
-  storage?: string;
-  error?: string;
-  meta?: Record<string, any>;
+export interface SystemConfig {
+  mysql_host: string;
+  mysql_port: number;
+  mysql_database: string;
+  mysql_user: string;
+  is_configured: boolean;
+  server_port: number;
+  debug: boolean;
 }
 
 export const systemApi = {
+  // MySQL config
   getStatus: () => request.get<any, SystemStatus>('/system/status'),
-  checkHealth: () => request.get<any, SystemHealth>('/system/health'),
-  testConnection: (data: { ragflow_url: string; api_key: string }) =>
-    request.post<any, TestConnectionResult>('/system/test-connection', data),
-  saveConfig: (data: { ragflow_url: string; api_key: string }) =>
+  getConfig: () => request.get<any, SystemConfig>('/system/config'),
+  saveConfig: (data: { host: string; port: number; database: string; user: string; password: string }) =>
     request.post<any, { message: string }>('/system/config', data),
+  testConnection: (data: { host: string; port: number; database: string; user: string; password: string }) =>
+    request.post<any, MySQLTestResult>('/system/config/test', data),
+  
+  // RAGFlow API config (for document operations)
+  getRagflowConfig: () => request.get<any, RagflowConfig>('/system/ragflow/config'),
+  saveRagflowConfig: (data: { base_url: string; api_key: string }) =>
+    request.post<any, { message: string }>('/system/ragflow/config', data),
+  testRagflowConnection: (data: { base_url: string; api_key: string }) =>
+    request.post<any, RagflowTestResult>('/system/ragflow/config/test', data),
 };
+
+// RAGFlow API Config
+export interface RagflowConfig {
+  base_url: string;
+  api_key_masked: string;
+  is_configured: boolean;
+}
+
+export interface RagflowTestResult {
+  connected: boolean;
+  message?: string;
+  error?: string;
+}
 
 // Chat Session API
 export interface ChatMessage {

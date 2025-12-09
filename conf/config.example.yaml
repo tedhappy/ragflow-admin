@@ -1,13 +1,6 @@
 ﻿# RAGFlow Admin Configuration File
 # Copy this file to config.yaml and modify the settings
 
-# RAGFlow connection settings (optional, can be configured via frontend settings page)
-ragflow:
-  # RAGFlow server URL (leave empty to configure via frontend)
-  base_url: ""
-  # API Key (leave empty to configure via frontend, get it from RAGFlow user settings)
-  api_key: ""
-
 # Admin server settings
 server:
   # Server listen address
@@ -26,16 +19,20 @@ admin:
   # Password (please change to a secure password)
   password: "admin123"
 
-# MySQL connection settings for RAGFlow database (optional, for user management)
-# Default values are based on RAGFlow's default configuration
+# ============================================================
+# The following settings can be configured via frontend Settings page
+# No need to modify here - just use the web interface!
+# ============================================================
+
+# MySQL connection (configure via Settings page)
 mysql:
-  # MySQL host (use "localhost" or Docker container IP)
-  host: "localhost"
-  # MySQL port (RAGFlow exposes 5455 to host, internal port is 3306)
-  port: 5455
-  # Database name
-  database: "rag_flow"
-  # MySQL username
-  user: "root"
-  # MySQL password (RAGFlow default is "infini_rag_flow")
-  password: "infini_rag_flow"
+  host: ""
+  port: 3306
+  database: ""
+  user: ""
+  password: ""
+
+# RAGFlow API (configure via Settings page)
+ragflow:
+  base_url: ""
+  api_key: ""

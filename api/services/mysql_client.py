@@ -464,5 +464,344 @@ class MySQLClient:
             await self._release_connection(conn)
 
 
+    # ==================== Global List Methods ====================
+    
+    async def list_all_datasets(self, page: int = 1, page_size: int = 20, 
+                                 name: str = None, status: str = None) -> Dict[str, Any]:
+        """List all datasets from all users with pagination and filtering."""
+        conn = await self._get_connection()
+        try:
+            async with conn.cursor() as cursor:
+                # Build WHERE clause
+                conditions = []
+                params = []
+                if name:
+                    conditions.append("kb.name LIKE %s")
+                    params.append(f"%{name}%")
+                if status:
+                    conditions.append("kb.status = %s")
+                    params.append(status)
+                
+                where_clause = " AND ".join(conditions) if conditions else "1=1"
+                
+                # Get total count
+                await cursor.execute(f"""
+                    SELECT COUNT(*) FROM knowledgebase kb WHERE {where_clause}
+                """, params)
+                total = (await cursor.fetchone())[0]
+                
+                # Get datasets with user info
+                offset = (page - 1) * page_size
+                await cursor.execute(f"""
+                    SELECT kb.id, kb.name, kb.description, kb.chunk_num, kb.doc_num, 
+                           kb.token_num, kb.parser_id, kb.permission, kb.status,
+                           kb.create_time, kb.update_time, kb.tenant_id,
+                           u.email as owner_email, u.nickname as owner_nickname
+                    FROM knowledgebase kb
+                    LEFT JOIN user u ON kb.tenant_id = u.id
+                    WHERE {where_clause}
+                    ORDER BY kb.create_time DESC
+                    LIMIT %s OFFSET %s
+                """, params + [page_size, offset])
+                rows = await cursor.fetchall()
+                
+                datasets = []
+                for row in rows:
+                    datasets.append({
+                        "id": row[0],
+                        "name": row[1],
+                        "description": row[2],
+                        "chunk_num": row[3] or 0,
+                        "doc_num": row[4] or 0,
+                        "token_num": row[5] or 0,
+                        "parser_id": row[6],
+                        "permission": row[7],
+                        "status": row[8],
+                        "create_time": format_datetime(row[9]),
+                        "update_time": format_datetime(row[10]),
+                        "tenant_id": row[11],
+                        "owner_email": row[12],
+                        "owner_nickname": row[13],
+                    })
+                
+                return {
+                    "items": datasets,
+                    "total": total,
+                }
+        finally:
+            await self._release_connection(conn)
+
+    async def list_all_agents(self, page: int = 1, page_size: int = 20,
+                               title: str = None) -> Dict[str, Any]:
+        """List all agents from all users with pagination and filtering."""
+        conn = await self._get_connection()
+        try:
+            async with conn.cursor() as cursor:
+                # Build WHERE clause
+                conditions = []
+                params = []
+                if title:
+                    conditions.append("uc.title LIKE %s")
+                    params.append(f"%{title}%")
+                
+                where_clause = " AND ".join(conditions) if conditions else "1=1"
+                
+                # Get total count
+                await cursor.execute(f"""
+                    SELECT COUNT(*) FROM user_canvas uc WHERE {where_clause}
+                """, params)
+                total = (await cursor.fetchone())[0]
+                
+                # Get agents with user info
+                offset = (page - 1) * page_size
+                await cursor.execute(f"""
+                    SELECT uc.id, uc.title, uc.description, uc.canvas_category,
+                           uc.permission, uc.create_time, uc.update_time, uc.user_id,
+                           u.email as owner_email, u.nickname as owner_nickname
+                    FROM user_canvas uc
+                    LEFT JOIN user u ON uc.user_id = u.id
+                    WHERE {where_clause}
+                    ORDER BY uc.create_time DESC
+                    LIMIT %s OFFSET %s
+                """, params + [page_size, offset])
+                rows = await cursor.fetchall()
+                
+                agents = []
+                for row in rows:
+                    agents.append({
+                        "id": row[0],
+                        "title": row[1],
+                        "description": row[2],
+                        "canvas_type": row[3],
+                        "permission": row[4],
+                        "create_time": format_datetime(row[5]),
+                        "update_time": format_datetime(row[6]),
+                        "user_id": row[7],
+                        "owner_email": row[8],
+                        "owner_nickname": row[9],
+                    })
+                
+                return {
+                    "items": agents,
+                    "total": total,
+                }
+        finally:
+            await self._release_connection(conn)
+
+    async def list_all_chats(self, page: int = 1, page_size: int = 20,
+                              name: str = None) -> Dict[str, Any]:
+        """List all chat assistants from all users with pagination and filtering."""
+        conn = await self._get_connection()
+        try:
+            async with conn.cursor() as cursor:
+                # Build WHERE clause
+                conditions = []
+                params = []
+                if name:
+                    conditions.append("d.name LIKE %s")
+                    params.append(f"%{name}%")
+                
+                where_clause = " AND ".join(conditions) if conditions else "1=1"
+                
+                # Get total count
+                await cursor.execute(f"""
+                    SELECT COUNT(*) FROM dialog d WHERE {where_clause}
+                """, params)
+                total = (await cursor.fetchone())[0]
+                
+                # Get chats with user info
+                offset = (page - 1) * page_size
+                await cursor.execute(f"""
+                    SELECT d.id, d.name, d.description, d.icon, d.language,
+                           d.llm_id, d.status, d.create_time, d.update_time, d.tenant_id,
+                           u.email as owner_email, u.nickname as owner_nickname
+                    FROM dialog d
+                    LEFT JOIN user u ON d.tenant_id = u.id
+                    WHERE {where_clause}
+                    ORDER BY d.create_time DESC
+                    LIMIT %s OFFSET %s
+                """, params + [page_size, offset])
+                rows = await cursor.fetchall()
+                
+                chats = []
+                for row in rows:
+                    chats.append({
+                        "id": row[0],
+                        "name": row[1],
+                        "description": row[2],
+                        "icon": row[3],
+                        "language": row[4],
+                        "llm_id": row[5],
+                        "status": row[6],
+                        "create_time": format_datetime(row[7]),
+                        "update_time": format_datetime(row[8]),
+                        "tenant_id": row[9],
+                        "owner_email": row[10],
+                        "owner_nickname": row[11],
+                    })
+                
+                return {
+                    "items": chats,
+                    "total": total,
+                }
+        finally:
+            await self._release_connection(conn)
+
+    async def get_chat_sessions(self, chat_id: str, page: int = 1, page_size: int = 20) -> Dict[str, Any]:
+        """Get sessions for a specific chat assistant."""
+        conn = await self._get_connection()
+        try:
+            async with conn.cursor() as cursor:
+                # Get total count
+                await cursor.execute("""
+                    SELECT COUNT(*) FROM conversation WHERE dialog_id = %s
+                """, (chat_id,))
+                total = (await cursor.fetchone())[0]
+                
+                # Get sessions
+                offset = (page - 1) * page_size
+                await cursor.execute("""
+                    SELECT id, name, message, create_time, update_time
+                    FROM conversation
+                    WHERE dialog_id = %s
+                    ORDER BY create_time DESC
+                    LIMIT %s OFFSET %s
+                """, (chat_id, page_size, offset))
+                rows = await cursor.fetchall()
+                
+                sessions = []
+                for row in rows:
+                    # Parse message to get count
+                    import json
+                    messages = []
+                    try:
+                        if row[2]:
+                            messages = json.loads(row[2])
+                    except:
+                        pass
+                    
+                    sessions.append({
+                        "id": row[0],
+                        "name": row[1],
+                        "message_count": len(messages),
+                        "messages": messages,
+                        "create_time": format_datetime(row[3]),
+                        "update_time": format_datetime(row[4]),
+                    })
+                
+                return {
+                    "items": sessions,
+                    "total": total,
+                }
+        finally:
+            await self._release_connection(conn)
+
+    async def get_dashboard_stats(self) -> Dict[str, Any]:
+        """Get dashboard statistics from database."""
+        conn = await self._get_connection()
+        try:
+            async with conn.cursor() as cursor:
+                # Get counts
+                await cursor.execute("SELECT COUNT(*) FROM knowledgebase")
+                dataset_count = (await cursor.fetchone())[0]
+                
+                await cursor.execute("SELECT COUNT(*) FROM document")
+                document_count = (await cursor.fetchone())[0]
+                
+                await cursor.execute("SELECT COUNT(*) FROM dialog")
+                chat_count = (await cursor.fetchone())[0]
+                
+                await cursor.execute("SELECT COUNT(*) FROM user_canvas")
+                agent_count = (await cursor.fetchone())[0]
+                
+                await cursor.execute("SELECT COUNT(*) FROM user")
+                user_count = (await cursor.fetchone())[0]
+                
+                return {
+                    "dataset_count": dataset_count,
+                    "document_count": document_count,
+                    "chat_count": chat_count,
+                    "agent_count": agent_count,
+                    "user_count": user_count,
+                }
+        finally:
+            await self._release_connection(conn)
+
+    async def delete_dataset(self, dataset_id: str) -> bool:
+        """Delete a dataset."""
+        conn = await self._get_connection()
+        try:
+            async with conn.cursor() as cursor:
+                await cursor.execute("DELETE FROM knowledgebase WHERE id = %s", (dataset_id,))
+                return cursor.rowcount > 0
+        finally:
+            await self._release_connection(conn)
+
+    async def delete_datasets(self, dataset_ids: List[str]) -> int:
+        """Delete multiple datasets."""
+        if not dataset_ids:
+            return 0
+        conn = await self._get_connection()
+        try:
+            async with conn.cursor() as cursor:
+                placeholders = ",".join(["%s"] * len(dataset_ids))
+                await cursor.execute(f"DELETE FROM knowledgebase WHERE id IN ({placeholders})", dataset_ids)
+                return cursor.rowcount
+        finally:
+            await self._release_connection(conn)
+
+    async def delete_agent(self, agent_id: str) -> bool:
+        """Delete an agent."""
+        conn = await self._get_connection()
+        try:
+            async with conn.cursor() as cursor:
+                await cursor.execute("DELETE FROM user_canvas WHERE id = %s", (agent_id,))
+                return cursor.rowcount > 0
+        finally:
+            await self._release_connection(conn)
+
+    async def delete_agents(self, agent_ids: List[str]) -> int:
+        """Delete multiple agents."""
+        if not agent_ids:
+            return 0
+        conn = await self._get_connection()
+        try:
+            async with conn.cursor() as cursor:
+                placeholders = ",".join(["%s"] * len(agent_ids))
+                await cursor.execute(f"DELETE FROM user_canvas WHERE id IN ({placeholders})", agent_ids)
+                return cursor.rowcount
+        finally:
+            await self._release_connection(conn)
+
+    async def delete_chat(self, chat_id: str) -> bool:
+        """Delete a chat assistant and its conversations."""
+        conn = await self._get_connection()
+        try:
+            async with conn.cursor() as cursor:
+                # Delete conversations first
+                await cursor.execute("DELETE FROM conversation WHERE dialog_id = %s", (chat_id,))
+                # Delete dialog
+                await cursor.execute("DELETE FROM dialog WHERE id = %s", (chat_id,))
+                return cursor.rowcount > 0
+        finally:
+            await self._release_connection(conn)
+
+    async def delete_chats(self, chat_ids: List[str]) -> int:
+        """Delete multiple chat assistants and their conversations."""
+        if not chat_ids:
+            return 0
+        conn = await self._get_connection()
+        try:
+            async with conn.cursor() as cursor:
+                placeholders = ",".join(["%s"] * len(chat_ids))
+                # Delete conversations first
+                await cursor.execute(f"DELETE FROM conversation WHERE dialog_id IN ({placeholders})", chat_ids)
+                # Delete dialogs
+                await cursor.execute(f"DELETE FROM dialog WHERE id IN ({placeholders})", chat_ids)
+                return cursor.rowcount
+        finally:
+            await self._release_connection(conn)
+
+
 # Global instance
 mysql_client = MySQLClient()
