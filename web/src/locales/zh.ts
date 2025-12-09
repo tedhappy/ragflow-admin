@@ -332,6 +332,8 @@ export default {
       ragflowNotConfigured: 'RAGFlow API 未配置',
       ragflowNotConfiguredDesc: '解析和停止操作需要 RAGFlow API。请在设置中进行配置。',
       configureRagflow: '去配置',
+      queuePosition: '队列位置',
+      queuePositionTip: '当前排队位置：第 {{position}} 位，共 {{total}} 个任务等待处理',
       status: {
         unstart: '待处理',
         running: '处理中',

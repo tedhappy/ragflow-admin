@@ -42,11 +42,19 @@ export function useConnectionCheck(): ConnectionCheckResult {
     const checkConnection = async () => {
       try {
         setChecking(true);
-        const status = await systemApi.getStatus();
         
-        if (status.mysql_status === 'connected') {
+        // Add timeout to prevent infinite loading
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Connection timeout')), 10000)
+        );
+        
+        const status = await Promise.race([
+          systemApi.getStatus(),
+          timeoutPromise
+        ]) as any;
+        
+        if (status?.mysql_status === 'connected') {
           setConnected(true);
-          setChecking(false);
         } else {
           hasRedirected.current = true;
           window.location.href = '/settings?reason=not_connected';
@@ -54,6 +62,9 @@ export function useConnectionCheck(): ConnectionCheckResult {
       } catch (error) {
         hasRedirected.current = true;
         window.location.href = '/settings?reason=connection_failed';
+      } finally {
+        // Always end checking state
+        setChecking(false);
       }
     };
 

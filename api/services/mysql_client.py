@@ -74,6 +74,8 @@ class MySQLClient:
                 minsize=1,
                 maxsize=5,
                 autocommit=True,
+                connect_timeout=5,  # Connection timeout in seconds
+                pool_recycle=60,    # Recycle connections after 60 seconds
             )
         
         return await self._pool.acquire()
@@ -109,9 +111,19 @@ class MySQLClient:
             self._pool = None
 
     async def test_connection(self) -> Dict[str, Any]:
-        """Test the MySQL connection."""
+        """Test the MySQL connection with fresh connection attempt."""
+        import aiomysql
+        
+        # Create a fresh connection for health check (bypass pool)
         try:
-            conn = await self._get_connection()
+            conn = await aiomysql.connect(
+                host=settings.mysql_host,
+                port=settings.mysql_port,
+                db=settings.mysql_database,
+                user=settings.mysql_user,
+                password=settings.mysql_password,
+                connect_timeout=5,
+            )
             try:
                 async with conn.cursor() as cursor:
                     await cursor.execute("SELECT 1")
@@ -133,7 +145,7 @@ class MySQLClient:
                     "user_table_exists": table_exists,
                 }
             finally:
-                await self._release_connection(conn)
+                conn.close()
         except Exception as e:
             logger.error(f"MySQL connection test failed: {e}")
             return {
@@ -1113,6 +1125,21 @@ class MySQLClient:
                 """, params + [page_size, offset])
                 rows = await cursor.fetchall()
                 
+                # Get global queue positions for UNSTART/RUNNING tasks
+                await cursor.execute("""
+                    SELECT d.id, 
+                           ROW_NUMBER() OVER (
+                               ORDER BY 
+                                   CASE CAST(d.run AS SIGNED) WHEN 1 THEN 1 ELSE 2 END,
+                                   d.create_time
+                           ) as queue_position
+                    FROM document d
+                    WHERE CAST(d.run AS SIGNED) IN (0, 1)
+                """)
+                queue_rows = await cursor.fetchall()
+                queue_position_map = {row[0]: row[1] for row in queue_rows}
+                pending_total = len(queue_position_map)
+                
                 run_status_map = {
                     '0': 'UNSTART', 0: 'UNSTART', '1': 'RUNNING', 1: 'RUNNING',
                     '2': 'CANCEL', 2: 'CANCEL', '3': 'DONE', 3: 'DONE', '4': 'FAIL', 4: 'FAIL',
@@ -1123,8 +1150,9 @@ class MySQLClient:
                     run_value = row[10]
                     run_status = run_status_map.get(run_value, str(run_value) if run_value else 'UNSTART')
                     
+                    task_id = row[0]
                     tasks.append({
-                        "id": row[0],
+                        "id": task_id,
                         "name": row[1],
                         "size": row[2],
                         "type": row[3],
@@ -1141,6 +1169,8 @@ class MySQLClient:
                         "dataset_name": row[14],
                         "owner_email": row[15],
                         "owner_nickname": row[16],
+                        "queue_position": queue_position_map.get(task_id),
+                        "pending_total": pending_total if task_id in queue_position_map else None,
                     })
                 
                 return {

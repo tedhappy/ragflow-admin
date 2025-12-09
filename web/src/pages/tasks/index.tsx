@@ -27,7 +27,8 @@ import {
   ExclamationCircleOutlined,
   FolderOutlined,
   SettingOutlined,
-  UserOutlined
+  UserOutlined,
+  FieldNumberOutlined
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'umi';
@@ -357,6 +358,37 @@ const Tasks: React.FC = () => {
       width: 100,
       align: 'center',
       render: (val) => <StatusTag status={val} />,
+    },
+    { 
+      title: t('tasks.queuePosition'), 
+      key: 'queue_position',
+      width: 80,
+      align: 'center',
+      render: (_, record) => {
+        // Only show position for UNSTART and RUNNING tasks with valid queue_position
+        if (!record.queue_position) {
+          return <span style={{ color: '#bfbfbf' }}>-</span>;
+        }
+        const position = record.queue_position;
+        const total = record.pending_total || position;
+        // Color coding: running=blue, top 3=orange, others=gray
+        const tagColor = record.run === 'RUNNING' 
+          ? 'blue' 
+          : position <= 3 
+            ? 'orange' 
+            : 'default';
+        return (
+          <Tooltip title={t('tasks.queuePositionTip', { position, total })}>
+            <Tag 
+              icon={<FieldNumberOutlined />} 
+              color={tagColor}
+              style={{ minWidth: 45, textAlign: 'center' }}
+            >
+              #{position}
+            </Tag>
+          </Tooltip>
+        );
+      },
     },
     { 
       title: t('tasks.duration'), 

@@ -446,6 +446,8 @@ export interface ParsingTask {
   dataset_name?: string;
   owner_email?: string;
   owner_nickname?: string;
+  queue_position?: number;
+  pending_total?: number;
 }
 
 export interface TaskStats {

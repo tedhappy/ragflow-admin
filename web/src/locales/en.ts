@@ -332,6 +332,8 @@ export default {
       ragflowNotConfigured: 'RAGFlow API Not Configured',
       ragflowNotConfiguredDesc: 'Parse and stop operations require RAGFlow API. Please configure it in settings.',
       configureRagflow: 'Configure',
+      queuePosition: 'Queue',
+      queuePositionTip: 'Position #{{position}} of {{total}} pending tasks',
       status: {
         unstart: 'Pending',
         running: 'Running',

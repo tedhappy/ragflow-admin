@@ -170,28 +170,41 @@ const Dashboard: React.FC = () => {
   const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
 
   const fetchData = useCallback(async () => {
-    if (!connected) return;
+    if (!connected) {
+      setLoading(false);
+      return;
+    }
+    
+    setLoading(true);
+    
+    // Helper to add timeout to any promise
+    const withTimeout = <T,>(promise: Promise<T>, ms: number = 8000): Promise<T | null> => 
+      Promise.race([
+        promise,
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), ms))
+      ]).catch(() => null);
     
     try {
-      setLoading(true);
-      const [dashboardData, healthData, sysStatsData] = await Promise.all([
-        dashboardApi.getStats().catch(() => null),
-        monitoringApi.getHealthStatus().catch(() => null),
-        monitoringApi.getSystemStats().catch(() => null),
+      // Fetch all data with individual timeouts - partial failures won't block UI
+      const [dashboardData, healthData, sysStatsData, ragflowHealth] = await Promise.all([
+        withTimeout(dashboardApi.getStats()),
+        withTimeout(monitoringApi.getHealthStatus()),
+        withTimeout(monitoringApi.getSystemStats()),
+        withTimeout(monitoringApi.getRagflowHealth()),
       ]);
       
       if (dashboardData) setStats(dashboardData);
-      if (healthData) setHealth(healthData);
+      // Always update health status - show 'unknown' if request failed/timeout
+      setHealth(healthData || {
+        mysql: { status: 'unknown', message: 'Request failed or timeout' },
+        ragflow_api: { status: 'unknown', message: 'Request failed or timeout' },
+        overall: 'unknown'
+      });
       if (sysStatsData) setSystemStats(sysStatsData);
+      setRagflowServices(ragflowHealth?.services || null);
       
-      // Fetch RAGFlow internal services health
-      try {
-        const ragflowHealth = await monitoringApi.getRagflowHealth();
-        setRagflowServices(ragflowHealth?.services);
-      } catch {
-        setRagflowServices(null);
-      }
     } catch (error: any) {
+      console.error('Dashboard fetch error:', error);
       message.error(translateErrorMessage(error.message, t) || t('dashboard.fetchFailed'));
     } finally {
       setLoading(false);
@@ -212,7 +225,30 @@ const Dashboard: React.FC = () => {
   ];
 
   const isLoading = checking || loading;
-  const overallStatus = health?.overall || 'unknown';
+  
+  // Calculate overall status based on all services
+  const calculateOverallStatus = () => {
+    const statuses: string[] = [];
+    
+    // Admin services (MySQL, RAGFlow API)
+    if (health?.mysql?.status) statuses.push(health.mysql.status);
+    if (health?.ragflow_api?.status) statuses.push(health.ragflow_api.status);
+    
+    // RAGFlow internal services (Redis, Elasticsearch, MinIO)
+    if (ragflowServices) {
+      if (ragflowServices.redis) statuses.push(ragflowServices.redis);
+      if (ragflowServices.doc_engine) statuses.push(ragflowServices.doc_engine);
+      if (ragflowServices.storage) statuses.push(ragflowServices.storage);
+    }
+    
+    if (statuses.length === 0) return 'unknown';
+    if (statuses.some(s => s === 'unhealthy' || s === 'nok')) return 'unhealthy';
+    if (statuses.every(s => s === 'healthy' || s === 'ok')) return 'healthy';
+    if (statuses.some(s => s === 'not_configured' || s === 'unknown')) return 'partial';
+    return 'unknown';
+  };
+  
+  const overallStatus = calculateOverallStatus();
   
   // Calculate parsing completion rate (use effective_total which excludes canceled docs)
   const effectiveTotal = systemStats?.documents?.effective_total || systemStats?.documents?.total || 0;
