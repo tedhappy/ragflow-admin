@@ -121,7 +121,7 @@ const Datasets: React.FC = () => {
       title: t('datasets.chunkMethod'),
       dataIndex: 'parser_id',
       key: 'parser_id',
-      width: 120,
+      width: 100,
       align: 'center',
       render: (val) => {
         const method = chunkMethodOptions.find(m => m.value === val);
@@ -131,7 +131,7 @@ const Datasets: React.FC = () => {
     {
       title: t('datasets.owner'),
       key: 'owner',
-      width: 180,
+      width: 160,
       ellipsis: true,
       render: (_, record) => record.owner_email || record.owner_nickname || '-',
     },

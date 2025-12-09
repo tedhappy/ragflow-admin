@@ -358,3 +358,44 @@ async def get_user_agents(user_id: str):
     except Exception as e:
         logger.exception("Unexpected error getting user agents")
         return jsonify({"code": -1, "message": str(e)}), 500
+
+
+@manager.route("/<user_id>/chats", methods=["GET"])
+async def get_user_chats(user_id: str):
+    """
+    Get chats owned by a user
+    ---
+    tags:
+      - User
+    parameters:
+      - name: user_id
+        in: path
+        type: string
+        required: true
+      - name: page
+        in: query
+        type: integer
+        default: 1
+      - name: page_size
+        in: query
+        type: integer
+        default: 20
+    responses:
+      200:
+        description: User's chats
+    """
+    if not settings.is_mysql_configured:
+        return jsonify({"code": -1, "message": "MySQL not configured"}), 400
+    
+    page = request.args.get("page", 1, type=int)
+    page_size = request.args.get("page_size", 20, type=int)
+    
+    try:
+        result = await mysql_client.get_user_chats(user_id, page=page, page_size=page_size)
+        return jsonify({"code": 0, "data": result})
+    except MySQLClientError as e:
+        logger.error(f"Failed to get user chats: {e.message}")
+        return jsonify({"code": e.code, "message": e.message}), 500
+    except Exception as e:
+        logger.exception("Unexpected error getting user chats")
+        return jsonify({"code": -1, "message": str(e)}), 500

@@ -221,6 +221,9 @@ export interface RagflowUser {
   create_time?: string;
   update_time?: string;
   has_token?: boolean;
+  dataset_count?: number;
+  agent_count?: number;
+  chat_count?: number;
 }
 
 export interface MySQLTestResult {
@@ -265,6 +268,17 @@ export interface UserAgent {
   update_time?: string;
 }
 
+// User's chat
+export interface UserChat {
+  id: string;
+  name: string;
+  description?: string;
+  status?: string;
+  session_count?: number;
+  create_time?: string;
+  update_time?: string;
+}
+
 export const userApi = {
   // User CRUD
   list: (params?: PaginationParams & { email?: string; nickname?: string; status?: string }) =>
@@ -285,6 +299,8 @@ export const userApi = {
     request.get<any, ListResponse<UserDataset>>(`/users/${userId}/datasets`, { params }),
   getAgents: (userId: string, params?: PaginationParams) =>
     request.get<any, ListResponse<UserAgent>>(`/users/${userId}/agents`, { params }),
+  getChats: (userId: string, params?: PaginationParams) =>
+    request.get<any, ListResponse<UserChat>>(`/users/${userId}/chats`, { params }),
 };
 
 // Dashboard API

@@ -170,11 +170,14 @@ class MySQLClient:
                 
                 offset = (page - 1) * page_size
                 query_sql = f"""
-                    SELECT id, email, nickname, avatar, status, is_superuser, 
-                           login_channel, create_time, update_time, access_token
-                    FROM user 
+                    SELECT u.id, u.email, u.nickname, u.avatar, u.status, u.is_superuser, 
+                           u.login_channel, u.create_time, u.update_time, u.access_token,
+                           (SELECT COUNT(*) FROM knowledgebase WHERE tenant_id = u.id) as dataset_count,
+                           (SELECT COUNT(*) FROM user_canvas WHERE user_id = u.id) as agent_count,
+                           (SELECT COUNT(*) FROM dialog WHERE tenant_id = u.id) as chat_count
+                    FROM user u
                     {where_clause}
-                    ORDER BY create_time DESC
+                    ORDER BY u.create_time DESC
                     LIMIT %s OFFSET %s
                 """
                 params.extend([page_size, offset])
@@ -194,6 +197,9 @@ class MySQLClient:
                         "create_time": format_datetime(row[7]),
                         "update_time": format_datetime(row[8]),
                         "has_token": bool(row[9]),
+                        "dataset_count": row[10] or 0,
+                        "agent_count": row[11] or 0,
+                        "chat_count": row[12] or 0,
                     })
                 
                 return {
@@ -315,6 +321,46 @@ class MySQLClient:
                 
                 return {
                     "items": agents,
+                    "total": total,
+                }
+        finally:
+            await self._release_connection(conn)
+
+    async def get_user_chats(self, user_id: str, page: int = 1, page_size: int = 20) -> Dict[str, Any]:
+        """Get chats (dialogs) owned by a user."""
+        conn = await self._get_connection()
+        try:
+            async with conn.cursor() as cursor:
+                await cursor.execute("""
+                    SELECT COUNT(*) FROM dialog WHERE tenant_id = %s
+                """, (user_id,))
+                total = (await cursor.fetchone())[0]
+                
+                offset = (page - 1) * page_size
+                await cursor.execute("""
+                    SELECT d.id, d.name, d.description, d.status, d.create_time, d.update_time,
+                           (SELECT COUNT(*) FROM conversation WHERE dialog_id = d.id) as session_count
+                    FROM dialog d
+                    WHERE d.tenant_id = %s
+                    ORDER BY d.create_time DESC
+                    LIMIT %s OFFSET %s
+                """, (user_id, page_size, offset))
+                rows = await cursor.fetchall()
+                
+                chats = []
+                for row in rows:
+                    chats.append({
+                        "id": row[0],
+                        "name": row[1],
+                        "description": row[2],
+                        "status": row[3],
+                        "create_time": format_datetime(row[4]),
+                        "update_time": format_datetime(row[5]),
+                        "session_count": row[6] or 0,
+                    })
+                
+                return {
+                    "items": chats,
                     "total": total,
                 }
         finally:

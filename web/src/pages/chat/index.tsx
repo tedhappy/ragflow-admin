@@ -168,11 +168,12 @@ const ChatPage: React.FC = () => {
       render: (val) => val || '-',
     },
     {
-      title: t('chat.owner'),
-      key: 'owner',
-      width: 180,
-      ellipsis: true,
-      render: (_, record) => record.owner_email || record.owner_nickname || '-',
+      title: t('chat.sessions'),
+      dataIndex: 'session_count',
+      key: 'session_count',
+      width: 90,
+      align: 'center',
+      render: (val) => <Tag color="purple">{val || 0}</Tag>,
     },
     {
       title: t('chat.status'),
@@ -188,12 +189,11 @@ const ChatPage: React.FC = () => {
       ),
     },
     {
-      title: t('chat.sessions'),
-      dataIndex: 'session_count',
-      key: 'session_count',
-      width: 90,
-      align: 'center',
-      render: (val) => <Tag color="purple">{val || 0}</Tag>,
+      title: t('chat.owner'),
+      key: 'owner',
+      width: 180,
+      ellipsis: true,
+      render: (_, record) => record.owner_email || record.owner_nickname || '-',
     },
     { 
       title: t('common.created'), 
@@ -300,6 +300,7 @@ const ChatPage: React.FC = () => {
           setSelectedChat(null);
           setSessions([]);
           setSelectedSessionKeys([]);
+          refresh();
         }}
         footer={null}
         width={700}

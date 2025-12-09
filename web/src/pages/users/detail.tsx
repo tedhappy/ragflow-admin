@@ -18,10 +18,10 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { 
-  ArrowLeftOutlined, UserOutlined, DatabaseOutlined, RobotOutlined
+  ArrowLeftOutlined, UserOutlined, DatabaseOutlined, RobotOutlined, MessageOutlined
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import { userApi, UserDetail, UserDataset, UserAgent } from '@/services/api';
+import { userApi, UserDetail, UserDataset, UserAgent, UserChat } from '@/services/api';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { translateErrorMessage } from '@/utils/i18n';
 import dayjs from 'dayjs';
@@ -43,12 +43,17 @@ const UserDetailPage: React.FC = () => {
   const [agentsLoading, setAgentsLoading] = useState(false);
   const [agentsTotal, setAgentsTotal] = useState(0);
   const [agentsPage, setAgentsPage] = useState(1);
+  const [chats, setChats] = useState<UserChat[]>([]);
+  const [chatsLoading, setChatsLoading] = useState(false);
+  const [chatsTotal, setChatsTotal] = useState(0);
+  const [chatsPage, setChatsPage] = useState(1);
 
   useEffect(() => {
     if (userId) {
       loadUser();
       loadDatasets(1);
       loadAgents(1);
+      loadChats(1);
     }
   }, [userId]);
 
@@ -89,6 +94,20 @@ const UserDetailPage: React.FC = () => {
       message.error(translateErrorMessage(error.message, t) || t('users.loadAgentsFailed'));
     } finally {
       setAgentsLoading(false);
+    }
+  };
+
+  const loadChats = async (page: number) => {
+    try {
+      setChatsLoading(true);
+      const result = await userApi.getChats(userId!, { page, page_size: 10 });
+      setChats(result.items || []);
+      setChatsTotal(result.total || 0);
+      setChatsPage(page);
+    } catch (error: any) {
+      message.error(translateErrorMessage(error.message, t) || t('users.loadChatsFailed'));
+    } finally {
+      setChatsLoading(false);
     }
   };
 
@@ -160,6 +179,14 @@ const UserDetailPage: React.FC = () => {
       ellipsis: true,
     },
     {
+      title: t('common.description'),
+      dataIndex: 'description',
+      key: 'description',
+      width: 200,
+      ellipsis: true,
+      render: (val) => val || '-',
+    },
+    {
       title: t('users.detail.agentType'),
       dataIndex: 'canvas_type',
       key: 'canvas_type',
@@ -175,12 +202,40 @@ const UserDetailPage: React.FC = () => {
       },
     },
     {
-      title: t('common.description'),
-      dataIndex: 'description',
-      key: 'description',
-      width: 200,
+      title: t('common.updated'),
+      dataIndex: 'update_time',
+      key: 'update_time',
+      width: 130,
+      render: (val) => val ? dayjs(val).format('YYYY-MM-DD HH:mm') : '-',
+    },
+  ];
+
+  const chatColumns: ColumnsType<UserChat> = [
+    {
+      title: t('common.name'),
+      dataIndex: 'name',
+      key: 'name',
       ellipsis: true,
-      render: (val) => val || '-',
+    },
+    {
+      title: t('chat.sessions'),
+      dataIndex: 'session_count',
+      key: 'session_count',
+      width: 80,
+      align: 'center',
+      render: (val) => <Tag color="purple">{val || 0}</Tag>,
+    },
+    {
+      title: t('chat.status'),
+      dataIndex: 'status',
+      key: 'status',
+      width: 80,
+      align: 'center',
+      render: (val) => (
+        <Tag color={val === '1' ? 'success' : 'default'}>
+          {val === '1' ? t('chat.statusEnabled') : t('chat.statusDisabled')}
+        </Tag>
+      ),
     },
     {
       title: t('common.updated'),
@@ -246,6 +301,35 @@ const UserDetailPage: React.FC = () => {
           }}
           locale={{
             emptyText: t('users.detail.noAgents'),
+          }}
+        />
+      ),
+    },
+    {
+      key: 'chats',
+      label: (
+        <Space>
+          <MessageOutlined />
+          {t('users.detail.chats')}
+          <Tag>{chatsTotal}</Tag>
+        </Space>
+      ),
+      children: (
+        <Table
+          columns={chatColumns}
+          dataSource={chats}
+          rowKey="id"
+          loading={chatsLoading}
+          size="small"
+          pagination={{
+            current: chatsPage,
+            pageSize: 10,
+            total: chatsTotal,
+            showTotal: (total) => t('common.total', { count: total }),
+            onChange: (page) => loadChats(page),
+          }}
+          locale={{
+            emptyText: t('users.detail.noChats'),
           }}
         />
       ),

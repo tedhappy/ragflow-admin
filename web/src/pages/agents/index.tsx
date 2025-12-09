@@ -125,16 +125,6 @@ const Agents: React.FC = () => {
       showSorterTooltip: false,
       render: (val) => val ? dayjs(val).format('YYYY-MM-DD HH:mm') : '-',
     },
-    { 
-      title: t('common.updated'), 
-      dataIndex: 'update_time', 
-      key: 'update_time',
-      width: 150,
-      align: 'center',
-      sorter: (a, b) => new Date(a.update_time || 0).getTime() - new Date(b.update_time || 0).getTime(),
-      showSorterTooltip: false,
-      render: (val) => val ? dayjs(val).format('YYYY-MM-DD HH:mm') : '-',
-    },
     {
       title: t('common.actions'),
       key: 'action',
