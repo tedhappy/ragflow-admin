@@ -30,8 +30,7 @@ const Users: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { checking, connected } = useConnectionCheck();
-  const [searchEmail, setSearchEmail] = useState('');
-  const [searchNickname, setSearchNickname] = useState('');
+  const [searchKeyword, setSearchKeyword] = useState('');
   const [searchStatus, setSearchStatus] = useState<string | undefined>(undefined);
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
@@ -60,8 +59,7 @@ const Users: React.FC = () => {
 
   const onSearch = () => {
     handleSearch({ 
-      email: searchEmail || undefined,
-      nickname: searchNickname || undefined,
+      keyword: searchKeyword || undefined,
       status: searchStatus,
     });
   };
@@ -246,21 +244,13 @@ const Users: React.FC = () => {
             <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
               <Space wrap>
                 <Input
-                  placeholder={t('users.searchEmail')}
+                  placeholder={t('users.searchPlaceholder')}
                   prefix={<SearchOutlined />}
                   allowClear
-                  value={searchEmail}
-                  onChange={(e) => setSearchEmail(e.target.value)}
+                  value={searchKeyword}
+                  onChange={(e) => setSearchKeyword(e.target.value)}
                   onPressEnter={onSearch}
-                  style={{ width: 180 }}
-                />
-                <Input
-                  placeholder={t('users.searchNickname')}
-                  allowClear
-                  value={searchNickname}
-                  onChange={(e) => setSearchNickname(e.target.value)}
-                  onPressEnter={onSearch}
-                  style={{ width: 150 }}
+                  style={{ width: 200 }}
                 />
                 <Select
                   placeholder={t('users.searchStatus')}
@@ -269,8 +259,7 @@ const Users: React.FC = () => {
                   onChange={(value) => {
                     setSearchStatus(value);
                     handleSearch({ 
-                      email: searchEmail || undefined,
-                      nickname: searchNickname || undefined,
+                      keyword: searchKeyword || undefined,
                       status: value,
                     });
                   }}

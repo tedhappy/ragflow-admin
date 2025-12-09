@@ -13,7 +13,7 @@
 import React, { useState } from 'react';
 import { Table, Button, Space, Card, message, Input, Typography, Spin, Select, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+import { ReloadOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'umi';
 import { datasetApi, Dataset } from '@/services/api';
@@ -32,6 +32,7 @@ const Datasets: React.FC = () => {
   const { checking, connected } = useConnectionCheck();
   const [searchName, setSearchName] = useState('');
   const [filterChunkMethod, setFilterChunkMethod] = useState<string | undefined>(undefined);
+  const [searchOwner, setSearchOwner] = useState('');
 
   const chunkMethodOptions = [
     { value: 'naive', label: t('datasets.chunkMethods.naive') },
@@ -66,7 +67,7 @@ const Datasets: React.FC = () => {
   });
 
   const onSearch = () => {
-    handleSearch({ name: searchName || undefined });
+    handleSearch({ name: searchName || undefined, owner: searchOwner || undefined });
   };
 
   const onFilterChange = (chunkMethod?: string) => {
@@ -184,6 +185,15 @@ const Datasets: React.FC = () => {
                   onChange={onFilterChange}
                   options={chunkMethodOptions}
                   style={{ width: 140 }}
+                />
+                <Input
+                  placeholder={t('users.filterByOwner')}
+                  prefix={<UserOutlined />}
+                  allowClear
+                  value={searchOwner}
+                  onChange={(e) => setSearchOwner(e.target.value)}
+                  onPressEnter={onSearch}
+                  style={{ width: 180 }}
                 />
                 <Button icon={<SearchOutlined />} onClick={onSearch}>{t('common.search')}</Button>
               </Space>

@@ -142,7 +142,7 @@ class MySQLClient:
             }
 
     async def list_users(self, page: int = 1, page_size: int = 20, 
-                         email: str = None, nickname: str = None, status: str = None) -> Dict[str, Any]:
+                         keyword: str = None, status: str = None) -> Dict[str, Any]:
         """List all users with pagination and filters."""
         conn = await self._get_connection()
         try:
@@ -150,12 +150,9 @@ class MySQLClient:
                 conditions = []
                 params = []
                 
-                if email:
-                    conditions.append("email LIKE %s")
-                    params.append(f"%{email}%")
-                if nickname:
-                    conditions.append("nickname LIKE %s")
-                    params.append(f"%{nickname}%")
+                if keyword:
+                    conditions.append("(email LIKE %s OR nickname LIKE %s)")
+                    params.extend([f"%{keyword}%", f"%{keyword}%"])
                 if status is not None and status != '':
                     conditions.append("status = %s")
                     params.append(status)
@@ -537,9 +534,22 @@ class MySQLClient:
         
         return await self._execute_transaction(operations)
 
+    async def get_all_owners(self) -> List[Dict[str, Any]]:
+        """Get all users as potential owners for filtering."""
+        conn = await self._get_connection()
+        try:
+            async with conn.cursor() as cursor:
+                await cursor.execute("""
+                    SELECT id, email, nickname FROM user 
+                    ORDER BY email ASC
+                """)
+                rows = await cursor.fetchall()
+                return [{"id": row[0], "email": row[1], "nickname": row[2]} for row in rows]
+        finally:
+            await self._release_connection(conn)
 
     async def list_all_datasets(self, page: int = 1, page_size: int = 20, 
-                                 name: str = None, status: str = None) -> Dict[str, Any]:
+                                 name: str = None, status: str = None, owner: str = None) -> Dict[str, Any]:
         """List all datasets from all users with pagination and filtering."""
         conn = await self._get_connection()
         try:
@@ -552,10 +562,18 @@ class MySQLClient:
                 if status:
                     conditions.append("kb.status = %s")
                     params.append(status)
+                if owner:
+                    conditions.append("(u.email LIKE %s OR u.nickname LIKE %s)")
+                    params.extend([f"%{owner}%", f"%{owner}%"])
                 
                 where_clause = " AND ".join(conditions) if conditions else "1=1"
                 
-                await cursor.execute(f"SELECT COUNT(*) FROM knowledgebase kb WHERE {where_clause}", params)
+                count_params = params.copy()
+                await cursor.execute(f"""
+                    SELECT COUNT(*) FROM knowledgebase kb
+                    LEFT JOIN user u ON kb.tenant_id = u.id
+                    WHERE {where_clause}
+                """, count_params)
                 total = (await cursor.fetchone())[0]
                 
                 offset = (page - 1) * page_size
@@ -599,7 +617,7 @@ class MySQLClient:
             await self._release_connection(conn)
 
     async def list_all_agents(self, page: int = 1, page_size: int = 20,
-                               title: str = None) -> Dict[str, Any]:
+                               title: str = None, owner: str = None) -> Dict[str, Any]:
         """List all agents from all users with pagination and filtering."""
         conn = await self._get_connection()
         try:
@@ -609,10 +627,18 @@ class MySQLClient:
                 if title:
                     conditions.append("uc.title LIKE %s")
                     params.append(f"%{title}%")
+                if owner:
+                    conditions.append("(u.email LIKE %s OR u.nickname LIKE %s)")
+                    params.extend([f"%{owner}%", f"%{owner}%"])
                 
                 where_clause = " AND ".join(conditions) if conditions else "1=1"
                 
-                await cursor.execute(f"SELECT COUNT(*) FROM user_canvas uc WHERE {where_clause}", params)
+                count_params = params.copy()
+                await cursor.execute(f"""
+                    SELECT COUNT(*) FROM user_canvas uc
+                    LEFT JOIN user u ON uc.user_id = u.id
+                    WHERE {where_clause}
+                """, count_params)
                 total = (await cursor.fetchone())[0]
                 
                 offset = (page - 1) * page_size
@@ -651,7 +677,7 @@ class MySQLClient:
             await self._release_connection(conn)
 
     async def list_all_chats(self, page: int = 1, page_size: int = 20,
-                              name: str = None) -> Dict[str, Any]:
+                              name: str = None, owner: str = None) -> Dict[str, Any]:
         """List all chat assistants from all users with pagination and filtering."""
         conn = await self._get_connection()
         try:
@@ -661,10 +687,18 @@ class MySQLClient:
                 if name:
                     conditions.append("d.name LIKE %s")
                     params.append(f"%{name}%")
+                if owner:
+                    conditions.append("(u.email LIKE %s OR u.nickname LIKE %s)")
+                    params.extend([f"%{owner}%", f"%{owner}%"])
                 
                 where_clause = " AND ".join(conditions) if conditions else "1=1"
                 
-                await cursor.execute(f"SELECT COUNT(*) FROM dialog d WHERE {where_clause}", params)
+                count_params = params.copy()
+                await cursor.execute(f"""
+                    SELECT COUNT(*) FROM dialog d
+                    LEFT JOIN user u ON d.tenant_id = u.id
+                    WHERE {where_clause}
+                """, count_params)
                 total = (await cursor.fetchone())[0]
                 
                 offset = (page - 1) * page_size

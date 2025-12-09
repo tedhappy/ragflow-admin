@@ -44,12 +44,14 @@ async def list_agents():
     page = request.args.get("page", 1, type=int)
     page_size = request.args.get("page_size", 20, type=int)
     title = request.args.get("title", None)
+    owner = request.args.get("owner", None)
     
     try:
         result = await mysql_client.list_all_agents(
             page=page, 
             page_size=page_size, 
-            title=title
+            title=title,
+            owner=owner
         )
         return jsonify({"code": 0, "data": result})
     except MySQLClientError as e:

@@ -14,6 +14,31 @@ logger = logging.getLogger(__name__)
 manager = Blueprint("user", __name__)
 
 
+@manager.route("/owners", methods=["GET"])
+async def get_owners():
+    """
+    Get all users as owners for filtering
+    ---
+    tags:
+      - User
+    responses:
+      200:
+        description: Owner list
+    """
+    if not settings.is_mysql_configured:
+        return jsonify({"code": -1, "message": "MySQL not configured"}), 400
+    
+    try:
+        result = await mysql_client.get_all_owners()
+        return jsonify({"code": 0, "data": result})
+    except MySQLClientError as e:
+        logger.error(f"Failed to get owners: {e.message}")
+        return jsonify({"code": e.code, "message": e.message}), 500
+    except Exception as e:
+        logger.exception("Unexpected error getting owners")
+        return jsonify({"code": -1, "message": str(e)}), 500
+
+
 @manager.route("", methods=["GET"])
 async def list_users():
     """
@@ -48,14 +73,13 @@ async def list_users():
     
     page = request.args.get("page", 1, type=int)
     page_size = request.args.get("page_size", 20, type=int)
-    email = request.args.get("email", None)
-    nickname = request.args.get("nickname", None)
+    keyword = request.args.get("keyword", None)
     status = request.args.get("status", None)
     
     try:
         result = await mysql_client.list_users(
             page=page, page_size=page_size, 
-            email=email, nickname=nickname, status=status
+            keyword=keyword, status=status
         )
         return jsonify({"code": 0, "data": result})
     except MySQLClientError as e:

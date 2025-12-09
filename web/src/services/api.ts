@@ -113,7 +113,7 @@ export interface Dataset {
 }
 
 export const datasetApi = {
-  list: (params?: PaginationParams & { name?: string }) =>
+  list: (params?: PaginationParams & { name?: string; owner?: string }) =>
     request.get<any, ListResponse<Dataset>>('/datasets', { params }),
   
   create: (data: { name: string; description?: string }) =>
@@ -180,7 +180,7 @@ export interface Chat {
 }
 
 export const chatApi = {
-  list: (params?: PaginationParams & { name?: string }) =>
+  list: (params?: PaginationParams & { name?: string; owner?: string }) =>
     request.get<any, ListResponse<Chat>>('/chats', { params }),
   
   batchDelete: (ids: string[]) =>
@@ -202,7 +202,7 @@ export interface Agent {
 }
 
 export const agentApi = {
-  list: (params?: PaginationParams & { title?: string }) =>
+  list: (params?: PaginationParams & { title?: string; owner?: string }) =>
     request.get<any, ListResponse<Agent>>('/agents', { params }),
   
   batchDelete: (ids: string[]) =>
@@ -281,7 +281,7 @@ export interface UserChat {
 
 export const userApi = {
   // User CRUD
-  list: (params?: PaginationParams & { email?: string; nickname?: string; status?: string }) =>
+  list: (params?: PaginationParams & { keyword?: string; status?: string }) =>
     request.get<any, ListResponse<RagflowUser>>('/users', { params }),
   get: (userId: string) =>
     request.get<any, UserDetail>(`/users/${userId}`),
@@ -301,7 +301,18 @@ export const userApi = {
     request.get<any, ListResponse<UserAgent>>(`/users/${userId}/agents`, { params }),
   getChats: (userId: string, params?: PaginationParams) =>
     request.get<any, ListResponse<UserChat>>(`/users/${userId}/chats`, { params }),
+  
+  // Get all users as owners for filtering
+  getOwners: () =>
+    request.get<any, Owner[]>('/users/owners'),
 };
+
+// Owner type for filter dropdown
+export interface Owner {
+  id: string;
+  email: string;
+  nickname?: string;
+}
 
 // Dashboard API
 export interface DashboardStats {

@@ -44,12 +44,14 @@ async def list_chats():
     page = request.args.get("page", 1, type=int)
     page_size = request.args.get("page_size", 20, type=int)
     name = request.args.get("name", None)
+    owner = request.args.get("owner", None)
     
     try:
         result = await mysql_client.list_all_chats(
             page=page, 
             page_size=page_size, 
-            name=name
+            name=name,
+            owner=owner
         )
         return jsonify({"code": 0, "data": result})
     except MySQLClientError as e:

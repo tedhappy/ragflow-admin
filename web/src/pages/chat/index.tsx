@@ -13,7 +13,7 @@
 import React, { useState } from 'react';
 import { Table, Button, Space, Card, message, Input, Typography, Spin, Tag, Avatar, Badge, Modal } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { ReloadOutlined, SearchOutlined, MessageOutlined, HistoryOutlined } from '@ant-design/icons';
+import { ReloadOutlined, SearchOutlined, MessageOutlined, HistoryOutlined, UserOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { chatApi, Chat, chatSessionApi, ChatSession } from '@/services/api';
 import { useTableList } from '@/hooks/useTableList';
@@ -29,6 +29,7 @@ const ChatPage: React.FC = () => {
   const { t } = useTranslation();
   const { checking, connected } = useConnectionCheck();
   const [searchName, setSearchName] = useState('');
+  const [searchOwner, setSearchOwner] = useState('');
   const [sessionModalVisible, setSessionModalVisible] = useState(false);
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -54,7 +55,7 @@ const ChatPage: React.FC = () => {
   });
 
   const onSearch = () => {
-    handleSearch({ name: searchName || undefined });
+    handleSearch({ name: searchName || undefined, owner: searchOwner || undefined });
   };
 
   const sortedData = [...data].sort((a, b) => 
@@ -237,6 +238,15 @@ const ChatPage: React.FC = () => {
                   onChange={(e) => setSearchName(e.target.value)}
                   onPressEnter={onSearch}
                   style={{ width: 200 }}
+                />
+                <Input
+                  placeholder={t('users.filterByOwner')}
+                  prefix={<UserOutlined />}
+                  allowClear
+                  value={searchOwner}
+                  onChange={(e) => setSearchOwner(e.target.value)}
+                  onPressEnter={onSearch}
+                  style={{ width: 180 }}
                 />
                 <Button icon={<SearchOutlined />} onClick={onSearch}>{t('common.search')}</Button>
               </Space>

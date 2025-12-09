@@ -13,7 +13,7 @@
 import React, { useState } from 'react';
 import { Table, Button, Space, Card, message, Input, Typography, Spin, Avatar, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { ReloadOutlined, SearchOutlined, RobotOutlined } from '@ant-design/icons';
+import { ReloadOutlined, SearchOutlined, RobotOutlined, UserOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { agentApi, Agent } from '@/services/api';
 import { useTableList } from '@/hooks/useTableList';
@@ -29,6 +29,7 @@ const Agents: React.FC = () => {
   const { t } = useTranslation();
   const { checking, connected } = useConnectionCheck();
   const [searchTitle, setSearchTitle] = useState('');
+  const [searchOwner, setSearchOwner] = useState('');
 
   const {
     data,
@@ -49,7 +50,7 @@ const Agents: React.FC = () => {
   });
 
   const onSearch = () => {
-    handleSearch({ title: searchTitle || undefined });
+    handleSearch({ title: searchTitle || undefined, owner: searchOwner || undefined });
   };
 
   const handleDelete = async (ids: string[]) => {
@@ -157,6 +158,15 @@ const Agents: React.FC = () => {
                   onChange={(e) => setSearchTitle(e.target.value)}
                   onPressEnter={onSearch}
                   style={{ width: 200 }}
+                />
+                <Input
+                  placeholder={t('users.filterByOwner')}
+                  prefix={<UserOutlined />}
+                  allowClear
+                  value={searchOwner}
+                  onChange={(e) => setSearchOwner(e.target.value)}
+                  onPressEnter={onSearch}
+                  style={{ width: 180 }}
                 />
                 <Button icon={<SearchOutlined />} onClick={onSearch}>{t('common.search')}</Button>
               </Space>
