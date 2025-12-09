@@ -983,11 +983,12 @@ class MySQLClient:
                     params.append(f"%{keywords}%")
                 
                 # RAGFlow status: 0=UNSTART, 1=RUNNING, 2=CANCEL, 3=DONE, 4=FAIL
-                status_to_num = {'UNSTART': '0', 'RUNNING': '1', 'CANCEL': '2', 'DONE': '3', 'FAIL': '4'}
+                # Use CAST to handle both string and int types
+                status_to_num = {'UNSTART': 0, 'RUNNING': 1, 'CANCEL': 2, 'DONE': 3, 'FAIL': 4}
                 run_status = kwargs.get("run")
                 if run_status:
-                    run_num = status_to_num.get(run_status, run_status)
-                    conditions.append("run = %s")
+                    run_num = status_to_num.get(run_status, int(run_status) if str(run_status).isdigit() else 0)
+                    conditions.append("CAST(run AS SIGNED) = %s")
                     params.append(run_num)
                 
                 where_clause = " AND ".join(conditions)
@@ -1056,10 +1057,11 @@ class MySQLClient:
                 params = []
                 
                 # Status filter (RAGFlow status: 0=UNSTART, 1=RUNNING, 2=CANCEL, 3=DONE, 4=FAIL)
-                status_to_num = {'UNSTART': '0', 'RUNNING': '1', 'CANCEL': '2', 'DONE': '3', 'FAIL': '4'}
+                # Use CAST to handle both string and int types
+                status_to_num = {'UNSTART': 0, 'RUNNING': 1, 'CANCEL': 2, 'DONE': 3, 'FAIL': 4}
                 if status:
-                    run_num = status_to_num.get(status, status)
-                    conditions.append("d.run = %s")
+                    run_num = status_to_num.get(status, int(status) if status.isdigit() else 0)
+                    conditions.append("CAST(d.run AS SIGNED) = %s")
                     params.append(run_num)
                 
                 if dataset_name:
@@ -1091,7 +1093,7 @@ class MySQLClient:
                     LEFT JOIN user u ON kb.tenant_id = u.id
                     WHERE {where_clause}
                     ORDER BY 
-                        CASE WHEN d.run = '1' THEN 0 ELSE 1 END,
+                        CASE WHEN CAST(d.run AS SIGNED) = 1 THEN 0 ELSE 1 END,
                         d.update_time DESC
                     LIMIT %s OFFSET %s
                 """, params + [page_size, offset])
@@ -1139,14 +1141,14 @@ class MySQLClient:
         conn = await self._get_connection()
         try:
             async with conn.cursor() as cursor:
-                # Count by status
+                # Count by status (use CAST to handle both string and int types)
                 await cursor.execute("""
                     SELECT 
-                        SUM(CASE WHEN run = '0' THEN 1 ELSE 0 END) as unstart,
-                        SUM(CASE WHEN run = '1' THEN 1 ELSE 0 END) as running,
-                        SUM(CASE WHEN run = '2' THEN 1 ELSE 0 END) as cancel,
-                        SUM(CASE WHEN run = '3' THEN 1 ELSE 0 END) as done,
-                        SUM(CASE WHEN run = '4' THEN 1 ELSE 0 END) as fail,
+                        SUM(CASE WHEN CAST(run AS SIGNED) = 0 THEN 1 ELSE 0 END) as unstart,
+                        SUM(CASE WHEN CAST(run AS SIGNED) = 1 THEN 1 ELSE 0 END) as running,
+                        SUM(CASE WHEN CAST(run AS SIGNED) = 2 THEN 1 ELSE 0 END) as cancel,
+                        SUM(CASE WHEN CAST(run AS SIGNED) = 3 THEN 1 ELSE 0 END) as done,
+                        SUM(CASE WHEN CAST(run AS SIGNED) = 4 THEN 1 ELSE 0 END) as fail,
                         COUNT(*) as total
                     FROM document
                 """)
@@ -1170,12 +1172,12 @@ class MySQLClient:
             async with conn.cursor() as cursor:
                 stats = {}
                 
-                # User statistics
+                # User statistics (use CAST to handle both string and int types)
                 await cursor.execute("""
                     SELECT 
                         COUNT(*) as total,
-                        SUM(CASE WHEN status = '1' THEN 1 ELSE 0 END) as active,
-                        SUM(CASE WHEN status = '0' THEN 1 ELSE 0 END) as inactive
+                        SUM(CASE WHEN CAST(status AS SIGNED) = 1 THEN 1 ELSE 0 END) as active,
+                        SUM(CASE WHEN CAST(status AS SIGNED) = 0 THEN 1 ELSE 0 END) as inactive
                     FROM user
                 """)
                 row = await cursor.fetchone()
@@ -1202,25 +1204,37 @@ class MySQLClient:
                     "total_tokens": int(row[3] or 0),
                 }
                 
-                # Document parsing statistics
+                # Document parsing statistics (use CAST for type safety)
+                # Note: canceled documents are excluded from effective_total for rate calculation
                 await cursor.execute("""
                     SELECT 
                         COUNT(*) as total,
-                        SUM(CASE WHEN run = '0' THEN 1 ELSE 0 END) as pending,
-                        SUM(CASE WHEN run = '1' THEN 1 ELSE 0 END) as running,
-                        SUM(CASE WHEN run = '3' THEN 1 ELSE 0 END) as completed,
-                        SUM(CASE WHEN run = '4' THEN 1 ELSE 0 END) as failed,
+                        SUM(CASE WHEN CAST(run AS SIGNED) = 0 THEN 1 ELSE 0 END) as pending,
+                        SUM(CASE WHEN CAST(run AS SIGNED) = 1 THEN 1 ELSE 0 END) as running,
+                        SUM(CASE WHEN CAST(run AS SIGNED) = 2 THEN 1 ELSE 0 END) as canceled,
+                        SUM(CASE WHEN CAST(run AS SIGNED) = 3 THEN 1 ELSE 0 END) as completed,
+                        SUM(CASE WHEN CAST(run AS SIGNED) = 4 THEN 1 ELSE 0 END) as failed,
                         COALESCE(SUM(size), 0) as total_size
                     FROM document
                 """)
                 row = await cursor.fetchone()
+                total = int(row[0] or 0)
+                pending = int(row[1] or 0)
+                running = int(row[2] or 0)
+                canceled = int(row[3] or 0)
+                completed = int(row[4] or 0)
+                failed = int(row[5] or 0)
+                # effective_total excludes canceled documents for accurate rate calculation
+                effective_total = total - canceled
                 stats["documents"] = {
-                    "total": int(row[0] or 0),
-                    "pending": int(row[1] or 0),
-                    "running": int(row[2] or 0),
-                    "completed": int(row[3] or 0),
-                    "failed": int(row[4] or 0),
-                    "total_size": int(row[5] or 0),
+                    "total": total,
+                    "effective_total": effective_total,
+                    "pending": pending,
+                    "running": running,
+                    "canceled": canceled,
+                    "completed": completed,
+                    "failed": failed,
+                    "total_size": int(row[6] or 0),
                 }
                 
                 # Chat statistics
@@ -1242,11 +1256,22 @@ class MySQLClient:
                 }
                 
                 # Recent activity (last 24 hours)
+                # Handle both millisecond timestamps (>10^12) and second timestamps
+                # If create_time > 10^12, treat as milliseconds; otherwise treat as seconds
                 await cursor.execute("""
                     SELECT 
-                        (SELECT COUNT(*) FROM user WHERE create_time > UNIX_TIMESTAMP(NOW() - INTERVAL 1 DAY) * 1000) as new_users,
-                        (SELECT COUNT(*) FROM document WHERE create_time > UNIX_TIMESTAMP(NOW() - INTERVAL 1 DAY) * 1000) as new_docs,
-                        (SELECT COUNT(*) FROM conversation WHERE create_time > UNIX_TIMESTAMP(NOW() - INTERVAL 1 DAY) * 1000) as new_sessions
+                        (SELECT COUNT(*) FROM user WHERE 
+                            (create_time > 1000000000000 AND create_time > UNIX_TIMESTAMP(NOW() - INTERVAL 1 DAY) * 1000) OR
+                            (create_time <= 1000000000000 AND create_time > UNIX_TIMESTAMP(NOW() - INTERVAL 1 DAY))
+                        ) as new_users,
+                        (SELECT COUNT(*) FROM document WHERE 
+                            (create_time > 1000000000000 AND create_time > UNIX_TIMESTAMP(NOW() - INTERVAL 1 DAY) * 1000) OR
+                            (create_time <= 1000000000000 AND create_time > UNIX_TIMESTAMP(NOW() - INTERVAL 1 DAY))
+                        ) as new_docs,
+                        (SELECT COUNT(*) FROM conversation WHERE 
+                            (create_time > 1000000000000 AND create_time > UNIX_TIMESTAMP(NOW() - INTERVAL 1 DAY) * 1000) OR
+                            (create_time <= 1000000000000 AND create_time > UNIX_TIMESTAMP(NOW() - INTERVAL 1 DAY))
+                        ) as new_sessions
                 """)
                 row = await cursor.fetchone()
                 stats["recent_activity"] = {

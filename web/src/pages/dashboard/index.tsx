@@ -215,9 +215,10 @@ const Dashboard: React.FC = () => {
   const isLoading = checking || loading;
   const overallStatus = health?.overall || 'unknown';
   
-  // Calculate parsing completion rate
-  const parsingRate = systemStats?.documents?.total && systemStats.documents.total > 0 
-    ? Math.round((systemStats.documents.completed / systemStats.documents.total) * 100) 
+  // Calculate parsing completion rate (use effective_total which excludes canceled docs)
+  const effectiveTotal = systemStats?.documents?.effective_total || systemStats?.documents?.total || 0;
+  const parsingRate = effectiveTotal > 0 
+    ? Math.round((systemStats!.documents.completed / effectiveTotal) * 100) 
     : 0;
 
   return (

@@ -506,8 +506,10 @@ export interface SystemStats {
   };
   documents: {
     total: number;
+    effective_total: number;  // excludes canceled documents
     pending: number;
     running: number;
+    canceled: number;
     completed: number;
     failed: number;
     total_size: number;

@@ -330,7 +330,7 @@ export default {
       retryFailed: 'Failed to retry tasks',
       noFailedTasks: 'No failed tasks to retry',
       ragflowNotConfigured: 'RAGFlow API Not Configured',
-      ragflowNotConfiguredDesc: 'Parse and stop operations require RAGFlow API. Task list can still be viewed.',
+      ragflowNotConfiguredDesc: 'Parse and stop operations require RAGFlow API. Please configure it in settings.',
       configureRagflow: 'Configure',
       status: {
         unstart: 'Pending',

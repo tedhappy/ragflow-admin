@@ -330,7 +330,7 @@ export default {
       retryFailed: '重试任务失败',
       noFailedTasks: '没有失败的任务需要重试',
       ragflowNotConfigured: 'RAGFlow API 未配置',
-      ragflowNotConfiguredDesc: '解析和停止操作需要 RAGFlow API。任务列表仍可正常查看。',
+      ragflowNotConfiguredDesc: '解析和停止操作需要 RAGFlow API。请在设置中进行配置。',
       configureRagflow: '去配置',
       status: {
         unstart: '待处理',
