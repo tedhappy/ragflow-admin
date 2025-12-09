@@ -8,10 +8,12 @@
  * Dashboard Page
  *
  * Overview page displaying system statistics, service health, and quick navigation.
+ * Optimized for clarity and visual consistency with RAGFlow design.
  */
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { Card, Typography, Spin, message, Row, Col, Tag, Progress, Divider, Alert, Tooltip, Statistic } from 'antd';
+import { Card, Typography, Spin, message, Row, Col, Progress, Tooltip, Space } from 'antd';
+import dayjs from 'dayjs';
 import { 
   DatabaseOutlined, 
   MessageOutlined, 
@@ -21,13 +23,14 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   ExclamationCircleOutlined,
-  QuestionCircleOutlined,
   ApiOutlined,
   HddOutlined,
   CloudServerOutlined,
   ClockCircleOutlined,
   SyncOutlined,
   ReloadOutlined,
+  RightOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -60,35 +63,95 @@ const formatNumber = (num: number): string => {
   return num.toString();
 };
 
-const StatusIcon: React.FC<{ status: string }> = ({ status }) => {
-  switch (status) {
-    case 'healthy':
-    case 'ok':
-      return <CheckCircleOutlined style={{ color: '#52c41a', fontSize: 18 }} />;
-    case 'unhealthy':
-    case 'nok':
-      return <CloseCircleOutlined style={{ color: '#ff4d4f', fontSize: 18 }} />;
-    case 'not_configured':
-      return <ExclamationCircleOutlined style={{ color: '#faad14', fontSize: 18 }} />;
-    default:
-      return <QuestionCircleOutlined style={{ color: '#8c8c8c', fontSize: 18 }} />;
-  }
+// Compact status dot component
+const StatusDot: React.FC<{ status: string }> = ({ status }) => {
+  const colorMap: Record<string, string> = {
+    healthy: '#52c41a',
+    ok: '#52c41a',
+    unhealthy: '#ff4d4f',
+    nok: '#ff4d4f',
+    not_configured: '#faad14',
+    partial: '#faad14',
+    unknown: '#d9d9d9',
+  };
+  return (
+    <span style={{
+      display: 'inline-block',
+      width: 8,
+      height: 8,
+      borderRadius: '50%',
+      backgroundColor: colorMap[status] || colorMap.unknown,
+    }} />
+  );
 };
 
-const StatusTag: React.FC<{ status: string }> = ({ status }) => {
+// Service item component for cleaner code
+const ServiceItem: React.FC<{ 
+  icon: React.ReactNode; 
+  name: string; 
+  status: string;
+  iconColor: string;
+}> = ({ icon, name, status, iconColor }) => {
   const { t } = useTranslation();
-  const statusConfig: Record<string, { color: string; text: string }> = {
-    healthy: { color: 'success', text: t('monitoring.status.healthy') },
-    ok: { color: 'success', text: t('monitoring.status.healthy') },
-    unhealthy: { color: 'error', text: t('monitoring.status.unhealthy') },
-    nok: { color: 'error', text: t('monitoring.status.unhealthy') },
-    not_configured: { color: 'warning', text: t('monitoring.status.notConfigured') },
-    partial: { color: 'warning', text: t('monitoring.status.partial') },
-    unknown: { color: 'default', text: t('monitoring.status.unknown') },
+  const statusTextMap: Record<string, string> = {
+    healthy: t('monitoring.status.healthy'),
+    ok: t('monitoring.status.healthy'),
+    unhealthy: t('monitoring.status.unhealthy'),
+    nok: t('monitoring.status.unhealthy'),
+    not_configured: t('monitoring.status.notConfigured'),
+    unknown: t('monitoring.status.unknown'),
   };
-  const config = statusConfig[status] || statusConfig.unknown;
-  return <Tag color={config.color}>{config.text}</Tag>;
+  
+  return (
+    <div style={{ 
+      display: 'flex', 
+      alignItems: 'center', 
+      justifyContent: 'space-between',
+      padding: '8px 12px',
+      borderRadius: 8,
+      backgroundColor: 'var(--bg-card-hover, rgba(0,0,0,0.02))',
+      marginBottom: 6,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {React.cloneElement(icon as React.ReactElement, { 
+          style: { color: iconColor, fontSize: 16 } 
+        })}
+        <Text style={{ fontSize: 13 }}>{name}</Text>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <StatusDot status={status} />
+        <Text style={{ fontSize: 12, color: 'var(--text-secondary, rgba(0,0,0,0.45))' }}>
+          {statusTextMap[status] || statusTextMap.unknown}
+        </Text>
+      </div>
+    </div>
+  );
 };
+
+// Stat item for activity section
+const ActivityStatItem: React.FC<{
+  icon: React.ReactNode;
+  value: number;
+  label: string;
+  color: string;
+}> = ({ icon, value, label, color }) => (
+  <div style={{ textAlign: 'center' }}>
+    <div style={{ 
+      width: 44, 
+      height: 44, 
+      borderRadius: 10, 
+      backgroundColor: `${color}15`,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      margin: '0 auto 8px',
+    }}>
+      {React.cloneElement(icon as React.ReactElement, { style: { color, fontSize: 20 } })}
+    </div>
+    <div style={{ fontSize: 20, fontWeight: 600, color }}>{value}</div>
+    <div style={{ fontSize: 11, color: 'var(--text-secondary, rgba(0,0,0,0.45))' }}>{label}</div>
+  </div>
+);
 
 const Dashboard: React.FC = () => {
   const { t } = useTranslation();
@@ -105,6 +168,7 @@ const Dashboard: React.FC = () => {
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [systemStats, setSystemStats] = useState<SystemStats | null>(null);
   const [ragflowServices, setRagflowServices] = useState<any>(null);
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!connected) return;
@@ -132,6 +196,7 @@ const Dashboard: React.FC = () => {
       message.error(translateErrorMessage(error.message, t) || t('dashboard.fetchFailed'));
     } finally {
       setLoading(false);
+      setLastRefreshTime(new Date());
     }
   }, [connected, t]);
 
@@ -149,40 +214,48 @@ const Dashboard: React.FC = () => {
 
   const isLoading = checking || loading;
   const overallStatus = health?.overall || 'unknown';
+  
+  // Calculate parsing completion rate
+  const parsingRate = systemStats?.documents?.total && systemStats.documents.total > 0 
+    ? Math.round((systemStats.documents.completed / systemStats.documents.total) * 100) 
+    : 0;
 
   return (
     <ErrorBoundary>
       <Spin spinning={isLoading} size="large">
         <div style={{ minHeight: isLoading ? 300 : 'auto', visibility: isLoading ? 'hidden' : 'visible' }}>
-          <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {/* Header */}
+          <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Title level={4} style={{ margin: 0 }}>{t('dashboard.title')}</Title>
-            <Tooltip title={t('common.refresh')}>
-              <ReloadOutlined 
-                style={{ fontSize: 16, cursor: 'pointer', opacity: 0.65 }} 
-                onClick={fetchData}
-              />
-            </Tooltip>
+            <Space size={12}>
+              {lastRefreshTime && (
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  {t('monitoring.lastUpdated')}: {dayjs(lastRefreshTime).format('HH:mm:ss')}
+                </Text>
+              )}
+              <Tooltip title={t('common.refresh')}>
+                <ReloadOutlined 
+                  style={{ fontSize: 16, cursor: 'pointer', opacity: 0.65 }} 
+                  onClick={fetchData}
+                />
+              </Tooltip>
+            </Space>
           </div>
           
-          {/* Quick Stats */}
-          <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
+          {/* Quick Stats Cards - Full width responsive */}
+          <div style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
             {statisticsData.map((item) => (
               <Card 
-                key={item.title} 
+                key={item.title}
                 hoverable 
                 onClick={() => navigate(item.path)}
-                style={{ 
-                  flex: 1,
-                  borderRadius: 12,
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease',
-                }}
-                bodyStyle={{ padding: '20px 16px' }}
+                style={{ flex: 1, borderRadius: 12, minWidth: 0 }}
+                bodyStyle={{ padding: '16px' }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
                   <div style={{
-                    width: 48,
-                    height: 48,
+                    width: 44,
+                    height: 44,
                     borderRadius: 10,
                     backgroundColor: item.bgColor,
                     display: 'flex',
@@ -191,223 +264,218 @@ const Dashboard: React.FC = () => {
                     flexShrink: 0,
                   }}>
                     {React.cloneElement(item.icon as React.ReactElement, {
-                      style: { color: item.color, fontSize: 24 },
+                      style: { color: item.color, fontSize: 22 },
                     })}
                   </div>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 12, opacity: 0.65, marginBottom: 2 }}>{item.title}</div>
-                    <div style={{ fontSize: 24, fontWeight: 600, lineHeight: 1 }}>{item.value}</div>
+                  <div>
+                    <div style={{ fontSize: 11, opacity: 0.65, marginBottom: 2 }}>{item.title}</div>
+                    <div style={{ fontSize: 22, fontWeight: 600, lineHeight: 1 }}>{item.value}</div>
                   </div>
                 </div>
               </Card>
             ))}
           </div>
 
-          {/* Service Health & Stats Row */}
+          {/* Main Content Row */}
           <Row gutter={16}>
-            {/* Service Health */}
+            {/* Service Health - Simplified */}
             <Col xs={24} lg={8}>
               <Card 
-                title={t('monitoring.serviceHealth')} 
-                size="small"
-                style={{ height: '100%' }}
-              >
-                {/* Overall Status */}
-                <Alert
-                  message={
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <StatusIcon status={overallStatus} />
-                      <StatusTag status={overallStatus} />
-                      <Text style={{ fontSize: 12 }}>
-                        {overallStatus === 'healthy' && t('monitoring.allSystemsOperational')}
-                        {overallStatus === 'unhealthy' && t('monitoring.systemIssues')}
-                        {overallStatus === 'partial' && t('monitoring.partiallyOperational')}
-                        {overallStatus === 'unknown' && t('monitoring.statusUnknown')}
-                      </Text>
-                    </div>
-                  }
-                  type={overallStatus === 'healthy' ? 'success' : overallStatus === 'unhealthy' ? 'error' : 'warning'}
-                  style={{ marginBottom: 12 }}
-                />
-                
-                {/* Service List */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {/* MySQL */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <DatabaseOutlined style={{ color: '#1890ff', fontSize: 14 }} />
-                      <Text style={{ fontSize: 13 }}>{t('monitoring.services.mysql')}</Text>
-                    </div>
-                    <StatusTag status={health?.mysql?.status || 'unknown'} />
+                title={
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span>{t('monitoring.serviceHealth')}</span>
+                    <StatusDot status={overallStatus} />
                   </div>
-                  {/* RAGFlow API */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <ApiOutlined style={{ color: '#722ed1', fontSize: 14 }} />
-                      <Text style={{ fontSize: 13 }}>{t('monitoring.services.ragflowApi')}</Text>
-                    </div>
-                    <StatusTag status={health?.ragflow_api?.status || 'unknown'} />
-                  </div>
-                  {/* RAGFlow Internal Services */}
-                  {ragflowServices && (
-                    <>
-                      {/* Redis */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <HddOutlined style={{ color: '#eb2f96', fontSize: 14 }} />
-                          <Text style={{ fontSize: 13 }}>{t('monitoring.services.redis')}</Text>
-                        </div>
-                        <StatusTag status={ragflowServices.redis || 'unknown'} />
-                      </div>
-                      {/* Document Engine (Elasticsearch) */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <CloudServerOutlined style={{ color: '#13c2c2', fontSize: 14 }} />
-                          <Text style={{ fontSize: 13 }}>{t('monitoring.services.docEngine')}</Text>
-                        </div>
-                        <StatusTag status={ragflowServices.doc_engine || 'unknown'} />
-                      </div>
-                      {/* Object Storage (MinIO) */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <HddOutlined style={{ color: '#fa8c16', fontSize: 14 }} />
-                          <Text style={{ fontSize: 13 }}>{t('monitoring.services.storage')}</Text>
-                        </div>
-                        <StatusTag status={ragflowServices.storage || 'unknown'} />
-                      </div>
-                    </>
-                  )}
-                </div>
-              </Card>
-            </Col>
-
-            {/* Document Parsing Stats */}
-            <Col xs={24} lg={8}>
-              <Card 
-                title={t('monitoring.stats.parsingStatus')} 
-                size="small"
-                style={{ height: '100%' }}
-                extra={
-                  <a onClick={() => navigate('/tasks')} style={{ fontSize: 12 }}>
-                    {t('dashboard.viewAll')}
-                  </a>
                 }
+                size="small"
+                style={{ borderRadius: 12, height: '100%' }}
+                bodyStyle={{ padding: '12px 16px' }}
               >
-                {systemStats?.documents && (
+                <ServiceItem 
+                  icon={<DatabaseOutlined />}
+                  name={t('monitoring.services.mysql')}
+                  status={health?.mysql?.status || 'unknown'}
+                  iconColor="#1890ff"
+                />
+                <ServiceItem 
+                  icon={<ApiOutlined />}
+                  name={t('monitoring.services.ragflowApi')}
+                  status={health?.ragflow_api?.status || 'unknown'}
+                  iconColor="#722ed1"
+                />
+                {ragflowServices && (
                   <>
-                    <Row gutter={8} style={{ marginBottom: 16 }}>
-                      <Col span={12}>
-                        <div style={{ textAlign: 'center' }}>
-                          <Progress
-                            type="circle"
-                            percent={systemStats.documents.total > 0 ? Math.round((systemStats.documents.completed / systemStats.documents.total) * 100) : 0}
-                            size={70}
-                            strokeColor="#52c41a"
-                          />
-                          <div style={{ marginTop: 8 }}>
-                            <Text type="secondary" style={{ fontSize: 12 }}>{t('monitoring.stats.completed')}</Text>
-                            <div><Text strong>{systemStats.documents.completed}</Text></div>
-                          </div>
-                        </div>
-                      </Col>
-                      <Col span={12}>
-                        <div style={{ textAlign: 'center' }}>
-                          <Progress
-                            type="circle"
-                            percent={systemStats.documents.total > 0 ? Math.round((systemStats.documents.failed / systemStats.documents.total) * 100) : 0}
-                            size={70}
-                            strokeColor="#ff4d4f"
-                            status="exception"
-                          />
-                          <div style={{ marginTop: 8 }}>
-                            <Text type="secondary" style={{ fontSize: 12 }}>{t('monitoring.stats.failed')}</Text>
-                            <div><Text strong>{systemStats.documents.failed}</Text></div>
-                          </div>
-                        </div>
-                      </Col>
-                    </Row>
-                    <Divider style={{ margin: '12px 0' }} />
-                    <Row gutter={8}>
-                      <Col span={8}>
-                        <Statistic 
-                          title={<span style={{ fontSize: 11 }}>{t('monitoring.stats.running')}</span>}
-                          value={systemStats.documents.running} 
-                          prefix={<SyncOutlined spin={systemStats.documents.running > 0} style={{ fontSize: 12 }} />}
-                          valueStyle={{ fontSize: 18, color: '#1890ff' }}
-                        />
-                      </Col>
-                      <Col span={8}>
-                        <Statistic 
-                          title={<span style={{ fontSize: 11 }}>{t('monitoring.stats.pending')}</span>}
-                          value={systemStats.documents.pending} 
-                          prefix={<ClockCircleOutlined style={{ fontSize: 12 }} />}
-                          valueStyle={{ fontSize: 18 }}
-                        />
-                      </Col>
-                      <Col span={8}>
-                        <Statistic 
-                          title={<span style={{ fontSize: 11 }}>{t('monitoring.stats.totalSize')}</span>}
-                          value={formatBytes(systemStats.documents.total_size)} 
-                          valueStyle={{ fontSize: 14 }}
-                        />
-                      </Col>
-                    </Row>
+                    <ServiceItem 
+                      icon={<HddOutlined />}
+                      name={t('monitoring.services.redis')}
+                      status={ragflowServices.redis || 'unknown'}
+                      iconColor="#eb2f96"
+                    />
+                    <ServiceItem 
+                      icon={<CloudServerOutlined />}
+                      name={t('monitoring.services.docEngine')}
+                      status={ragflowServices.doc_engine || 'unknown'}
+                      iconColor="#13c2c2"
+                    />
+                    <ServiceItem 
+                      icon={<HddOutlined />}
+                      name={t('monitoring.services.storage')}
+                      status={ragflowServices.storage || 'unknown'}
+                      iconColor="#fa8c16"
+                    />
                   </>
                 )}
               </Card>
             </Col>
 
-            {/* Recent Activity */}
+            {/* Document Parsing Stats - Redesigned */}
+            <Col xs={24} lg={8}>
+              <Card 
+                title={t('monitoring.stats.parsingStatus')} 
+                size="small"
+                style={{ borderRadius: 12, height: '100%' }}
+                bodyStyle={{ padding: '16px' }}
+                extra={
+                  <a onClick={() => navigate('/tasks')} style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    {t('dashboard.viewAll')} <RightOutlined style={{ fontSize: 10 }} />
+                  </a>
+                }
+              >
+                {systemStats?.documents && (
+                  <div>
+                    {/* Main Progress Circle */}
+                    <div style={{ textAlign: 'center', marginBottom: 16 }}>
+                      <Progress
+                        type="circle"
+                        percent={parsingRate}
+                        size={100}
+                        strokeColor="#52c41a"
+                        format={() => (
+                          <div>
+                            <div style={{ fontSize: 24, fontWeight: 600 }}>{parsingRate}%</div>
+                            <div style={{ fontSize: 11, opacity: 0.65 }}>{t('monitoring.stats.completed')}</div>
+                          </div>
+                        )}
+                      />
+                    </div>
+                    
+                    {/* Status Grid */}
+                    <Row gutter={8}>
+                      <Col span={6}>
+                        <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                            <CheckCircleOutlined style={{ color: '#52c41a', fontSize: 12 }} />
+                            <span style={{ fontSize: 16, fontWeight: 600 }}>{systemStats.documents.completed}</span>
+                          </div>
+                          <div style={{ fontSize: 11, opacity: 0.65 }}>{t('monitoring.stats.completed')}</div>
+                        </div>
+                      </Col>
+                      <Col span={6}>
+                        <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                            <SyncOutlined spin={systemStats.documents.running > 0} style={{ color: '#1890ff', fontSize: 12 }} />
+                            <span style={{ fontSize: 16, fontWeight: 600, color: '#1890ff' }}>{systemStats.documents.running}</span>
+                          </div>
+                          <div style={{ fontSize: 11, opacity: 0.65 }}>{t('monitoring.stats.running')}</div>
+                        </div>
+                      </Col>
+                      <Col span={6}>
+                        <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                            <ClockCircleOutlined style={{ color: '#8c8c8c', fontSize: 12 }} />
+                            <span style={{ fontSize: 16, fontWeight: 600 }}>{systemStats.documents.pending}</span>
+                          </div>
+                          <div style={{ fontSize: 11, opacity: 0.65 }}>{t('monitoring.stats.pending')}</div>
+                        </div>
+                      </Col>
+                      <Col span={6}>
+                        <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                            <CloseCircleOutlined style={{ color: '#ff4d4f', fontSize: 12 }} />
+                            <span style={{ fontSize: 16, fontWeight: 600, color: '#ff4d4f' }}>{systemStats.documents.failed}</span>
+                          </div>
+                          <div style={{ fontSize: 11, opacity: 0.65 }}>{t('monitoring.stats.failed')}</div>
+                        </div>
+                      </Col>
+                    </Row>
+                    
+                    {/* Total Size */}
+                    <div style={{ 
+                      marginTop: 12, 
+                      padding: '10px 12px', 
+                      backgroundColor: 'var(--bg-card-hover, rgba(0,0,0,0.02))',
+                      borderRadius: 8,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}>
+                      <Text style={{ fontSize: 12, opacity: 0.65 }}>{t('monitoring.stats.totalSize')}</Text>
+                      <Text strong>{formatBytes(systemStats.documents.total_size)}</Text>
+                    </div>
+                  </div>
+                )}
+              </Card>
+            </Col>
+
+            {/* Recent Activity - Redesigned */}
             <Col xs={24} lg={8}>
               <Card 
                 title={t('monitoring.stats.recentActivity')} 
                 size="small"
-                style={{ height: '100%' }}
+                style={{ borderRadius: 12, height: '100%' }}
+                bodyStyle={{ padding: '16px' }}
               >
                 {systemStats?.recent_activity && (
-                  <>
-                    <Row gutter={16}>
+                  <div>
+                    {/* Activity Stats */}
+                    <Row gutter={16} style={{ marginBottom: 20 }}>
                       <Col span={8}>
-                        <Statistic
-                          title={<span style={{ fontSize: 11 }}>{t('monitoring.stats.newUsers24h')}</span>}
+                        <ActivityStatItem
+                          icon={<UserOutlined />}
                           value={systemStats.recent_activity.new_users_24h}
-                          prefix={<UserOutlined style={{ color: '#52c41a', fontSize: 14 }} />}
-                          valueStyle={{ fontSize: 20, color: '#52c41a' }}
+                          label={t('monitoring.stats.newUsers24h')}
+                          color="#52c41a"
                         />
                       </Col>
                       <Col span={8}>
-                        <Statistic
-                          title={<span style={{ fontSize: 11 }}>{t('monitoring.stats.newDocs24h')}</span>}
+                        <ActivityStatItem
+                          icon={<FileOutlined />}
                           value={systemStats.recent_activity.new_docs_24h}
-                          prefix={<FileOutlined style={{ color: '#1890ff', fontSize: 14 }} />}
-                          valueStyle={{ fontSize: 20, color: '#1890ff' }}
+                          label={t('monitoring.stats.newDocs24h')}
+                          color="#1890ff"
                         />
                       </Col>
                       <Col span={8}>
-                        <Statistic
-                          title={<span style={{ fontSize: 11 }}>{t('monitoring.stats.newSessions24h')}</span>}
+                        <ActivityStatItem
+                          icon={<MessageOutlined />}
                           value={systemStats.recent_activity.new_sessions_24h}
-                          prefix={<MessageOutlined style={{ color: '#722ed1', fontSize: 14 }} />}
-                          valueStyle={{ fontSize: 20, color: '#722ed1' }}
+                          label={t('monitoring.stats.newSessions24h')}
+                          color="#722ed1"
                         />
                       </Col>
                     </Row>
-                    <Divider style={{ margin: '16px 0' }} />
-                    <div>
-                      <Text type="secondary" style={{ fontSize: 12 }}>{t('monitoring.stats.tokenUsage')}</Text>
-                      <div style={{ marginTop: 4 }}>
+                    
+                    {/* Token Usage */}
+                    <div style={{ 
+                      padding: '12px',
+                      backgroundColor: 'var(--bg-card-hover, rgba(0,0,0,0.02))',
+                      borderRadius: 8,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                        <ThunderboltOutlined style={{ fontSize: 14, color: '#722ed1' }} />
+                        <Text type="secondary" style={{ fontSize: 12 }}>{t('monitoring.stats.tokenUsage')}</Text>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
                         <Text strong style={{ fontSize: 24 }}>
-                          {formatNumber(systemStats.datasets.total_tokens)}
+                          {formatNumber(systemStats.datasets?.total_tokens || 0)}
                         </Text>
-                        <Text type="secondary" style={{ marginLeft: 4 }}>tokens</Text>
+                        <Text type="secondary" style={{ fontSize: 12 }}>tokens</Text>
                       </div>
-                      <div style={{ marginTop: 4 }}>
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                          {formatNumber(systemStats.datasets.total_chunks)} {t('monitoring.stats.totalChunks').toLowerCase()}
-                        </Text>
-                      </div>
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        {formatNumber(systemStats.datasets?.total_chunks || 0)} {t('monitoring.stats.totalChunks').toLowerCase()}
+                      </Text>
                     </div>
-                  </>
+                  </div>
                 )}
               </Card>
             </Col>

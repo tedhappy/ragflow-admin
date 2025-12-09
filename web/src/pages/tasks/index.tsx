@@ -379,7 +379,7 @@ const Tasks: React.FC = () => {
     <ErrorBoundary>
       <Spin spinning={isLoading} size="large">
         <div style={{ minHeight: isLoading ? 400 : 'auto', visibility: isLoading ? 'hidden' : 'visible' }}>
-          <Title level={4} style={{ marginBottom: 16 }}>{t('tasks.title')}</Title>
+          <Title level={4} style={{ margin: 0, marginBottom: 16 }}>{t('tasks.title')}</Title>
           
           {/* RAGFlow API Not Configured Warning */}
           {ragflowConfigured === false && (
@@ -388,7 +388,7 @@ const Tasks: React.FC = () => {
               description={t('tasks.ragflowNotConfiguredDesc')}
               type="warning"
               showIcon
-              style={{ marginBottom: 16 }}
+              style={{ marginBottom: 16, alignItems: 'center' }}
               action={
                 <Button size="small" icon={<SettingOutlined />} onClick={() => navigate('/settings')}>
                   {t('tasks.configureRagflow')}
