@@ -22,6 +22,7 @@ import {
   MenuUnfoldOutlined,
   LogoutOutlined,
   GithubOutlined,
+  UnorderedListOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
@@ -89,6 +90,11 @@ const LayoutContent: React.FC = () => {
       key: '/agents', 
       icon: <RobotOutlined />, 
       label: <Link to="/agents">{t('menu.agents')}</Link> 
+    },
+    { 
+      key: '/tasks', 
+      icon: <UnorderedListOutlined />, 
+      label: <Link to="/tasks">{t('menu.tasks')}</Link> 
     },
     { 
       key: '/users', 

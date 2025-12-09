@@ -24,6 +24,7 @@ from api.apps.chat_app import manager as chat_bp
 from api.apps.agent_app import manager as agent_bp
 from api.apps.system_app import manager as system_bp
 from api.apps.user_app import manager as user_bp
+from api.apps.task_app import manager as task_bp
 
 __all__ = ["app"]
 
@@ -73,6 +74,7 @@ app.register_blueprint(chat_bp, url_prefix="/api/v1/chats")
 app.register_blueprint(agent_bp, url_prefix="/api/v1/agents")
 app.register_blueprint(system_bp, url_prefix="/api/v1/system")
 app.register_blueprint(user_bp, url_prefix="/api/v1/users")
+app.register_blueprint(task_bp, url_prefix="/api/v1/tasks")
 
 
 @app.route("/health")

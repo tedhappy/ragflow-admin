@@ -372,3 +372,213 @@ async def test_ragflow_connection():
             "code": -1,
             "message": str(e)
         }), 500
+
+
+@manager.route("/monitoring/health", methods=["GET"])
+async def get_health_status():
+    """
+    Get comprehensive health status of all services
+    ---
+    tags:
+      - System
+    responses:
+      200:
+        description: Health status of all services
+    """
+    health = {
+        "mysql": {"status": "unknown", "message": None},
+        "ragflow_api": {"status": "unknown", "message": None},
+        "overall": "unknown"
+    }
+    
+    # Check MySQL
+    try:
+        if settings.is_mysql_configured:
+            result = await mysql_client.test_connection()
+            if result.get("connected"):
+                health["mysql"] = {
+                    "status": "healthy",
+                    "message": f"MySQL {result.get('version', 'unknown')} - {settings.mysql_database}",
+                    "version": result.get("version"),
+                    "database": result.get("database")
+                }
+            else:
+                health["mysql"] = {
+                    "status": "unhealthy",
+                    "message": result.get("error", "Connection failed")
+                }
+        else:
+            health["mysql"] = {
+                "status": "not_configured",
+                "message": "MySQL connection not configured"
+            }
+    except Exception as e:
+        health["mysql"] = {
+            "status": "unhealthy",
+            "message": str(e)
+        }
+    
+    # Check RAGFlow API
+    try:
+        if settings.ragflow_base_url and settings.ragflow_api_key:
+            async with httpx.AsyncClient() as client:
+                # Try health endpoint first
+                try:
+                    response = await client.get(
+                        f"{settings.ragflow_base_url}/v1/system/healthz",
+                        timeout=10
+                    )
+                    if response.status_code == 200:
+                        resp_data = response.json()
+                        health["ragflow_api"] = {
+                            "status": "healthy",
+                            "message": "RAGFlow API is healthy",
+                            "details": resp_data
+                        }
+                    else:
+                        # Fallback to datasets API
+                        response = await client.get(
+                            f"{settings.ragflow_base_url}/api/v1/datasets",
+                            params={"page": 1, "page_size": 1},
+                            headers={"Authorization": f"Bearer {settings.ragflow_api_key}"},
+                            timeout=10
+                        )
+                        if response.status_code == 200:
+                            health["ragflow_api"] = {
+                                "status": "healthy",
+                                "message": "RAGFlow API is reachable"
+                            }
+                        else:
+                            health["ragflow_api"] = {
+                                "status": "unhealthy",
+                                "message": f"HTTP {response.status_code}"
+                            }
+                except httpx.ConnectError:
+                    health["ragflow_api"] = {
+                        "status": "unhealthy",
+                        "message": "Cannot connect to RAGFlow server"
+                    }
+                except httpx.TimeoutException:
+                    health["ragflow_api"] = {
+                        "status": "unhealthy",
+                        "message": "Connection timeout"
+                    }
+        else:
+            health["ragflow_api"] = {
+                "status": "not_configured",
+                "message": "RAGFlow API not configured"
+            }
+    except Exception as e:
+        health["ragflow_api"] = {
+            "status": "unhealthy",
+            "message": str(e)
+        }
+    
+    # Calculate overall status
+    statuses = [health["mysql"]["status"], health["ragflow_api"]["status"]]
+    if all(s == "healthy" for s in statuses):
+        health["overall"] = "healthy"
+    elif any(s == "unhealthy" for s in statuses):
+        health["overall"] = "unhealthy"
+    elif all(s in ["healthy", "not_configured"] for s in statuses):
+        health["overall"] = "partial"
+    else:
+        health["overall"] = "unknown"
+    
+    return jsonify({"code": 0, "data": health})
+
+
+@manager.route("/monitoring/stats", methods=["GET"])
+async def get_system_stats():
+    """
+    Get comprehensive system statistics
+    ---
+    tags:
+      - System
+    responses:
+      200:
+        description: System statistics
+    """
+    try:
+        stats = await mysql_client.get_system_statistics()
+        return jsonify({"code": 0, "data": stats})
+    except MySQLClientError as e:
+        logger.error(f"Failed to get system stats: {e.message}")
+        return jsonify({"code": -1, "message": e.message}), 500
+    except Exception as e:
+        logger.exception("Unexpected error getting system stats")
+        return jsonify({"code": -1, "message": str(e)}), 500
+
+
+@manager.route("/monitoring/ragflow-health", methods=["GET"])
+async def get_ragflow_health():
+    """
+    Get RAGFlow service health details (DB, Redis, DocEngine, Storage)
+    ---
+    tags:
+      - System
+    responses:
+      200:
+        description: RAGFlow service health
+    """
+    if not settings.ragflow_base_url:
+        return jsonify({
+            "code": -1,
+            "message": "RAGFlow URL not configured"
+        }), 400
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{settings.ragflow_base_url}/v1/system/healthz",
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                resp_data = response.json()
+                return jsonify({
+                    "code": 0,
+                    "data": {
+                        "status": "healthy",
+                        "services": resp_data
+                    }
+                })
+            elif response.status_code == 500:
+                resp_data = response.json()
+                return jsonify({
+                    "code": 0,
+                    "data": {
+                        "status": "unhealthy",
+                        "services": resp_data
+                    }
+                })
+            else:
+                return jsonify({
+                    "code": -1,
+                    "data": {
+                        "status": "unknown",
+                        "message": f"HTTP {response.status_code}"
+                    }
+                })
+    except httpx.ConnectError:
+        return jsonify({
+            "code": -1,
+            "data": {
+                "status": "unreachable",
+                "message": "Cannot connect to RAGFlow server"
+            }
+        })
+    except httpx.TimeoutException:
+        return jsonify({
+            "code": -1,
+            "data": {
+                "status": "timeout",
+                "message": "Connection timeout"
+            }
+        })
+    except Exception as e:
+        logger.exception("Failed to get RAGFlow health")
+        return jsonify({
+            "code": -1,
+            "message": str(e)
+        }), 500

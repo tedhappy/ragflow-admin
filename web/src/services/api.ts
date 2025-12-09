@@ -427,4 +427,124 @@ export const authApi = {
     request.post<any, LoginResponse>('/auth/refresh'),
 };
 
+// Task Queue API
+export interface ParsingTask {
+  id: string;
+  name: string;
+  size?: number;
+  type?: string;
+  token_count?: number;
+  chunk_count?: number;
+  progress: number;
+  progress_msg?: string;
+  process_begin_at?: string;
+  process_duration?: number;
+  run: 'UNSTART' | 'RUNNING' | 'CANCEL' | 'DONE' | 'FAIL';
+  create_time?: string;
+  update_time?: string;
+  dataset_id: string;
+  dataset_name?: string;
+  owner_email?: string;
+  owner_nickname?: string;
+}
+
+export interface TaskStats {
+  unstart: number;
+  running: number;
+  cancel: number;
+  done: number;
+  fail: number;
+  total: number;
+}
+
+export interface BatchTaskRequest {
+  tasks: Array<{
+    dataset_id: string;
+    document_ids: string[];
+  }>;
+}
+
+export const taskApi = {
+  list: (params?: PaginationParams & { status?: string; dataset_name?: string; doc_name?: string }) =>
+    request.get<any, ListResponse<ParsingTask>>('/tasks', { params }),
+  getStats: () =>
+    request.get<any, TaskStats>('/tasks/stats'),
+  batchParse: (data: BatchTaskRequest) =>
+    request.post<any, any>('/tasks/parse', data),
+  batchStop: (data: BatchTaskRequest) =>
+    request.post<any, any>('/tasks/stop', data),
+  retryFailed: () =>
+    request.post<any, any>('/tasks/retry-failed'),
+};
+
+// Monitoring API
+export interface ServiceHealth {
+  status: 'healthy' | 'unhealthy' | 'not_configured' | 'unknown';
+  message?: string;
+  version?: string;
+  database?: string;
+  details?: any;
+}
+
+export interface HealthStatus {
+  mysql: ServiceHealth;
+  ragflow_api: ServiceHealth;
+  overall: 'healthy' | 'unhealthy' | 'partial' | 'unknown';
+}
+
+export interface SystemStats {
+  users: {
+    total: number;
+    active: number;
+    inactive: number;
+  };
+  datasets: {
+    total: number;
+    total_docs: number;
+    total_chunks: number;
+    total_tokens: number;
+  };
+  documents: {
+    total: number;
+    pending: number;
+    running: number;
+    completed: number;
+    failed: number;
+    total_size: number;
+  };
+  chats: {
+    total: number;
+    total_sessions: number;
+  };
+  agents: {
+    total: number;
+  };
+  recent_activity: {
+    new_users_24h: number;
+    new_docs_24h: number;
+    new_sessions_24h: number;
+  };
+}
+
+export interface RagflowHealth {
+  status: 'healthy' | 'unhealthy' | 'unreachable' | 'timeout' | 'unknown';
+  services?: {
+    db?: string;
+    redis?: string;
+    doc_engine?: string;
+    storage?: string;
+    status?: string;
+  };
+  message?: string;
+}
+
+export const monitoringApi = {
+  getHealthStatus: () =>
+    request.get<any, HealthStatus>('/system/monitoring/health'),
+  getSystemStats: () =>
+    request.get<any, SystemStats>('/system/monitoring/stats'),
+  getRagflowHealth: () =>
+    request.get<any, RagflowHealth>('/system/monitoring/ragflow-health'),
+};
+
 export default request;

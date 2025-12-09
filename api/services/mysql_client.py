@@ -1045,5 +1045,220 @@ class MySQLClient:
             await self._release_connection(conn)
 
 
+    async def list_parsing_tasks(self, page: int = 1, page_size: int = 20, 
+                                  status: str = None, dataset_name: str = None,
+                                  doc_name: str = None) -> Dict[str, Any]:
+        """List all document parsing tasks across all datasets with pagination and filters."""
+        conn = await self._get_connection()
+        try:
+            async with conn.cursor() as cursor:
+                conditions = []
+                params = []
+                
+                # Status filter (RAGFlow status: 0=UNSTART, 1=RUNNING, 2=CANCEL, 3=DONE, 4=FAIL)
+                status_to_num = {'UNSTART': '0', 'RUNNING': '1', 'CANCEL': '2', 'DONE': '3', 'FAIL': '4'}
+                if status:
+                    run_num = status_to_num.get(status, status)
+                    conditions.append("d.run = %s")
+                    params.append(run_num)
+                
+                if dataset_name:
+                    conditions.append("kb.name LIKE %s")
+                    params.append(f"%{dataset_name}%")
+                
+                if doc_name:
+                    conditions.append("d.name LIKE %s")
+                    params.append(f"%{doc_name}%")
+                
+                where_clause = " AND ".join(conditions) if conditions else "1=1"
+                
+                count_params = params.copy()
+                await cursor.execute(f"""
+                    SELECT COUNT(*) FROM document d
+                    LEFT JOIN knowledgebase kb ON d.kb_id = kb.id
+                    WHERE {where_clause}
+                """, count_params)
+                total = (await cursor.fetchone())[0]
+                
+                offset = (page - 1) * page_size
+                await cursor.execute(f"""
+                    SELECT d.id, d.name, d.size, d.type, d.token_num, d.chunk_num,
+                           d.progress, d.progress_msg, d.process_begin_at, d.process_duration,
+                           d.run, d.create_time, d.update_time, d.kb_id,
+                           kb.name as dataset_name, u.email as owner_email, u.nickname as owner_nickname
+                    FROM document d
+                    LEFT JOIN knowledgebase kb ON d.kb_id = kb.id
+                    LEFT JOIN user u ON kb.tenant_id = u.id
+                    WHERE {where_clause}
+                    ORDER BY 
+                        CASE WHEN d.run = '1' THEN 0 ELSE 1 END,
+                        d.update_time DESC
+                    LIMIT %s OFFSET %s
+                """, params + [page_size, offset])
+                rows = await cursor.fetchall()
+                
+                run_status_map = {
+                    '0': 'UNSTART', 0: 'UNSTART', '1': 'RUNNING', 1: 'RUNNING',
+                    '2': 'CANCEL', 2: 'CANCEL', '3': 'DONE', 3: 'DONE', '4': 'FAIL', 4: 'FAIL',
+                }
+                
+                tasks = []
+                for row in rows:
+                    run_value = row[10]
+                    run_status = run_status_map.get(run_value, str(run_value) if run_value else 'UNSTART')
+                    
+                    tasks.append({
+                        "id": row[0],
+                        "name": row[1],
+                        "size": row[2],
+                        "type": row[3],
+                        "token_count": row[4],
+                        "chunk_count": row[5],
+                        "progress": float(row[6]) if row[6] else 0,
+                        "progress_msg": row[7],
+                        "process_begin_at": format_datetime(row[8]) if row[8] else None,
+                        "process_duration": row[9],
+                        "run": run_status,
+                        "create_time": format_datetime(row[11]),
+                        "update_time": format_datetime(row[12]),
+                        "dataset_id": row[13],
+                        "dataset_name": row[14],
+                        "owner_email": row[15],
+                        "owner_nickname": row[16],
+                    })
+                
+                return {
+                    "items": tasks,
+                    "total": total,
+                }
+        finally:
+            await self._release_connection(conn)
+
+    async def get_parsing_stats(self) -> Dict[str, Any]:
+        """Get parsing task statistics."""
+        conn = await self._get_connection()
+        try:
+            async with conn.cursor() as cursor:
+                # Count by status
+                await cursor.execute("""
+                    SELECT 
+                        SUM(CASE WHEN run = '0' THEN 1 ELSE 0 END) as unstart,
+                        SUM(CASE WHEN run = '1' THEN 1 ELSE 0 END) as running,
+                        SUM(CASE WHEN run = '2' THEN 1 ELSE 0 END) as cancel,
+                        SUM(CASE WHEN run = '3' THEN 1 ELSE 0 END) as done,
+                        SUM(CASE WHEN run = '4' THEN 1 ELSE 0 END) as fail,
+                        COUNT(*) as total
+                    FROM document
+                """)
+                row = await cursor.fetchone()
+                
+                return {
+                    "unstart": int(row[0] or 0),
+                    "running": int(row[1] or 0),
+                    "cancel": int(row[2] or 0),
+                    "done": int(row[3] or 0),
+                    "fail": int(row[4] or 0),
+                    "total": int(row[5] or 0),
+                }
+        finally:
+            await self._release_connection(conn)
+
+    async def get_system_statistics(self) -> Dict[str, Any]:
+        """Get comprehensive system statistics for monitoring."""
+        conn = await self._get_connection()
+        try:
+            async with conn.cursor() as cursor:
+                stats = {}
+                
+                # User statistics
+                await cursor.execute("""
+                    SELECT 
+                        COUNT(*) as total,
+                        SUM(CASE WHEN status = '1' THEN 1 ELSE 0 END) as active,
+                        SUM(CASE WHEN status = '0' THEN 1 ELSE 0 END) as inactive
+                    FROM user
+                """)
+                row = await cursor.fetchone()
+                stats["users"] = {
+                    "total": int(row[0] or 0),
+                    "active": int(row[1] or 0),
+                    "inactive": int(row[2] or 0),
+                }
+                
+                # Dataset statistics
+                await cursor.execute("""
+                    SELECT 
+                        COUNT(*) as total,
+                        COALESCE(SUM(doc_num), 0) as total_docs,
+                        COALESCE(SUM(chunk_num), 0) as total_chunks,
+                        COALESCE(SUM(token_num), 0) as total_tokens
+                    FROM knowledgebase
+                """)
+                row = await cursor.fetchone()
+                stats["datasets"] = {
+                    "total": int(row[0] or 0),
+                    "total_docs": int(row[1] or 0),
+                    "total_chunks": int(row[2] or 0),
+                    "total_tokens": int(row[3] or 0),
+                }
+                
+                # Document parsing statistics
+                await cursor.execute("""
+                    SELECT 
+                        COUNT(*) as total,
+                        SUM(CASE WHEN run = '0' THEN 1 ELSE 0 END) as pending,
+                        SUM(CASE WHEN run = '1' THEN 1 ELSE 0 END) as running,
+                        SUM(CASE WHEN run = '3' THEN 1 ELSE 0 END) as completed,
+                        SUM(CASE WHEN run = '4' THEN 1 ELSE 0 END) as failed,
+                        COALESCE(SUM(size), 0) as total_size
+                    FROM document
+                """)
+                row = await cursor.fetchone()
+                stats["documents"] = {
+                    "total": int(row[0] or 0),
+                    "pending": int(row[1] or 0),
+                    "running": int(row[2] or 0),
+                    "completed": int(row[3] or 0),
+                    "failed": int(row[4] or 0),
+                    "total_size": int(row[5] or 0),
+                }
+                
+                # Chat statistics
+                await cursor.execute("""
+                    SELECT 
+                        (SELECT COUNT(*) FROM dialog) as total_chats,
+                        (SELECT COUNT(*) FROM conversation) as total_sessions
+                """)
+                row = await cursor.fetchone()
+                stats["chats"] = {
+                    "total": int(row[0] or 0),
+                    "total_sessions": int(row[1] or 0),
+                }
+                
+                # Agent statistics
+                await cursor.execute("SELECT COUNT(*) FROM user_canvas")
+                stats["agents"] = {
+                    "total": (await cursor.fetchone())[0],
+                }
+                
+                # Recent activity (last 24 hours)
+                await cursor.execute("""
+                    SELECT 
+                        (SELECT COUNT(*) FROM user WHERE create_time > UNIX_TIMESTAMP(NOW() - INTERVAL 1 DAY) * 1000) as new_users,
+                        (SELECT COUNT(*) FROM document WHERE create_time > UNIX_TIMESTAMP(NOW() - INTERVAL 1 DAY) * 1000) as new_docs,
+                        (SELECT COUNT(*) FROM conversation WHERE create_time > UNIX_TIMESTAMP(NOW() - INTERVAL 1 DAY) * 1000) as new_sessions
+                """)
+                row = await cursor.fetchone()
+                stats["recent_activity"] = {
+                    "new_users_24h": int(row[0] or 0),
+                    "new_docs_24h": int(row[1] or 0),
+                    "new_sessions_24h": int(row[2] or 0),
+                }
+                
+                return stats
+        finally:
+            await self._release_connection(conn)
+
+
 # Global instance
 mysql_client = MySQLClient()
