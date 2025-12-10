@@ -9,13 +9,16 @@ RAGFlow API client for document operations.
 
 Provides async HTTP client for RAGFlow API interactions including
 document upload, parsing, and dataset management via REST API.
+Uses official RAGFlow Python SDK for document operations.
 """
 
 import time
 import logging
+import asyncio
 import httpx
 from typing import Optional, Any
 from api.settings import settings
+from ragflow_sdk import RAGFlow
 
 
 logger = logging.getLogger(__name__)
@@ -66,27 +69,13 @@ class TotalCountCache:
 _total_cache = TotalCountCache()
 
 
-def serialize_sdk_object(obj) -> dict:
-    """Convert SDK object to dictionary for JSON serialization."""
-    if hasattr(obj, '__dict__'):
-        result = {}
-        for key, value in obj.__dict__.items():
-            if key.startswith('_'):
-                continue
-            if hasattr(value, '__dict__') and not isinstance(value, (str, int, float, bool, list, dict, type(None))):
-                result[key] = serialize_sdk_object(value)
-            else:
-                result[key] = value
-        return result
-    return obj
-
-
 class RAGFlowClient:
-    """Async HTTP client for RAGFlow API with connection pooling."""
+    """Async HTTP client for RAGFlow API with connection pooling and SDK support."""
     
     _instance = None
     _initialized = False
     _http_client: Optional[httpx.AsyncClient] = None
+    _sdk_client: Optional[RAGFlow] = None
 
     def __new__(cls):
         if cls._instance is None:
@@ -104,11 +93,14 @@ class RAGFlowClient:
         # Auto-add http:// if protocol is missing
         if base_url and not base_url.startswith(("http://", "https://")):
             base_url = f"http://{base_url}"
+        self._base_url = base_url
         self._api_url = f"{base_url}/api/v1" if base_url else ""
         self._headers = {
             "Authorization": f"Bearer {settings.ragflow_api_key}",
             "Content-Type": "application/json"
         }
+        # Reset SDK client on config reload
+        self._sdk_client = None
 
     @property
     def is_configured(self) -> bool:
@@ -123,11 +115,22 @@ class RAGFlowClient:
         if not self.is_configured:
             raise RAGFlowAPIError("RAGFlow API is not configured. Please configure it in Settings.", code=503)
 
+    def _get_sdk_client(self) -> RAGFlow:
+        """Get or create RAGFlow SDK client."""
+        self._check_configured()
+        if self._sdk_client is None:
+            self._sdk_client = RAGFlow(
+                api_key=settings.ragflow_api_key,
+                base_url=self._base_url
+            )
+        return self._sdk_client
+
     def reload(self):
-        """Reload configuration and reset HTTP client."""
+        """Reload configuration and reset HTTP client and SDK client."""
         self._load_config()
         if self._http_client is not None and not self._http_client.is_closed:
             self._http_client = None
+        self._sdk_client = None
         logger.info(f"RAGFlowClient reloaded with URL: {self._api_url}")
 
     def _get_http_client(self) -> httpx.AsyncClient:
@@ -463,67 +466,60 @@ class RAGFlowClient:
             }
         raise RAGFlowAPIError(result.get("message", "Failed to list documents"))
 
-    async def delete_documents(self, dataset_id: str, ids: list):
-        """Delete documents by IDs within a dataset."""
-        result = await self._delete(f"/datasets/{dataset_id}/documents", json={"ids": ids})
-        if result.get("code") != 0:
-            raise RAGFlowAPIError(result.get("message", "Failed to delete documents"))
-        return result
+    def _get_dataset_sync(self, dataset_id: str):
+        """Get dataset object using SDK (synchronous)."""
+        sdk = self._get_sdk_client()
+        datasets = sdk.list_datasets(id=dataset_id)
+        if not datasets:
+            raise RAGFlowAPIError(f"Dataset not found: {dataset_id}", code=404)
+        return datasets[0]
 
-    async def upload_documents(self, dataset_id: str, files: list) -> dict:
-        """Upload documents to a dataset. Files: list of (filename, content, content_type)."""
-        client = self._get_http_client()
+    async def _run_sdk_operation(self, operation_name: str, func: callable) -> Any:
+        """Run a synchronous SDK operation in a thread pool with logging."""
         try:
-            files_data = []
-            for filename, content, content_type in files:
-                files_data.append(('file', (filename, content, content_type)))
-            
-            headers = {"Authorization": f"Bearer {settings.ragflow_api_key}"}
-            
-            async with httpx.AsyncClient(
-                base_url=self._api_url,
-                headers=headers,
-                timeout=HTTP_TIMEOUT * 3  # Longer timeout for file uploads
-            ) as upload_client:
-                start_time = time.time()
-                resp = await upload_client.post(
-                    f"/datasets/{dataset_id}/documents",
-                    files=files_data
-                )
-                elapsed = time.time() - start_time
-                logger.debug(f"Upload documents completed in {elapsed:.3f}s, status={resp.status_code}")
-                resp.raise_for_status()
-                result = resp.json()
-                
-            if result.get("code") == 0:
-                return result.get("data", [])
-            raise RAGFlowAPIError(result.get("message", "Failed to upload documents"))
-        except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP error on upload: {e.response.status_code}")
-            raise RAGFlowAPIError(f"HTTP {e.response.status_code}", code=e.response.status_code)
-        except httpx.RequestError as e:
-            logger.error(f"Request error on upload: {str(e)}")
-            raise RAGFlowAPIError(f"Request failed: {str(e)}")
+            start_time = time.time()
+            result = await asyncio.to_thread(func)
+            elapsed = time.time() - start_time
+            logger.debug(f"SDK {operation_name} completed in {elapsed:.3f}s")
+            return result
+        except RAGFlowAPIError:
+            raise
+        except Exception as e:
+            logger.error(f"SDK error on {operation_name}: {str(e)}")
+            raise RAGFlowAPIError(f"Failed to {operation_name}: {str(e)}")
+
+    async def delete_documents(self, dataset_id: str, ids: list):
+        """Delete documents by IDs within a dataset using SDK."""
+        def _delete():
+            dataset = self._get_dataset_sync(dataset_id)
+            dataset.delete_documents(ids=ids)
+            return {"deleted": len(ids)}
+        return await self._run_sdk_operation("delete_documents", _delete)
+
+    async def upload_documents(self, dataset_id: str, files: list) -> list:
+        """Upload documents to a dataset using SDK. Files: list of (filename, content, content_type)."""
+        def _upload():
+            dataset = self._get_dataset_sync(dataset_id)
+            document_list = [{"display_name": f[0], "blob": f[1]} for f in files]
+            dataset.upload_documents(document_list)
+            return [{"name": f["display_name"]} for f in document_list]
+        return await self._run_sdk_operation("upload_documents", _upload)
 
     async def parse_documents(self, dataset_id: str, document_ids: list) -> dict:
-        """Parse (chunk) documents in a dataset."""
-        result = await self._post(
-            f"/datasets/{dataset_id}/chunks",
-            json={"document_ids": document_ids}
-        )
-        if result.get("code") == 0:
-            return result
-        raise RAGFlowAPIError(result.get("message", "Failed to parse documents"))
+        """Parse (chunk) documents in a dataset using SDK."""
+        def _parse():
+            dataset = self._get_dataset_sync(dataset_id)
+            dataset.async_parse_documents(document_ids)
+            return {"parsed": len(document_ids)}
+        return await self._run_sdk_operation("parse_documents", _parse)
 
     async def stop_parsing_documents(self, dataset_id: str, document_ids: list) -> dict:
-        """Stop parsing documents in a dataset."""
-        result = await self._delete(
-            f"/datasets/{dataset_id}/chunks",
-            json={"document_ids": document_ids}
-        )
-        if result.get("code") == 0:
-            return result
-        raise RAGFlowAPIError(result.get("message", "Failed to stop parsing documents"))
+        """Stop parsing documents in a dataset using SDK."""
+        def _stop():
+            dataset = self._get_dataset_sync(dataset_id)
+            dataset.async_cancel_parse_documents(document_ids)
+            return {"stopped": len(document_ids)}
+        return await self._run_sdk_operation("stop_parsing_documents", _stop)
 
     async def check_system_health(self) -> dict:
         """Check system health status (DB, Redis, doc_engine, storage)."""
