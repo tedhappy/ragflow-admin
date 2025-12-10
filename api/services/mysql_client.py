@@ -1151,20 +1151,16 @@ class MySQLClient:
                 """, params + [page_size, offset])
                 rows = await cursor.fetchall()
                 
-                # Get global queue positions for UNSTART/RUNNING tasks
+                # Get global queue positions for RUNNING tasks only (not UNSTART)
                 await cursor.execute("""
                     SELECT d.id, 
-                           ROW_NUMBER() OVER (
-                               ORDER BY 
-                                   CASE CAST(d.run AS SIGNED) WHEN 1 THEN 1 ELSE 2 END,
-                                   d.create_time
-                           ) as queue_position
+                           ROW_NUMBER() OVER (ORDER BY d.create_time) as queue_position
                     FROM document d
-                    WHERE CAST(d.run AS SIGNED) IN (0, 1)
+                    WHERE CAST(d.run AS SIGNED) = 1
                 """)
                 queue_rows = await cursor.fetchall()
                 queue_position_map = {row[0]: row[1] for row in queue_rows}
-                pending_total = len(queue_position_map)
+                running_total = len(queue_position_map)
                 
                 run_status_map = {
                     '0': 'UNSTART', 0: 'UNSTART', '1': 'RUNNING', 1: 'RUNNING',
@@ -1196,7 +1192,7 @@ class MySQLClient:
                         "owner_email": row[15],
                         "owner_nickname": row[16],
                         "queue_position": queue_position_map.get(task_id),
-                        "pending_total": pending_total if task_id in queue_position_map else None,
+                        "pending_total": running_total if task_id in queue_position_map else None,
                     })
                 
                 return {

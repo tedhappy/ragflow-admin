@@ -384,23 +384,17 @@ const Tasks: React.FC = () => {
       width: 80,
       align: 'center',
       render: (_, record) => {
-        // Only show position for UNSTART and RUNNING tasks with valid queue_position
+        // Only show position for RUNNING tasks (not UNSTART)
         if (!record.queue_position) {
           return <span style={{ color: '#bfbfbf' }}>-</span>;
         }
         const position = record.queue_position;
         const total = record.pending_total || position;
-        // Color coding: running=blue, top 3=orange, others=gray
-        const tagColor = record.run === 'RUNNING' 
-          ? 'blue' 
-          : position <= 3 
-            ? 'orange' 
-            : 'default';
         return (
           <Tooltip title={t('tasks.queuePositionTip', { position, total })}>
             <Tag 
               icon={<FieldNumberOutlined />} 
-              color={tagColor}
+              color="blue"
               style={{ minWidth: 45, textAlign: 'center' }}
             >
               #{position}
@@ -432,7 +426,7 @@ const Tasks: React.FC = () => {
       key: 'owner',
       width: '12%',
       ellipsis: true,
-      render: (_, record) => record.owner_nickname || record.owner_email || '-',
+      render: (_, record) => record.owner_email || '-',
     },
     { 
       title: t('common.updated'), 
