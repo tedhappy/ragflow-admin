@@ -374,6 +374,59 @@ async def test_ragflow_connection():
         }), 500
 
 
+@manager.route("/ragflow/current-user", methods=["GET"])
+async def get_ragflow_current_user():
+    """
+    Get current RAGFlow API user info
+    ---
+    tags:
+      - System
+    responses:
+      200:
+        description: Current API key user info
+    """
+    from api.services.ragflow_client import ragflow_client, RAGFlowAPIError
+    
+    if not settings.ragflow_base_url or not settings.ragflow_api_key:
+        return jsonify({
+            "code": -1,
+            "message": "RAGFlow API not configured"
+        }), 400
+    
+    try:
+        user_info = await ragflow_client.get_current_user()
+        user_id = user_info.get("user_id")
+        
+        # Get user details from MySQL if user_id is available
+        user_details = None
+        if user_id and settings.is_mysql_configured:
+            try:
+                user_details = await mysql_client.get_user(user_id)
+            except Exception:
+                pass
+        
+        return jsonify({
+            "code": 0,
+            "data": {
+                "user_id": user_id,
+                "email": user_details.get("email") if user_details else None,
+                "nickname": user_details.get("nickname") if user_details else None,
+                "has_datasets": user_info.get("has_datasets", False)
+            }
+        })
+    except RAGFlowAPIError as e:
+        return jsonify({
+            "code": -1,
+            "message": e.message
+        }), 500
+    except Exception as e:
+        logger.exception("Failed to get RAGFlow current user")
+        return jsonify({
+            "code": -1,
+            "message": str(e)
+        }), 500
+
+
 @manager.route("/monitoring/health", methods=["GET"])
 async def get_health_status():
     """

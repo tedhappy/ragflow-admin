@@ -585,5 +585,22 @@ class RAGFlowClient:
             return result
         raise RAGFlowAPIError(result.get("message", "Failed to delete chat sessions"))
 
+    async def get_current_user(self) -> dict:
+        """Get current user info based on API key."""
+        try:
+            # RAGFlow doesn't have a direct user info API, so we infer from datasets
+            # The tenant_id of any dataset owned by the API key user is the user ID
+            result = await self._get("/datasets", params={"page": 1, "page_size": 1})
+            if result.get("code") == 0:
+                datasets = result.get("data", [])
+                if datasets and len(datasets) > 0:
+                    tenant_id = datasets[0].get("tenant_id")
+                    return {"user_id": tenant_id, "has_datasets": True}
+                return {"user_id": None, "has_datasets": False}
+            raise RAGFlowAPIError(result.get("message", "Failed to get user info"))
+        except Exception as e:
+            logger.error(f"Failed to get current user: {e}")
+            raise RAGFlowAPIError(f"Failed to get current user: {str(e)}")
+
 
 ragflow_client = RAGFlowClient()

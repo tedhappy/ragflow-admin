@@ -80,6 +80,11 @@ request.interceptors.response.use(
         window.location.href = '/login';
       }
     }
+    // Preserve response data for custom error handling (e.g., 403 owner mismatch)
+    // Keep error.response intact so handleApiError can access error_type, current_user, owner
+    if (error.response?.data?.message) {
+      error.message = error.response.data.message;
+    }
     return Promise.reject(error);
   }
 );
@@ -151,6 +156,10 @@ export const documentApi = {
   
   batchDelete: (datasetId: string, ids: string[]) =>
     request.post(`/datasets/${datasetId}/documents/batch-delete`, { ids }),
+  
+  // Pre-check ownership before upload to avoid connection reset on 403
+  checkOwnership: (datasetId: string) =>
+    request.post(`/datasets/${datasetId}/documents/check-ownership`),
   
   upload: (datasetId: string, formData: FormData) =>
     request.post(`/datasets/${datasetId}/documents/upload`, formData),
@@ -360,6 +369,7 @@ export const systemApi = {
     request.post<any, { message: string }>('/system/ragflow/config', data),
   testRagflowConnection: (data: { base_url: string; api_key: string }) =>
     request.post<any, RagflowTestResult>('/system/ragflow/config/test', data),
+  getRagflowCurrentUser: () => request.get<any, RagflowCurrentUser>('/system/ragflow/current-user'),
 };
 
 // RAGFlow API Config
@@ -373,6 +383,13 @@ export interface RagflowTestResult {
   connected: boolean;
   message?: string;
   error?: string;
+}
+
+export interface RagflowCurrentUser {
+  user_id: string | null;
+  email: string | null;
+  nickname: string | null;
+  has_datasets: boolean;
 }
 
 // Chat Session API
@@ -466,17 +483,34 @@ export interface BatchTaskRequest {
   }>;
 }
 
+export interface BatchTaskResponse {
+  total_success: number;
+  total_errors: number;
+  total_skipped: number;
+  success: any[];
+  errors: any[];
+  skipped: any[];
+}
+
+export interface RetryFailedResponse {
+  retried: number;
+  skipped: number;
+  success: any[];
+  errors: any[];
+  skipped_details: any[];
+}
+
 export const taskApi = {
   list: (params?: PaginationParams & { status?: string; dataset_name?: string; doc_name?: string; owner?: string }) =>
     request.get<any, ListResponse<ParsingTask>>('/tasks', { params }),
   getStats: () =>
     request.get<any, TaskStats>('/tasks/stats'),
   batchParse: (data: BatchTaskRequest) =>
-    request.post<any, any>('/tasks/parse', data),
+    request.post<any, BatchTaskResponse>('/tasks/parse', data),
   batchStop: (data: BatchTaskRequest) =>
-    request.post<any, any>('/tasks/stop', data),
+    request.post<any, BatchTaskResponse>('/tasks/stop', data),
   retryFailed: () =>
-    request.post<any, any>('/tasks/retry-failed'),
+    request.post<any, RetryFailedResponse>('/tasks/retry-failed'),
 };
 
 // Monitoring API

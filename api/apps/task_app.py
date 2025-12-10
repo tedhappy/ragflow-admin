@@ -15,6 +15,7 @@ import logging
 from quart import Blueprint, jsonify, request
 from api.services.mysql_client import mysql_client, MySQLClientError
 from api.services.ragflow_client import ragflow_client, RAGFlowAPIError
+from api.apps.document_app import check_dataset_ownership
 
 logger = logging.getLogger(__name__)
 
@@ -137,12 +138,25 @@ async def batch_parse():
     
     results = []
     errors = []
+    skipped = []  # Tasks skipped due to ownership mismatch
     
     for task in tasks:
         dataset_id = task.get("dataset_id")
         document_ids = task.get("document_ids", [])
         
         if not dataset_id or not document_ids:
+            continue
+        
+        # Check ownership before operation
+        is_owner, current_user, owner, error_msg = await check_dataset_ownership(dataset_id)
+        if not is_owner:
+            skipped.append({
+                "dataset_id": dataset_id,
+                "document_ids": document_ids,
+                "reason": "owner_mismatch",
+                "current_user": current_user,
+                "owner": owner
+            })
             continue
         
         try:
@@ -165,13 +179,19 @@ async def batch_parse():
                 "error": str(e)
             })
     
+    # Count documents, not dataset groups
+    total_success_docs = sum(len(r.get("document_ids", [])) for r in results)
+    total_skipped_docs = sum(len(s.get("document_ids", [])) for s in skipped)
+    
     return jsonify({
         "code": 0,
         "data": {
             "success": results,
             "errors": errors,
-            "total_success": len(results),
-            "total_errors": len(errors)
+            "skipped": skipped,
+            "total_success": total_success_docs,
+            "total_errors": len(errors),
+            "total_skipped": total_skipped_docs
         }
     })
 
@@ -213,12 +233,25 @@ async def batch_stop():
     
     results = []
     errors = []
+    skipped = []  # Tasks skipped due to ownership mismatch
     
     for task in tasks:
         dataset_id = task.get("dataset_id")
         document_ids = task.get("document_ids", [])
         
         if not dataset_id or not document_ids:
+            continue
+        
+        # Check ownership before operation
+        is_owner, current_user, owner, error_msg = await check_dataset_ownership(dataset_id)
+        if not is_owner:
+            skipped.append({
+                "dataset_id": dataset_id,
+                "document_ids": document_ids,
+                "reason": "owner_mismatch",
+                "current_user": current_user,
+                "owner": owner
+            })
             continue
         
         try:
@@ -241,13 +274,19 @@ async def batch_stop():
                 "error": str(e)
             })
     
+    # Count documents, not dataset groups
+    total_success_docs = sum(len(r.get("document_ids", [])) for r in results)
+    total_skipped_docs = sum(len(s.get("document_ids", [])) for s in skipped)
+    
     return jsonify({
         "code": 0,
         "data": {
             "success": results,
             "errors": errors,
-            "total_success": len(results),
-            "total_errors": len(errors)
+            "skipped": skipped,
+            "total_success": total_success_docs,
+            "total_errors": len(errors),
+            "total_skipped": total_skipped_docs
         }
     })
 
@@ -295,8 +334,21 @@ async def retry_failed():
         # Retry parsing
         results = []
         errors = []
+        skipped = []  # Tasks skipped due to ownership mismatch
         
         for dataset_id, document_ids in dataset_docs.items():
+            # Check ownership before operation
+            is_owner, current_user, owner, error_msg = await check_dataset_ownership(dataset_id)
+            if not is_owner:
+                skipped.append({
+                    "dataset_id": dataset_id,
+                    "count": len(document_ids),
+                    "reason": "owner_mismatch",
+                    "current_user": current_user,
+                    "owner": owner
+                })
+                continue
+            
             try:
                 await ragflow_client.parse_documents(dataset_id=dataset_id, document_ids=document_ids)
                 results.append({
@@ -317,13 +369,16 @@ async def retry_failed():
                 })
         
         total_retried = sum(r["count"] for r in results)
+        total_skipped = sum(s["count"] for s in skipped)
         
         return jsonify({
             "code": 0,
             "data": {
                 "retried": total_retried,
+                "skipped": total_skipped,
                 "success": results,
-                "errors": errors
+                "errors": errors,
+                "skipped_details": skipped
             }
         })
     except MySQLClientError as e:

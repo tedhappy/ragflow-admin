@@ -147,6 +147,28 @@ const Documents: React.FC = () => {
     new Date(b.create_time || 0).getTime() - new Date(a.create_time || 0).getTime()
   );
 
+  const checkRagflowApi = (): boolean => {
+    if (!ragflowConfigured) {
+      message.warning(t('documents.ragflowNotConfigured'));
+      return false;
+    }
+    return true;
+  };
+
+  // Common error handler for ownership and API errors
+  const handleApiError = (error: any, defaultMessage: string) => {
+    // Check for 403 ownership error first (highest priority)
+    if (error.response?.status === 403 && error.response?.data?.error_type === 'owner_mismatch') {
+      const currentUser = error.response.data.current_user || '-';
+      const owner = error.response.data.owner || '-';
+      message.error(t('documents.ownerMismatchDesc', { currentUser, owner }));
+      return;
+    }
+    
+    const errorMsg = error.response?.data?.message || error.message || '';
+    message.error(translateErrorMessage(errorMsg, t) || defaultMessage);
+  };
+
   const handleDelete = async (ids: string[]) => {
     try {
       await documentApi.batchDelete(datasetId!, ids);
@@ -154,16 +176,8 @@ const Documents: React.FC = () => {
       setSelectedRowKeys([]);
       refresh();
     } catch (error: any) {
-      message.error(translateErrorMessage(error.message, t) || t('common.deleteFailed'));
+      handleApiError(error, t('common.deleteFailed'));
     }
-  };
-
-  const checkRagflowApi = (): boolean => {
-    if (!ragflowConfigured) {
-      message.warning(t('documents.ragflowNotConfigured'));
-      return false;
-    }
-    return true;
   };
 
   const handleUpload = async () => {
@@ -176,6 +190,9 @@ const Documents: React.FC = () => {
 
     setUploading(true);
     try {
+      // Pre-check ownership before upload to avoid connection reset on 403
+      await documentApi.checkOwnership(datasetId!);
+      
       const formData = new FormData();
       uploadFileList.forEach((file) => {
         if (file.originFileObj) {
@@ -189,7 +206,7 @@ const Documents: React.FC = () => {
       setUploadFileList([]);
       refresh();
     } catch (error: any) {
-      message.error(translateErrorMessage(error.message, t) || t('documents.upload.failed'));
+      handleApiError(error, t('documents.upload.failed'));
     } finally {
       setUploading(false);
     }
@@ -229,7 +246,7 @@ const Documents: React.FC = () => {
       setSelectedRowKeys([]);
       refresh();
     } catch (error: any) {
-      message.error(translateErrorMessage(error.message, t) || t('documents.parse.failed'));
+      handleApiError(error, t('documents.parse.failed'));
     } finally {
       setParsing(false);
     }
@@ -245,12 +262,12 @@ const Documents: React.FC = () => {
       setSelectedRowKeys([]);
       refresh();
     } catch (error: any) {
-      // If document already finished parsing, show info instead of error
-      const errorMsg = error.message || '';
+      const errorMsg = error.response?.data?.message || error.message || '';
+      // Special case: document already finished parsing
       if (errorMsg.includes('progress at 0 or 1') || errorMsg.includes('already')) {
         message.info(t('documents.parse.alreadyCompleted'));
       } else {
-        message.error(translateErrorMessage(errorMsg, t) || t('documents.parse.stopFailed'));
+        handleApiError(error, t('documents.parse.stopFailed'));
       }
       refresh();
     }

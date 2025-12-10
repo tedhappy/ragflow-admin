@@ -9,8 +9,48 @@ import mimetypes
 from quart import Blueprint, jsonify, request
 from api.services.ragflow_client import ragflow_client, RAGFlowAPIError
 from api.services.mysql_client import mysql_client, MySQLClientError
+from api.settings import settings
 
 logger = logging.getLogger(__name__)
+
+
+async def check_dataset_ownership(dataset_id: str) -> tuple:
+    """
+    Check if the dataset belongs to the current API key user.
+    Returns (is_owner, current_user_email, owner_email, error_message)
+    """
+    try:
+        # Get current API key user
+        current_user_info = await ragflow_client.get_current_user()
+        current_user_id = current_user_info.get("user_id")
+        
+        if not current_user_id:
+            return True, None, None, None  # Cannot determine, allow operation
+        
+        # Get dataset owner from database
+        if not settings.is_mysql_configured:
+            return True, None, None, None  # Cannot check, allow operation
+        
+        dataset_info = await mysql_client.get_dataset(dataset_id)
+        if not dataset_info:
+            return True, None, None, None  # Dataset not found in DB, let API handle it
+        
+        owner_id = dataset_info.get("tenant_id")
+        
+        if current_user_id == owner_id:
+            return True, None, None, None  # Owner matches
+        
+        # Get user emails for friendly message
+        current_user = await mysql_client.get_user(current_user_id) if current_user_id else None
+        owner_user = await mysql_client.get_user(owner_id) if owner_id else None
+        
+        current_email = current_user.get("email") if current_user else current_user_id
+        owner_email = owner_user.get("email") if owner_user else owner_id
+        
+        return False, current_email, owner_email, f"Permission denied: API Key user ({current_email}) cannot operate on dataset owned by {owner_email}"
+    except Exception as e:
+        logger.warning(f"Failed to check dataset ownership: {e}")
+        return True, None, None, None  # On error, allow operation and let API handle it
 
 manager = Blueprint("document", __name__)
 
@@ -126,20 +166,62 @@ async def batch_delete_documents(dataset_id: str):
     if not ids:
         return jsonify({"code": -1, "message": "ids is required"}), 400
     
+    # Check ownership before operation
+    is_owner, current_user, owner, error_msg = await check_dataset_ownership(dataset_id)
+    if not is_owner:
+        return jsonify({
+            "code": -1, 
+            "message": error_msg,
+            "error_type": "owner_mismatch",
+            "current_user": current_user,
+            "owner": owner
+        }), 403
+    
     try:
-        result = await mysql_client.delete_documents(dataset_id=dataset_id, document_ids=ids)
+        await ragflow_client.delete_documents(dataset_id=dataset_id, ids=ids)
         return jsonify({
             "code": 0, 
             "message": "success", 
-            "deleted": result["documents"],
-            "details": result,
+            "deleted": len(ids),
         })
-    except MySQLClientError as e:
+    except RAGFlowAPIError as e:
         logger.error(f"Failed to delete documents: {e.message}")
-        return jsonify({"code": -1, "message": e.message}), 500
+        return jsonify({"code": e.code, "message": e.message}), 500
     except Exception as e:
         logger.exception("Unexpected error deleting documents")
         return jsonify({"code": -1, "message": str(e)}), 500
+
+
+@manager.route("/<dataset_id>/documents/check-ownership", methods=["POST"])
+async def check_ownership_endpoint(dataset_id: str):
+    """
+    Check dataset ownership before upload (pre-flight check)
+    ---
+    tags:
+      - Document
+    parameters:
+      - name: dataset_id
+        in: path
+        type: string
+        required: true
+        description: Dataset ID
+    responses:
+      200:
+        description: Ownership check passed
+      403:
+        description: Ownership check failed
+    """
+    is_owner, current_user, owner, error_msg = await check_dataset_ownership(dataset_id)
+    if not is_owner:
+        return jsonify({
+            "code": -1, 
+            "message": error_msg,
+            "error_type": "owner_mismatch",
+            "current_user": current_user,
+            "owner": owner
+        }), 403
+    
+    return jsonify({"code": 0, "message": "Ownership check passed"})
 
 
 @manager.route("/<dataset_id>/documents/upload", methods=["POST"])
@@ -164,6 +246,17 @@ async def upload_documents(dataset_id: str):
       200:
         description: Documents uploaded successfully
     """
+    # Check ownership before operation
+    is_owner, current_user, owner, error_msg = await check_dataset_ownership(dataset_id)
+    if not is_owner:
+        return jsonify({
+            "code": -1, 
+            "message": error_msg,
+            "error_type": "owner_mismatch",
+            "current_user": current_user,
+            "owner": owner
+        }), 403
+    
     try:
         files = await request.files
         file_list = files.getlist("file")
@@ -250,6 +343,17 @@ async def parse_documents(dataset_id: str):
     if not document_ids:
         return jsonify({"code": -1, "message": "document_ids is required"}), 400
     
+    # Check ownership before operation
+    is_owner, current_user, owner, error_msg = await check_dataset_ownership(dataset_id)
+    if not is_owner:
+        return jsonify({
+            "code": -1, 
+            "message": error_msg,
+            "error_type": "owner_mismatch",
+            "current_user": current_user,
+            "owner": owner
+        }), 403
+    
     try:
         await ragflow_client.parse_documents(dataset_id=dataset_id, document_ids=document_ids)
         return jsonify({"code": 0, "message": "success"})
@@ -294,6 +398,17 @@ async def stop_parsing_documents(dataset_id: str):
     
     if not document_ids:
         return jsonify({"code": -1, "message": "document_ids is required"}), 400
+    
+    # Check ownership before operation
+    is_owner, current_user, owner, error_msg = await check_dataset_ownership(dataset_id)
+    if not is_owner:
+        return jsonify({
+            "code": -1, 
+            "message": error_msg,
+            "error_type": "owner_mismatch",
+            "current_user": current_user,
+            "owner": owner
+        }), 403
     
     try:
         await ragflow_client.stop_parsing_documents(dataset_id=dataset_id, document_ids=document_ids)

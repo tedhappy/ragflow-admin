@@ -137,6 +137,8 @@ export default {
       ragflowNotConfigured: 'RAGFlow API 未配置',
       ragflowNotConfiguredDesc: '文档上传和解析需要 RAGFlow API。请在设置中进行配置。',
       configureRagflow: '去配置',
+      ownerMismatch: '无权操作',
+      ownerMismatchDesc: '当前 API Key 属于用户【{{currentUser}}】，但该知识库属于用户【{{owner}}】，无权操作',
     },
     chat: {
       title: '聊天助手',
@@ -332,6 +334,8 @@ export default {
       ragflowNotConfigured: 'RAGFlow API 未配置',
       ragflowNotConfiguredDesc: '解析和停止操作需要 RAGFlow API。请在设置中进行配置。',
       configureRagflow: '去配置',
+      ownerMismatch: '部分任务无权操作',
+      ownerMismatchDesc: '已跳过 {{count}} 个任务（不属于当前 API Key 用户的知识库）',
       queuePosition: '队列位置',
       queuePositionTip: '当前排队位置：第 {{position}} 位，共 {{total}} 个任务等待处理',
       status: {

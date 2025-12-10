@@ -238,8 +238,15 @@ const Tasks: React.FC = () => {
     
     try {
       const taskGroups = groupTasksByDataset(parseableIds);
-      await taskApi.batchParse({ tasks: taskGroups });
-      message.success(t('tasks.parseStarted'));
+      const result = await taskApi.batchParse({ tasks: taskGroups });
+      
+      if (result.total_skipped > 0) {
+        message.warning(t('tasks.ownerMismatchDesc', { count: result.total_skipped }));
+      }
+      if (result.total_success > 0) {
+        message.success(t('tasks.parseStarted'));
+      }
+      
       setSelectedRowKeys([]);
       fetchTasks();
       fetchStats();
@@ -263,8 +270,15 @@ const Tasks: React.FC = () => {
     
     try {
       const taskGroups = groupTasksByDataset(runningIds);
-      await taskApi.batchStop({ tasks: taskGroups });
-      message.success(t('tasks.stopSuccess'));
+      const result = await taskApi.batchStop({ tasks: taskGroups });
+      
+      if (result.total_skipped > 0) {
+        message.warning(t('tasks.ownerMismatchDesc', { count: result.total_skipped }));
+      }
+      if (result.total_success > 0) {
+        message.success(t('tasks.stopSuccess'));
+      }
+      
       setSelectedRowKeys([]);
       fetchTasks();
       fetchStats();
@@ -278,11 +292,16 @@ const Tasks: React.FC = () => {
     
     try {
       const result = await taskApi.retryFailed();
+      
+      if (result.skipped > 0) {
+        message.warning(t('tasks.ownerMismatchDesc', { count: result.skipped }));
+      }
       if (result.retried > 0) {
         message.success(t('tasks.retrySuccess', { count: result.retried }));
-      } else {
+      } else if (result.skipped === 0) {
         message.info(t('tasks.noFailedTasks'));
       }
+      
       fetchTasks();
       fetchStats();
     } catch (error: any) {

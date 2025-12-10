@@ -82,8 +82,12 @@ class MySQLClient:
 
     async def _release_connection(self, conn):
         """Release connection back to pool."""
-        if self._pool:
-            self._pool.release(conn)
+        if self._pool and conn:
+            try:
+                self._pool.release(conn)
+            except (AssertionError, Exception) as e:
+                # Connection may have been recycled or already released
+                logger.warning(f"Failed to release connection: {e}")
 
     async def _execute_transaction(self, operations):
         """Execute multiple operations in a transaction with auto-rollback on failure."""
@@ -250,6 +254,28 @@ class MySQLClient:
                     "timezone": row[12],
                     "is_anonymous": row[13],
                 }
+        finally:
+            await self._release_connection(conn)
+
+    async def get_dataset(self, dataset_id: str) -> Optional[Dict[str, Any]]:
+        """Get dataset (knowledgebase) by ID."""
+        conn = await self._get_connection()
+        try:
+            async with conn.cursor() as cursor:
+                await cursor.execute("""
+                    SELECT id, name, tenant_id, create_time, update_time
+                    FROM knowledgebase WHERE id = %s
+                """, (dataset_id,))
+                row = await cursor.fetchone()
+                if row:
+                    return {
+                        "id": row[0],
+                        "name": row[1],
+                        "tenant_id": row[2],
+                        "create_time": row[3],
+                        "update_time": row[4],
+                    }
+                return None
         finally:
             await self._release_connection(conn)
 

@@ -137,6 +137,8 @@ export default {
       ragflowNotConfigured: 'RAGFlow API Not Configured',
       ragflowNotConfiguredDesc: 'Document upload and parsing requires RAGFlow API. Please configure it in settings.',
       configureRagflow: 'Configure',
+      ownerMismatch: 'No Permission',
+      ownerMismatchDesc: 'Current API Key belongs to [{{currentUser}}], but this dataset belongs to [{{owner}}], operation not allowed',
     },
     chat: {
       title: 'Chat Assistants',
@@ -332,6 +334,8 @@ export default {
       ragflowNotConfigured: 'RAGFlow API Not Configured',
       ragflowNotConfiguredDesc: 'Parse and stop operations require RAGFlow API. Please configure it in settings.',
       configureRagflow: 'Configure',
+      ownerMismatch: 'Some tasks skipped',
+      ownerMismatchDesc: 'Skipped {{count}} tasks (datasets not owned by current API Key user)',
       queuePosition: 'Queue',
       queuePositionTip: 'Position #{{position}} of {{total}} pending tasks',
       status: {
