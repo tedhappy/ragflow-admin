@@ -1138,25 +1138,21 @@ class MySQLClient:
                     WHERE {where_clause}
                     ORDER BY 
                         CASE CAST(d.run AS SIGNED)
-                            WHEN 1 THEN 1  -- RUNNING first
-                            WHEN 0 THEN 2  -- UNSTART (pending) second
-                            WHEN 4 THEN 3  -- FAIL third
-                            ELSE 4         -- DONE, CANCEL last
+                            WHEN 1 THEN 1
+                            WHEN 0 THEN 2
+                            WHEN 4 THEN 3
+                            ELSE 4
                         END,
-                        CASE WHEN CAST(d.run AS SIGNED) IN (0, 1) 
-                             THEN d.create_time  -- Pending/Running: FIFO order
-                             ELSE -d.update_time -- Others: newest first
-                        END
+                        CASE WHEN CAST(d.run AS SIGNED) = 1 THEN -d.progress ELSE 0 END ASC,
+                        CASE WHEN CAST(d.run AS SIGNED) = 0 THEN UNIX_TIMESTAMP(d.create_time) ELSE 999999999999 END ASC,
+                        d.update_time DESC
                     LIMIT %s OFFSET %s
                 """, params + [page_size, offset])
                 rows = await cursor.fetchall()
                 
-                # Get global queue positions for RUNNING tasks only (not UNSTART)
                 await cursor.execute("""
-                    SELECT d.id, 
-                           ROW_NUMBER() OVER (ORDER BY d.create_time) as queue_position
-                    FROM document d
-                    WHERE CAST(d.run AS SIGNED) = 1
+                    SELECT d.id, ROW_NUMBER() OVER (ORDER BY d.progress DESC) as queue_position
+                    FROM document d WHERE CAST(d.run AS SIGNED) = 1
                 """)
                 queue_rows = await cursor.fetchall()
                 queue_position_map = {row[0]: row[1] for row in queue_rows}
