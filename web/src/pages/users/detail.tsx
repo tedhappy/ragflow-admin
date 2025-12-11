@@ -33,14 +33,17 @@ const UserDetailPage: React.FC = () => {
   const [datasetsLoading, setDatasetsLoading] = useState(false);
   const [datasetsTotal, setDatasetsTotal] = useState(0);
   const [datasetsPage, setDatasetsPage] = useState(1);
+  const [datasetsPageSize, setDatasetsPageSize] = useState(10);
   const [agents, setAgents] = useState<UserAgent[]>([]);
   const [agentsLoading, setAgentsLoading] = useState(false);
   const [agentsTotal, setAgentsTotal] = useState(0);
   const [agentsPage, setAgentsPage] = useState(1);
+  const [agentsPageSize, setAgentsPageSize] = useState(10);
   const [chats, setChats] = useState<UserChat[]>([]);
   const [chatsLoading, setChatsLoading] = useState(false);
   const [chatsTotal, setChatsTotal] = useState(0);
   const [chatsPage, setChatsPage] = useState(1);
+  const [chatsPageSize, setChatsPageSize] = useState(10);
 
   useEffect(() => {
     if (userId) {
@@ -63,13 +66,14 @@ const UserDetailPage: React.FC = () => {
     }
   };
 
-  const loadDatasets = async (page: number) => {
+  const loadDatasets = async (page: number, pageSize: number = datasetsPageSize) => {
     try {
       setDatasetsLoading(true);
-      const result = await userApi.getDatasets(userId!, { page, page_size: 10 });
+      const result = await userApi.getDatasets(userId!, { page, page_size: pageSize });
       setDatasets(result.items || []);
       setDatasetsTotal(result.total || 0);
       setDatasetsPage(page);
+      setDatasetsPageSize(pageSize);
     } catch (error: any) {
       message.error(translateErrorMessage(error.message, t) || t('users.loadDatasetsFailed'));
     } finally {
@@ -77,13 +81,14 @@ const UserDetailPage: React.FC = () => {
     }
   };
 
-  const loadAgents = async (page: number) => {
+  const loadAgents = async (page: number, pageSize: number = agentsPageSize) => {
     try {
       setAgentsLoading(true);
-      const result = await userApi.getAgents(userId!, { page, page_size: 10 });
+      const result = await userApi.getAgents(userId!, { page, page_size: pageSize });
       setAgents(result.items || []);
       setAgentsTotal(result.total || 0);
       setAgentsPage(page);
+      setAgentsPageSize(pageSize);
     } catch (error: any) {
       message.error(translateErrorMessage(error.message, t) || t('users.loadAgentsFailed'));
     } finally {
@@ -91,13 +96,14 @@ const UserDetailPage: React.FC = () => {
     }
   };
 
-  const loadChats = async (page: number) => {
+  const loadChats = async (page: number, pageSize: number = chatsPageSize) => {
     try {
       setChatsLoading(true);
-      const result = await userApi.getChats(userId!, { page, page_size: 10 });
+      const result = await userApi.getChats(userId!, { page, page_size: pageSize });
       setChats(result.items || []);
       setChatsTotal(result.total || 0);
       setChatsPage(page);
+      setChatsPageSize(pageSize);
     } catch (error: any) {
       message.error(translateErrorMessage(error.message, t) || t('users.loadChatsFailed'));
     } finally {
@@ -259,10 +265,11 @@ const UserDetailPage: React.FC = () => {
           size="small"
           pagination={{
             current: datasetsPage,
-            pageSize: 10,
+            pageSize: datasetsPageSize,
             total: datasetsTotal,
+            showSizeChanger: true,
             showTotal: (total) => t('common.total', { count: total }),
-            onChange: (page) => loadDatasets(page),
+            onChange: (page, pageSize) => loadDatasets(page, pageSize),
           }}
           locale={{
             emptyText: t('users.detail.noDatasets'),
@@ -288,10 +295,11 @@ const UserDetailPage: React.FC = () => {
           size="small"
           pagination={{
             current: agentsPage,
-            pageSize: 10,
+            pageSize: agentsPageSize,
             total: agentsTotal,
+            showSizeChanger: true,
             showTotal: (total) => t('common.total', { count: total }),
-            onChange: (page) => loadAgents(page),
+            onChange: (page, pageSize) => loadAgents(page, pageSize),
           }}
           locale={{
             emptyText: t('users.detail.noAgents'),
@@ -317,10 +325,11 @@ const UserDetailPage: React.FC = () => {
           size="small"
           pagination={{
             current: chatsPage,
-            pageSize: 10,
+            pageSize: chatsPageSize,
             total: chatsTotal,
+            showSizeChanger: true,
             showTotal: (total) => t('common.total', { count: total }),
-            onChange: (page) => loadChats(page),
+            onChange: (page, pageSize) => loadChats(page, pageSize),
           }}
           locale={{
             emptyText: t('users.detail.noChats'),
