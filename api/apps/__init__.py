@@ -22,6 +22,7 @@ from api.apps.task_app import manager as task_bp
 __all__ = ["app"]
 
 app = Quart(__name__)
+app.url_map.strict_slashes = False  # Allow both /path and /path/ to match
 app = cors(app, allow_origin="*")
 
 app.config["SECRET_KEY"] = settings.secret_key
