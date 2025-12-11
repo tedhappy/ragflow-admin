@@ -68,8 +68,6 @@ class MySQLClient:
                 autocommit=True,
                 connect_timeout=10,
                 pool_recycle=60,
-                read_timeout=30,
-                write_timeout=30,
             )
         
         return await self._pool.acquire()
