@@ -64,10 +64,12 @@ class MySQLClient:
                 user=settings.mysql_user,
                 password=settings.mysql_password,
                 minsize=1,
-                maxsize=5,
+                maxsize=10,
                 autocommit=True,
-                connect_timeout=5,
+                connect_timeout=10,
                 pool_recycle=60,
+                read_timeout=30,
+                write_timeout=30,
             )
         
         return await self._pool.acquire()

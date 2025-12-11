@@ -40,7 +40,7 @@ class SPAHandler(http.server.SimpleHTTPRequestHandler):
             body = self.rfile.read(length) if length else None
         try:
             req = urllib.request.Request(url, data=body, headers=headers, method=method)
-            with urllib.request.urlopen(req, timeout=30) as resp:
+            with urllib.request.urlopen(req, timeout=60) as resp:
                 self.send_response(resp.status)
                 for k, v in resp.getheaders():
                     if k.lower() not in ('transfer-encoding', 'connection'):
@@ -52,9 +52,18 @@ class SPAHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
             self.wfile.write(e.read())
-        except Exception:
+        except urllib.error.URLError as e:
+            sys.stderr.write(f"[frontend] Proxy error to {url}: {e}\n")
             self.send_response(502)
+            self.send_header('Content-Type', 'application/json')
             self.end_headers()
+            self.wfile.write(b'{"code": -1, "message": "Backend unavailable"}')
+        except Exception as e:
+            sys.stderr.write(f"[frontend] Unexpected proxy error to {url}: {e}\n")
+            self.send_response(502)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(b'{"code": -1, "message": "Backend error"}')
 
     def do_GET(self):
         self.do_request('GET')

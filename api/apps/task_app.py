@@ -19,12 +19,17 @@ manager = Blueprint("task", __name__)
 @manager.route("/", methods=["GET"])
 async def list_tasks():
     """List all document parsing tasks."""
+    import time
+    start_time = time.time()
+    
     page = request.args.get("page", 1, type=int)
     page_size = request.args.get("page_size", 20, type=int)
     status = request.args.get("status", None)
     dataset_name = request.args.get("dataset_name", None)
     doc_name = request.args.get("doc_name", None)
     owner = request.args.get("owner", None)
+    
+    logger.info(f"list_tasks: page={page}, page_size={page_size}, status={status}")
     
     try:
         result = await mysql_client.list_parsing_tasks(
@@ -35,6 +40,8 @@ async def list_tasks():
             doc_name=doc_name,
             owner=owner
         )
+        elapsed = time.time() - start_time
+        logger.info(f"list_tasks completed in {elapsed:.2f}s, total={result.get('total', 0)}")
         return jsonify({"code": 0, "data": result})
     except MySQLClientError as e:
         logger.error(f"Failed to list tasks: {e.message}")
