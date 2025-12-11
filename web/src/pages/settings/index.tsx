@@ -64,7 +64,7 @@ const Settings: React.FC = () => {
         const config = await systemApi.getConfig();
         mysqlForm.setFieldsValue({
           host: config.mysql_host || '',
-          port: config.mysql_port || 3306,
+          port: config.mysql_port || 5455,
           database: config.mysql_database || '',
           user: config.mysql_user || '',
           password: '',
@@ -263,7 +263,7 @@ const Settings: React.FC = () => {
                       rules={[{ required: true }]} 
                       style={{ marginBottom: 12 }}
                     >
-                      <Input placeholder="localhost" onChange={() => setMysqlStatus({ status: 'untested' })} />
+                      <Input placeholder="host.docker.internal" onChange={() => setMysqlStatus({ status: 'untested' })} />
                     </Form.Item>
                   </Col>
                   <Col span={6}>
@@ -382,7 +382,7 @@ const Settings: React.FC = () => {
                       rules={[{ required: true }, { type: 'url', message: t('settings.ragflowUrlInvalid') }]} 
                       style={{ marginBottom: 12 }}
                     >
-                      <Input prefix={<LinkOutlined style={{ color: 'var(--text-disabled)' }} />} placeholder="http://localhost:9380" onChange={() => setRagflowStatus({ status: 'untested' })} />
+                      <Input prefix={<LinkOutlined style={{ color: 'var(--text-disabled)' }} />} placeholder="http://host.docker.internal:9380" onChange={() => setRagflowStatus({ status: 'untested' })} />
                     </Form.Item>
                   </Col>
                   <Col span={8}>

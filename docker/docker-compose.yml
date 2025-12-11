@@ -1,0 +1,41 @@
+services:
+  ragflow-admin:
+    image: ${RAGFLOW_ADMIN_IMAGE:-ragflow-admin:${RAGFLOW_ADMIN_VERSION:-v1.0.0}}
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        APT_MIRROR: ${APT_MIRROR:-deb.debian.org}
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.org/simple}
+        NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmjs.org}
+    container_name: ragflow-admin
+    restart: unless-stopped
+    ports:
+      - "${HOST_PORT:-8000}:${FRONTEND_PORT:-8000}"
+      - "${HOST_BACKEND_PORT:-8080}:${BACKEND_PORT:-8080}"
+    env_file: .env
+    environment:
+      - TZ=${TIMEZONE:-Asia/Shanghai}
+    volumes:
+      - ragflow_admin_data:/ragflow-admin/data
+      - ragflow_admin_conf:/ragflow-admin/conf
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${BACKEND_PORT:-8080}/api/v1/system/monitoring/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    networks:
+      - ragflow-admin
+
+volumes:
+  ragflow_admin_data:
+    driver: local
+  ragflow_admin_conf:
+    driver: local
+
+networks:
+  ragflow-admin:
+    driver: bridge

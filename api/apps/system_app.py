@@ -9,6 +9,7 @@ import httpx
 from quart import Blueprint, jsonify, request
 from api.settings import settings
 from api.services.mysql_client import mysql_client, MySQLClientError
+from api.services.ragflow_client import ragflow_client
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +71,7 @@ async def get_config():
         "code": 0,
         "data": {
             "mysql_host": settings.mysql_host or "",
-            "mysql_port": settings.mysql_port or 3306,
+            "mysql_port": settings.mysql_port or 5455,
             "mysql_database": settings.mysql_database or "",
             "mysql_user": settings.mysql_user or "",
             "is_configured": settings.is_mysql_configured,
@@ -86,7 +87,7 @@ async def save_config():
     try:
         data = await request.get_json()
         host = data.get("host", "").strip()
-        port = data.get("port", 3306)
+        port = data.get("port", 5455)
         database = data.get("database", "").strip()
         user = data.get("user", "").strip()
         password = data.get("password", "")
@@ -126,7 +127,7 @@ async def test_mysql_connection():
     try:
         data = await request.get_json()
         host = data.get("host", "").strip()
-        port = data.get("port", 3306)
+        port = data.get("port", 5455)
         database = data.get("database", "").strip()
         user = data.get("user", "").strip()
         password = data.get("password", "")
@@ -216,6 +217,7 @@ async def save_ragflow_config():
         success = settings.update_ragflow_config(base_url, api_key)
         
         if success:
+            ragflow_client.reload()
             return jsonify({
                 "code": 0,
                 "message": "Configuration saved successfully"

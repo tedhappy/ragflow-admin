@@ -100,54 +100,57 @@ RAGFlow 是强大的 RAG 引擎，但其内置管理界面在生产环境中存�
   <img src="docs/images/settings.jpg" width="800" alt="Settings"/>
 </p>
 
-## �🚀 快速开始
+## 🚀 快速开始
 
 ### 环境要求
 
-- Python 3.10+
-- Node.js 18+
 - 运行中的 RAGFlow 实例（v0.15+）
-- RAGFlow API Key（[如何获取](https://ragflow.io/docs/dev/acquire_ragflow_api_key)）
+- Docker 20.10+ & Docker Compose 2.0+（Docker 部署）
+- Python 3.10+ & Node.js 18+（源码部署）
 
-### 安装步骤
-
-#### 1. 克隆仓库
-
-```bash
-git clone https://github.com/tedhappy/ragflow-admin.git
-cd ragflow-admin
-```
-
-#### 2. 配置
+### 🐳 Docker 部署（推荐）
 
 ```bash
-cp conf/config.example.yaml conf/config.yaml
+$ git clone https://github.com/tedhappy/ragflow-admin.git
+$ cd ragflow-admin/docker
+$ docker compose -f docker-compose.yml up -d
 ```
 
-#### 3. 启动后端
+查看服务状态：
+```bash
+$ docker logs -f ragflow-admin
+```
+
+访问 http://localhost:8000，使用 `admin/admin` 登录，通过 **Settings** 页面配置 MySQL。
+
+> 详细配置请参阅 [docker/README.md](docker/README.md)
+
+### 🔧 源码部署（开发环境）
+
+#### 1. 克隆并配置
 
 ```bash
-pip install -r requirements.txt
-python -m api.server
+$ git clone https://github.com/tedhappy/ragflow-admin.git
+$ cd ragflow-admin
+$ cp conf/config.example.yaml conf/config.yaml
 ```
 
-API 服务将启动在 `http://localhost:8080`
-
-#### 4. 启动前端
+#### 2. 启动后端
 
 ```bash
-cd web
-npm install
-npm run dev
+$ pip install -r requirements.txt
+$ python -m api.server
 ```
 
-Web 界面访问地址：`http://localhost:8000`
-
-### Docker 部署（即将推出）
+#### 3. 启动前端
 
 ```bash
-docker-compose up -d
+$ cd web
+$ npm install
+$ npm run dev
 ```
+
+访问 http://localhost:8000 进入管理控制台。
 
 ## 🏗️ 项目结构
 
@@ -155,15 +158,7 @@ docker-compose up -d
 ragflow-admin/
 ├── api/                        # 后端 (Python/Quart)
 │   ├── apps/                   # API 路由处理
-│   │   ├── dataset_app.py      # 知识库接口
-│   │   ├── document_app.py     # 文档接口
-│   │   ├── task_app.py         # 任务队列接口
-│   │   ├── chat_app.py         # 聊天接口
-│   │   ├── agent_app.py        # 智能体接口
-│   │   └── ...
 │   ├── services/               # 业务逻辑
-│   │   ├── ragflow_client.py   # RAGFlow SDK 封装
-│   │   └── mysql_client.py     # MySQL 操作
 │   └── server.py               # 应用入口
 │
 ├── web/                        # 前端 (React/UmiJS)
@@ -171,12 +166,17 @@ ragflow-admin/
 │       ├── pages/              # 页面组件
 │       ├── components/         # 可复用 UI 组件
 │       ├── services/           # API 客户端
-│       ├── hooks/              # 自定义 React Hooks
-│       └── locales/            # 国际化翻译 (en/zh)
+│       └── locales/            # 国际化翻译
+│
+├── docker/                     # Docker 配置
+│   ├── docker-compose.yml      # Docker Compose 文件
+│   ├── .env                    # 环境变量
+│   ├── entrypoint.sh           # 容器入口脚本
+│   ├── spa_server.py           # 前端 SPA 服务
+│   └── README.md               # Docker 部署指南
 │
 ├── conf/                       # 配置文件
-│   ├── config.example.yaml     # 配置示例
-│   └── config.yaml             # 你的配置（已 gitignore）
+├── Dockerfile                  # Docker 构建文件
 │
 └── docs/                       # 文档
 ```

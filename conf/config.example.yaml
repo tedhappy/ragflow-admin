@@ -1,38 +1,24 @@
-﻿# RAGFlow Admin Configuration File
-# Copy this file to config.yaml and modify the settings
+﻿# RAGFlow Admin Configuration
+# Copy to config.yaml and modify as needed
 
-# Admin server settings
 server:
-  # Server listen address
   host: "0.0.0.0"
-  # Server port
   port: 8080
-  # Debug mode
   debug: true
-  # Secret key (used for session encryption, please change to a random string)
-  secret_key: "change-me-to-random-string"
+  secret_key: "change-me-to-random-string"  # Change in production!
 
-# Administrator account settings
 admin:
-  # Username
   username: "admin"
-  # Password (please change to a secure password)
-  password: "admin123"
+  password: "admin"
 
-# ============================================================
-# The following settings can be configured via frontend Settings page
-# No need to modify here - just use the web interface!
-# ============================================================
-
-# MySQL connection (configure via Settings page)
+# MySQL and RAGFlow API can be configured via Settings page
 mysql:
   host: ""
-  port: 3306
-  database: ""
+  port: 5455
+  database: "rag_flow"
   user: ""
   password: ""
 
-# RAGFlow API (configure via Settings page)
 ragflow:
   base_url: ""
   api_key: ""

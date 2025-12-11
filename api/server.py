@@ -30,7 +30,6 @@ if __name__ == "__main__":
     logging.info(f"RAGFlow Admin starting...")
     logging.info(f"RAGFlow URL: {settings.ragflow_base_url}")
     logging.info(f"Server: http://{settings.server_host}:{settings.server_port}")
-    logging.info(f"API Docs: http://{settings.server_host}:{settings.server_port}/apidocs/")
     
     app.run(
         host=settings.server_host,

@@ -166,7 +166,7 @@ ragflow:
     def mysql_port(self) -> int:
         """Get MySQL port."""
         mysql_config = self._config.get("mysql", {})
-        return mysql_config.get("port", 3306) or 3306
+        return mysql_config.get("port", 5455) or 5455
 
     @property
     def mysql_database(self) -> str:

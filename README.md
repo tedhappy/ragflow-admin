@@ -100,54 +100,57 @@ RAGFlow is a powerful RAG engine, but its built-in management interface has some
   <img src="docs/images/settings.jpg" width="800" alt="Settings"/>
 </p>
 
-## 🚀 Quick Start
+## 🚀 Getting Started
 
 ### Prerequisites
 
-- Python 3.10+
-- Node.js 18+
 - A running RAGFlow instance (v0.15+)
-- RAGFlow API Key ([How to get](https://ragflow.io/docs/dev/acquire_ragflow_api_key))
+- Docker 20.10+ & Docker Compose 2.0+ (for Docker deployment)
+- Python 3.10+ & Node.js 18+ (for source deployment)
 
-### Installation
-
-#### 1. Clone the repository
-
-```bash
-git clone https://github.com/tedhappy/ragflow-admin.git
-cd ragflow-admin
-```
-
-#### 2. Configure
+### 🐳 Docker Deployment (Recommended)
 
 ```bash
-cp conf/config.example.yaml conf/config.yaml
+$ git clone https://github.com/tedhappy/ragflow-admin.git
+$ cd ragflow-admin/docker
+$ docker compose -f docker-compose.yml up -d
 ```
 
-#### 3. Start Backend
+Check server status:
+```bash
+$ docker logs -f ragflow-admin
+```
+
+Open http://localhost:8000, login with `admin/admin`, and configure MySQL via **Settings** page.
+
+> See [docker/README.md](docker/README.md) for advanced configuration.
+
+### 🔧 Source Deployment (Development)
+
+#### 1. Clone and Configure
 
 ```bash
-pip install -r requirements.txt
-python -m api.server
+$ git clone https://github.com/tedhappy/ragflow-admin.git
+$ cd ragflow-admin
+$ cp conf/config.example.yaml conf/config.yaml
 ```
 
-The API server will start at `http://localhost:8080`
-
-#### 4. Start Frontend
+#### 2. Start Backend
 
 ```bash
-cd web
-npm install
-npm run dev
+$ pip install -r requirements.txt
+$ python -m api.server
 ```
 
-The web UI will be available at `http://localhost:8000`
-
-### Docker Deployment (Coming Soon)
+#### 3. Start Frontend
 
 ```bash
-docker-compose up -d
+$ cd web
+$ npm install
+$ npm run dev
 ```
+
+Open http://localhost:8000 to access the admin console.
 
 ## 🏗️ Architecture
 
@@ -155,15 +158,7 @@ docker-compose up -d
 ragflow-admin/
 ├── api/                        # Backend (Python/Quart)
 │   ├── apps/                   # API route handlers
-│   │   ├── dataset_app.py      # Dataset endpoints
-│   │   ├── document_app.py     # Document endpoints
-│   │   ├── task_app.py         # Task queue endpoints
-│   │   ├── chat_app.py         # Chat endpoints
-│   │   ├── agent_app.py        # Agent endpoints
-│   │   └── ...
 │   ├── services/               # Business logic
-│   │   ├── ragflow_client.py   # RAGFlow SDK wrapper
-│   │   └── mysql_client.py     # MySQL operations
 │   └── server.py               # Application entry point
 │
 ├── web/                        # Frontend (React/UmiJS)
@@ -171,13 +166,17 @@ ragflow-admin/
 │       ├── pages/              # Page components
 │       ├── components/         # Reusable UI components
 │       ├── services/           # API client
-│       ├── hooks/              # Custom React hooks
-│       └── locales/            # i18n translations (en/zh)
+│       └── locales/            # i18n translations
+│
+├── docker/                     # Docker configuration
+│   ├── docker-compose.yml      # Docker Compose file
+│   ├── .env                    # Environment variables
+│   ├── entrypoint.sh           # Container entrypoint
+│   ├── spa_server.py           # Frontend SPA server
+│   └── README.md               # Docker deployment guide
 │
 ├── conf/                       # Configuration files
-│   ├── config.example.yaml     # Example configuration
-│   └── config.yaml             # Your configuration (gitignored)
-│
+├── Dockerfile                  # Docker build file
 └── docs/                       # Documentation
 ```
 

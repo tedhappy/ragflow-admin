@@ -1,0 +1,51 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+docs/
+*.md
+!docker/README.md
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.env
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Node
+web/node_modules/
+web/.umi/
+web/.umi-production/
+web/dist/
+
+# Logs
+*.log
+logs/
+
+# Local config
+conf/config.yaml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose*.yml
+!docker/docker-compose.yml
+Dockerfile*
+!Dockerfile
