@@ -23,7 +23,7 @@
 </p>
 
 <p align="center">
-A standalone administration console for <a href="https://github.com/infiniflow/ragflow">RAGFlow</a>
+A standalone administration console for RAGFlow
 </p>
 
 ---
@@ -59,17 +59,15 @@ RAGFlow is an excellent RAG engine, but it has some management limitations in pr
 
 ## 🖼️ Screenshots
 
+### Dashboard
 <p align="center">
   <img src="docs/images/dashboard.jpg" width="800" alt="Dashboard"/>
 </p>
 
-<p align="center"><em>Dashboard - System overview with health status and statistics</em></p>
-
+### Task Queue
 <p align="center">
   <img src="docs/images/tasks.jpg" width="800" alt="Task Queue"/>
 </p>
-
-<p align="center"><em>Task Queue - Real-time document parsing monitoring</em></p>
 
 ### Dataset Management
 <p align="center">
@@ -103,7 +101,7 @@ RAGFlow is an excellent RAG engine, but it has some management limitations in pr
 - Python 3.10+
 - Node.js 18+
 - A running RAGFlow instance (v0.15+)
-- RAGFlow API Key ([How to get](https://ragflow.io/docs/dev/http_api_reference#create-api-key))
+- RAGFlow API Key ([How to get](https://ragflow.io/docs/dev/acquire_ragflow_api_key))
 
 ### Installation
 
@@ -118,13 +116,6 @@ cd ragflow-admin
 
 ```bash
 cp conf/config.example.yaml conf/config.yaml
-```
-
-Edit `conf/config.yaml` with your RAGFlow server address (can also be configured in the frontend settings):
-
-```yaml
-ragflow:
-  base_url: "http://your-ragflow-host:9380"
 ```
 
 #### 3. Start Backend
@@ -188,13 +179,14 @@ ragflow-admin/
 
 | Layer | Technology |
 |-------|------------|
-| **Backend** | [Quart](https://quart.palletsprojects.com/) (Async Python framework) |
-| **RAGFlow Integration** | [ragflow-sdk](https://pypi.org/project/ragflow-sdk/) (Official Python SDK) |
-| **Frontend** | [React 18](https://react.dev/) + [UmiJS 4](https://umijs.org/) |
-| **UI Components** | [Ant Design 5](https://ant.design/) |
-| **Styling** | [TailwindCSS 3](https://tailwindcss.com/) |
-| **State Management** | React Query + Zustand |
-| **Database** | MySQL (via RAGFlow) |
+| **Backend** | Python 3.10+ / Quart |
+| **RAGFlow Integration** | ragflow-sdk |
+| **Frontend** | React 18 / UmiJS 4 / TypeScript |
+| **UI Components** | Ant Design 5 |
+| **Styling** | TailwindCSS 4 |
+| **State Management** | React Query / Zustand |
+| **i18n** | i18next |
+| **Database** | MySQL |
 
 ## 🤝 Contributing
 

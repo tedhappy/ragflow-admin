@@ -23,7 +23,7 @@
 </p>
 
 <p align="center">
-<a href="https://github.com/infiniflow/ragflow">RAGFlow</a> 独立后台管理系统
+RAGFlow 独立后台管理系统
 </p>
 
 ---
@@ -57,19 +57,17 @@ RAGFlow 是一款优秀的 RAG 引擎，但在实际使用中存在一些管理�
 | **👥 用户管理** | 查看和管理 RAGFlow 用户（需要 MySQL 访问权限）|
 | **🌐 国际化** | 完整的中英文支持 |
 
-## �️ 界面截图
+## 🖼️ 界面截图
 
+### 仪表板
 <p align="center">
   <img src="docs/images/dashboard.jpg" width="800" alt="Dashboard"/>
 </p>
 
-<p align="center"><em>仪表板 - 系统概览、健康状态和统计数据</em></p>
-
+### 任务队列
 <p align="center">
   <img src="docs/images/tasks.jpg" width="800" alt="Task Queue"/>
 </p>
-
-<p align="center"><em>任务队列 - 实时文档解析监控</em></p>
 
 ### 知识库管理
 <p align="center">
@@ -103,7 +101,7 @@ RAGFlow 是一款优秀的 RAG 引擎，但在实际使用中存在一些管理�
 - Python 3.10+
 - Node.js 18+
 - 运行中的 RAGFlow 实例（v0.15+）
-- RAGFlow API Key（[如何获取](https://ragflow.io/docs/dev/http_api_reference#create-api-key)）
+- RAGFlow API Key（[如何获取](https://ragflow.io/docs/dev/acquire_ragflow_api_key)）
 
 ### 安装步骤
 
@@ -118,13 +116,6 @@ cd ragflow-admin
 
 ```bash
 cp conf/config.example.yaml conf/config.yaml
-```
-
-编辑 `conf/config.yaml`，填入你的 RAGFlow 服务地址（也可以在前端设置页面配置）：
-
-```yaml
-ragflow:
-  base_url: "http://your-ragflow-host:9380"
 ```
 
 #### 3. 启动后端
@@ -188,13 +179,14 @@ ragflow-admin/
 
 | 层级 | 技术 |
 |------|------|
-| **后端** | [Quart](https://quart.palletsprojects.com/)（异步 Python 框架）|
-| **RAGFlow 集成** | [ragflow-sdk](https://pypi.org/project/ragflow-sdk/)（官方 Python SDK）|
-| **前端** | [React 18](https://react.dev/) + [UmiJS 4](https://umijs.org/) |
-| **UI 组件** | [Ant Design 5](https://ant.design/) |
-| **样式** | [TailwindCSS 3](https://tailwindcss.com/) |
-| **状态管理** | React Query + Zustand |
-| **数据库** | MySQL（通过 RAGFlow）|
+| **后端** | Python 3.10+ / Quart |
+| **RAGFlow 集成** | ragflow-sdk |
+| **前端** | React 18 / UmiJS 4 / TypeScript |
+| **UI 组件** | Ant Design 5 |
+| **样式** | TailwindCSS 4 |
+| **状态管理** | React Query / Zustand |
+| **国际化** | i18next |
+| **数据库** | MySQL |
 
 ## 🤝 贡献指南
 
