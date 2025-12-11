@@ -60,41 +60,41 @@ RAGFlow is an excellent RAG engine, but it has some management limitations in pr
 ## 🖼️ Screenshots
 
 <p align="center">
-  <img src="docs/images/dashboard.png" width="800" alt="Dashboard"/>
+  <img src="docs/images/dashboard.jpg" width="800" alt="Dashboard"/>
 </p>
 
 <p align="center"><em>Dashboard - System overview with health status and statistics</em></p>
 
 <p align="center">
-  <img src="docs/images/tasks.png" width="800" alt="Task Queue"/>
+  <img src="docs/images/tasks.jpg" width="800" alt="Task Queue"/>
 </p>
 
 <p align="center"><em>Task Queue - Real-time document parsing monitoring</em></p>
 
-<details>
-<summary><b>More Screenshots</b></summary>
-
 ### Dataset Management
 <p align="center">
-  <img src="docs/images/datasets.png" width="800" alt="Datasets"/>
+  <img src="docs/images/datasets.jpg" width="800" alt="Datasets"/>
 </p>
 
 ### Document Management
 <p align="center">
-  <img src="docs/images/documents.png" width="800" alt="Documents"/>
+  <img src="docs/images/documents.jpg" width="800" alt="Documents"/>
 </p>
 
 ### Chat Management
 <p align="center">
-  <img src="docs/images/chats.png" width="800" alt="Chats"/>
+  <img src="docs/images/chats.jpg" width="800" alt="Chats"/>
+</p>
+
+### User Management
+<p align="center">
+  <img src="docs/images/users.png" width="800" alt="Users"/>
 </p>
 
 ### Settings
 <p align="center">
-  <img src="docs/images/settings.png" width="800" alt="Settings"/>
+  <img src="docs/images/settings.jpg" width="800" alt="Settings"/>
 </p>
-
-</details>
 
 ## 🚀 Quick Start
 

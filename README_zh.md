@@ -60,41 +60,41 @@ RAGFlow 是一款优秀的 RAG 引擎，但在实际使用中存在一些管理�
 ## �️ 界面截图
 
 <p align="center">
-  <img src="docs/images/dashboard.png" width="800" alt="Dashboard"/>
+  <img src="docs/images/dashboard.jpg" width="800" alt="Dashboard"/>
 </p>
 
 <p align="center"><em>仪表板 - 系统概览、健康状态和统计数据</em></p>
 
 <p align="center">
-  <img src="docs/images/tasks.png" width="800" alt="Task Queue"/>
+  <img src="docs/images/tasks.jpg" width="800" alt="Task Queue"/>
 </p>
 
 <p align="center"><em>任务队列 - 实时文档解析监控</em></p>
 
-<details>
-<summary><b>更多截图</b></summary>
-
 ### 知识库管理
 <p align="center">
-  <img src="docs/images/datasets.png" width="800" alt="Datasets"/>
+  <img src="docs/images/datasets.jpg" width="800" alt="Datasets"/>
 </p>
 
 ### 文档管理
 <p align="center">
-  <img src="docs/images/documents.png" width="800" alt="Documents"/>
+  <img src="docs/images/documents.jpg" width="800" alt="Documents"/>
 </p>
 
 ### 聊天管理
 <p align="center">
-  <img src="docs/images/chats.png" width="800" alt="Chats"/>
+  <img src="docs/images/chats.jpg" width="800" alt="Chats"/>
+</p>
+
+### 用户管理
+<p align="center">
+  <img src="docs/images/users.png" width="800" alt="Users"/>
 </p>
 
 ### 系统设置
 <p align="center">
-  <img src="docs/images/settings.png" width="800" alt="Settings"/>
+  <img src="docs/images/settings.jpg" width="800" alt="Settings"/>
 </p>
-
-</details>
 
 ## �🚀 快速开始
 
