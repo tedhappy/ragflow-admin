@@ -16,28 +16,7 @@ manager = Blueprint("chat", __name__)
 
 @manager.route("", methods=["GET"])
 async def list_chats():
-    """
-    List all chat assistants from all users (MySQL)
-    ---
-    tags:
-      - Chat
-    parameters:
-      - name: page
-        in: query
-        type: integer
-        default: 1
-      - name: page_size
-        in: query
-        type: integer
-        default: 20
-      - name: name
-        in: query
-        type: string
-        description: Filter by chat name
-    responses:
-      200:
-        description: Chat assistant list
-    """
+    """List all chat assistants."""
     if not check_mysql_configured():
         return jsonify({"code": -1, "message": "MySQL not configured"}), 500
     
@@ -64,26 +43,7 @@ async def list_chats():
 
 @manager.route("/batch-delete", methods=["POST"])
 async def batch_delete_chats():
-    """
-    Delete chat assistants in batch (MySQL)
-    ---
-    tags:
-      - Chat
-    parameters:
-      - name: body
-        in: body
-        required: true
-        schema:
-          type: object
-          properties:
-            ids:
-              type: array
-              items:
-                type: string
-    responses:
-      200:
-        description: Chats deleted successfully
-    """
+    """Delete chat assistants in batch."""
     if not check_mysql_configured():
         return jsonify({"code": -1, "message": "MySQL not configured"}), 500
     
@@ -94,7 +54,6 @@ async def batch_delete_chats():
         return jsonify({"code": -1, "message": "ids is required"}), 400
     
     try:
-        # Cleans up: conversation, dialog (with transaction)
         result = await mysql_client.delete_chats(ids)
         return jsonify({
             "code": 0, 
@@ -112,28 +71,7 @@ async def batch_delete_chats():
 
 @manager.route("/<chat_id>/sessions", methods=["GET"])
 async def list_chat_sessions(chat_id: str):
-    """
-    List sessions for a chat assistant (MySQL)
-    ---
-    tags:
-      - Chat
-    parameters:
-      - name: chat_id
-        in: path
-        type: string
-        required: true
-      - name: page
-        in: query
-        type: integer
-        default: 1
-      - name: page_size
-        in: query
-        type: integer
-        default: 30
-    responses:
-      200:
-        description: Session list
-    """
+    """List sessions for a chat assistant."""
     if not check_mysql_configured():
         return jsonify({"code": -1, "message": "MySQL not configured"}), 500
     
@@ -153,30 +91,7 @@ async def list_chat_sessions(chat_id: str):
 
 @manager.route("/<chat_id>/sessions", methods=["DELETE"])
 async def delete_chat_sessions(chat_id: str):
-    """
-    Delete sessions for a chat assistant (MySQL)
-    ---
-    tags:
-      - Chat
-    parameters:
-      - name: chat_id
-        in: path
-        type: string
-        required: true
-      - name: body
-        in: body
-        required: true
-        schema:
-          type: object
-          properties:
-            ids:
-              type: array
-              items:
-                type: string
-    responses:
-      200:
-        description: Sessions deleted
-    """
+    """Delete sessions for a chat assistant."""
     if not check_mysql_configured():
         return jsonify({"code": -1, "message": "MySQL not configured"}), 500
     

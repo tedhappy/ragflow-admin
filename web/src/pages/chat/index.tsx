@@ -4,12 +4,6 @@
 // Licensed under the Apache License, Version 2.0
 //
 
-/**
- * Chat Assistants Management Page
- *
- * Lists chat assistants and their conversation sessions.
- */
-
 import React, { useState } from 'react';
 import { Table, Button, Space, Card, message, Input, Typography, Spin, Tag, Avatar, Badge, Modal } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -273,7 +267,6 @@ const ChatPage: React.FC = () => {
               }}
               onRow={(record) => ({
                 onClick: (e) => {
-                  // Prevent when clicking on checkbox or action buttons
                   const target = e.target as HTMLElement;
                   if (target.closest('.ant-checkbox-wrapper') || target.closest('button') || target.closest('a')) {
                     return;

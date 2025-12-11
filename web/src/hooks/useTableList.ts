@@ -21,7 +21,7 @@ export interface UseTableListOptions<T, P extends ListParams> {
   fetchFn: (params: P) => Promise<ListResponse<T>>;
   defaultParams?: Partial<P>;
   defaultPageSize?: number;
-  enabled?: boolean; // If false, skip initial fetch
+  enabled?: boolean;
 }
 
 export interface UseTableListReturn<T, P extends ListParams> {
@@ -40,28 +40,6 @@ export interface UseTableListReturn<T, P extends ListParams> {
   handleSearch: (searchParams?: Partial<P>) => void;
 }
 
-/**
- * Generic hook for managing table data with pagination, search, and row selection.
- * 
- * @template T - The type of items in the list
- * @template P - The type of parameters (extends ListParams)
- * 
- * @param options - Configuration options for the table list
- * @param options.fetchFn - Async function to fetch data
- * @param options.defaultParams - Default query parameters
- * @param options.defaultPageSize - Default page size (default: 10)
- * @param options.enabled - Whether to enable initial fetch (default: true)
- * 
- * @returns Table list state and control functions
- * 
- * @example
- * ```tsx
- * const { data, loading, refresh, handlePageChange } = useTableList({
- *   fetchFn: (params) => api.list(params),
- *   defaultPageSize: 20,
- * });
- * ```
- */
 export function useTableList<T, P extends ListParams = ListParams>(
   options: UseTableListOptions<T, P>
 ): UseTableListReturn<T, P> {
@@ -92,7 +70,6 @@ export function useTableList<T, P extends ListParams = ListParams>(
         setInitialLoading(false);
       }
     } catch (error: any) {
-      // Let calling component handle error display with i18n
       setData([]);
       setTotal(0);
       if (isInitial) {

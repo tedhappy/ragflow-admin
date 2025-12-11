@@ -4,12 +4,6 @@
 // Licensed under the Apache License, Version 2.0
 //
 
-/**
- * Documents Management Page
- *
- * Lists, uploads, parses, and manages documents within a dataset.
- */
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Table, Button, Space, Card, message, Input, Typography, Spin, Tag, Progress, Select, Upload, Modal, Alert } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -155,9 +149,7 @@ const Documents: React.FC = () => {
     return true;
   };
 
-  // Common error handler for ownership and API errors
   const handleApiError = (error: any, defaultMessage: string) => {
-    // Check for 403 ownership error first (highest priority)
     if (error.response?.status === 403 && error.response?.data?.error_type === 'owner_mismatch') {
       const currentUser = error.response.data.current_user || '-';
       const owner = error.response.data.owner || '-';
@@ -190,7 +182,6 @@ const Documents: React.FC = () => {
 
     setUploading(true);
     try {
-      // Pre-check ownership before upload to avoid connection reset on 403
       await documentApi.checkOwnership(datasetId!);
       
       const formData = new FormData();
@@ -263,7 +254,6 @@ const Documents: React.FC = () => {
       refresh();
     } catch (error: any) {
       const errorMsg = error.response?.data?.message || error.message || '';
-      // Special case: document already finished parsing
       if (errorMsg.includes('progress at 0 or 1') || errorMsg.includes('already')) {
         message.info(t('documents.parse.alreadyCompleted'));
       } else {

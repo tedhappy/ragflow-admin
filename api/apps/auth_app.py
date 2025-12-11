@@ -12,11 +12,8 @@ from api.settings import settings
 
 manager = Blueprint("auth", __name__)
 
-# Simple token storage (in production, use Redis or database)
-# Format: {token: {"username": str, "created_at": float, "expires_at": float}}
 _tokens = {}
 
-# Token expiration time in seconds (24 hours)
 TOKEN_EXPIRATION = 24 * 60 * 60
 
 
@@ -46,7 +43,6 @@ def validate_token(token: str) -> dict | None:
     if not session:
         return None
     
-    # Check expiration
     if time.time() > session["expires_at"]:
         del _tokens[token]
         return None
@@ -87,30 +83,7 @@ def login_required(f):
 
 @manager.route("/login", methods=["POST"])
 async def login():
-    """
-    User login
-    ---
-    tags:
-      - Auth
-    parameters:
-      - in: body
-        name: body
-        schema:
-          type: object
-          required:
-            - username
-            - password
-          properties:
-            username:
-              type: string
-            password:
-              type: string
-    responses:
-      200:
-        description: Login successful
-      401:
-        description: Invalid credentials
-    """
+    """User login."""
     try:
         data = await request.get_json()
         username = data.get("username", "").strip()
@@ -128,7 +101,6 @@ async def login():
                 "message": "Password is required"
             }), 400
         
-        # Verify credentials against config
         if username == settings.admin_username and password == settings.admin_password:
             token = create_session(username)
             return jsonify({
@@ -155,15 +127,7 @@ async def login():
 
 @manager.route("/logout", methods=["POST"])
 async def logout():
-    """
-    User logout
-    ---
-    tags:
-      - Auth
-    responses:
-      200:
-        description: Logout successful
-    """
+    """User logout."""
     auth_header = request.headers.get("Authorization", "")
     token = None
     
@@ -182,17 +146,7 @@ async def logout():
 @manager.route("/me", methods=["GET"])
 @login_required
 async def get_current_user():
-    """
-    Get current user info
-    ---
-    tags:
-      - Auth
-    responses:
-      200:
-        description: Current user info
-      401:
-        description: Not authenticated
-    """
+    """Get current user info."""
     return jsonify({
         "code": 0,
         "data": {
@@ -205,24 +159,12 @@ async def get_current_user():
 @manager.route("/refresh", methods=["POST"])
 @login_required
 async def refresh_token():
-    """
-    Refresh authentication token
-    ---
-    tags:
-      - Auth
-    responses:
-      200:
-        description: New token
-      401:
-        description: Not authenticated
-    """
-    # Invalidate old token
+    """Refresh authentication token."""
     auth_header = request.headers.get("Authorization", "")
     if auth_header.startswith("Bearer "):
         old_token = auth_header[7:]
         invalidate_token(old_token)
     
-    # Create new token
     token = create_session(g.current_user)
     
     return jsonify({

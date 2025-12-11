@@ -1,6 +1,6 @@
 ﻿# RAGFlow Admin - Python Dependencies
 
-# Web Framework (与RAGFlow一致)
+# Web Framework
 quart==0.20.0
 quart-cors==0.8.0
 flasgger>=0.9.7.1,<0.10.0

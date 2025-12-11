@@ -4,13 +4,6 @@
 // Licensed under the Apache License, Version 2.0
 //
 
-/**
- * Dashboard Page
- *
- * Overview page displaying system statistics, service health, and quick navigation.
- * Optimized for clarity and visual consistency with RAGFlow design.
- */
-
 import React, { useEffect, useState, useCallback } from 'react';
 import { Card, Typography, Spin, message, Row, Col, Progress, Tooltip, Space } from 'antd';
 import dayjs from 'dayjs';
@@ -62,7 +55,6 @@ const formatNumber = (num: number): string => {
   return num.toString();
 };
 
-// Compact status dot component
 const StatusDot: React.FC<{ status: string }> = ({ status }) => {
   const colorMap: Record<string, string> = {
     healthy: '#52c41a',
@@ -84,7 +76,6 @@ const StatusDot: React.FC<{ status: string }> = ({ status }) => {
   );
 };
 
-// Service item component for cleaner code
 const ServiceItem: React.FC<{ 
   icon: React.ReactNode; 
   name: string; 
@@ -127,7 +118,6 @@ const ServiceItem: React.FC<{
   );
 };
 
-// Stat item for activity section
 const ActivityStatItem: React.FC<{
   icon: React.ReactNode;
   value: number;
@@ -177,7 +167,6 @@ const Dashboard: React.FC = () => {
     
     setLoading(true);
     
-    // Helper to add timeout to any promise
     const withTimeout = <T,>(promise: Promise<T>, ms: number = 8000): Promise<T | null> => 
       Promise.race([
         promise,
@@ -185,7 +174,6 @@ const Dashboard: React.FC = () => {
       ]).catch(() => null);
     
     try {
-      // Fetch all data with individual timeouts - partial failures won't block UI
       const [dashboardData, healthData, sysStatsData, ragflowHealth] = await Promise.all([
         withTimeout(dashboardApi.getStats()),
         withTimeout(monitoringApi.getHealthStatus()),
@@ -194,7 +182,6 @@ const Dashboard: React.FC = () => {
       ]);
       
       if (dashboardData) setStats(dashboardData);
-      // Always update health status - show 'unknown' if request failed/timeout
       setHealth(healthData || {
         mysql: { status: 'unknown', message: 'Request failed or timeout' },
         ragflow_api: { status: 'unknown', message: 'Request failed or timeout' },
@@ -226,15 +213,12 @@ const Dashboard: React.FC = () => {
 
   const isLoading = checking || loading;
   
-  // Calculate overall status based on all services
   const calculateOverallStatus = () => {
     const statuses: string[] = [];
     
-    // Admin services (MySQL, RAGFlow API)
     if (health?.mysql?.status) statuses.push(health.mysql.status);
     if (health?.ragflow_api?.status) statuses.push(health.ragflow_api.status);
     
-    // RAGFlow internal services (Redis, Elasticsearch, MinIO)
     if (ragflowServices) {
       if (ragflowServices.redis) statuses.push(ragflowServices.redis);
       if (ragflowServices.doc_engine) statuses.push(ragflowServices.doc_engine);
@@ -250,7 +234,6 @@ const Dashboard: React.FC = () => {
   
   const overallStatus = calculateOverallStatus();
   
-  // Calculate parsing completion rate (use effective_total which excludes canceled docs)
   const effectiveTotal = systemStats?.documents?.effective_total || systemStats?.documents?.total || 0;
   const parsingRate = effectiveTotal > 0 
     ? Math.round((systemStats!.documents.completed / effectiveTotal) * 100) 

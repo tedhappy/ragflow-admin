@@ -15,32 +15,26 @@ logger = logging.getLogger(__name__)
 
 
 async def check_dataset_ownership(dataset_id: str) -> tuple:
-    """
-    Check if the dataset belongs to the current API key user.
-    Returns (is_owner, current_user_email, owner_email, error_message)
-    """
+    """Check if the dataset belongs to the current API key user."""
     try:
-        # Get current API key user
         current_user_info = await ragflow_client.get_current_user()
         current_user_id = current_user_info.get("user_id")
         
         if not current_user_id:
-            return True, None, None, None  # Cannot determine, allow operation
+            return True, None, None, None
         
-        # Get dataset owner from database
         if not settings.is_mysql_configured:
-            return True, None, None, None  # Cannot check, allow operation
+            return True, None, None, None
         
         dataset_info = await mysql_client.get_dataset(dataset_id)
         if not dataset_info:
-            return True, None, None, None  # Dataset not found in DB, let API handle it
+            return True, None, None, None
         
         owner_id = dataset_info.get("tenant_id")
         
         if current_user_id == owner_id:
-            return True, None, None, None  # Owner matches
+            return True, None, None, None
         
-        # Get user emails for friendly message
         current_user = await mysql_client.get_user(current_user_id) if current_user_id else None
         owner_user = await mysql_client.get_user(owner_id) if owner_id else None
         
@@ -50,11 +44,10 @@ async def check_dataset_ownership(dataset_id: str) -> tuple:
         return False, current_email, owner_email, f"Permission denied: API Key user ({current_email}) cannot operate on dataset owned by {owner_email}"
     except Exception as e:
         logger.warning(f"Failed to check dataset ownership: {e}")
-        return True, None, None, None  # On error, allow operation and let API handle it
+        return True, None, None, None
 
 manager = Blueprint("document", __name__)
 
-# Allowed file extensions (consistent with RAGFlow)
 ALLOWED_EXTENSIONS = {
     'pdf',
     'msg', 'eml', 'doc', 'docx', 'ppt', 'pptx', 'yml', 'xml', 'htm', 
@@ -76,37 +69,7 @@ def allowed_file(filename: str) -> bool:
 
 @manager.route("/<dataset_id>/documents", methods=["GET"])
 async def list_documents(dataset_id: str):
-    """
-    List documents in a dataset
-    ---
-    tags:
-      - Document
-    parameters:
-      - name: dataset_id
-        in: path
-        type: string
-        required: true
-        description: Dataset ID
-      - name: page
-        in: query
-        type: integer
-        default: 1
-      - name: page_size
-        in: query
-        type: integer
-        default: 20
-      - name: keywords
-        in: query
-        type: string
-        description: Filter by document name
-      - name: run
-        in: query
-        type: string
-        description: Filter by status (UNSTART, RUNNING, CANCEL, DONE, FAIL)
-    responses:
-      200:
-        description: Document list
-    """
+    """List documents in a dataset."""
     page = request.args.get("page", 1, type=int)
     page_size = request.args.get("page_size", 20, type=int)
     keywords = request.args.get("keywords", None)
@@ -135,38 +98,13 @@ async def list_documents(dataset_id: str):
 
 @manager.route("/<dataset_id>/documents/batch-delete", methods=["POST"])
 async def batch_delete_documents(dataset_id: str):
-    """
-    Delete documents in batch
-    ---
-    tags:
-      - Document
-    parameters:
-      - name: dataset_id
-        in: path
-        type: string
-        required: true
-        description: Dataset ID
-      - name: body
-        in: body
-        required: true
-        schema:
-          type: object
-          properties:
-            ids:
-              type: array
-              items:
-                type: string
-    responses:
-      200:
-        description: Documents deleted successfully
-    """
+    """Delete documents in batch."""
     data = await request.get_json()
     ids = data.get("ids", [])
     
     if not ids:
         return jsonify({"code": -1, "message": "ids is required"}), 400
     
-    # Check ownership before operation
     is_owner, current_user, owner, error_msg = await check_dataset_ownership(dataset_id)
     if not is_owner:
         return jsonify({
@@ -194,23 +132,7 @@ async def batch_delete_documents(dataset_id: str):
 
 @manager.route("/<dataset_id>/documents/check-ownership", methods=["POST"])
 async def check_ownership_endpoint(dataset_id: str):
-    """
-    Check dataset ownership before upload (pre-flight check)
-    ---
-    tags:
-      - Document
-    parameters:
-      - name: dataset_id
-        in: path
-        type: string
-        required: true
-        description: Dataset ID
-    responses:
-      200:
-        description: Ownership check passed
-      403:
-        description: Ownership check failed
-    """
+    """Check dataset ownership before upload."""
     is_owner, current_user, owner, error_msg = await check_dataset_ownership(dataset_id)
     if not is_owner:
         return jsonify({
@@ -226,27 +148,7 @@ async def check_ownership_endpoint(dataset_id: str):
 
 @manager.route("/<dataset_id>/documents/upload", methods=["POST"])
 async def upload_documents(dataset_id: str):
-    """
-    Upload documents to a dataset
-    ---
-    tags:
-      - Document
-    parameters:
-      - name: dataset_id
-        in: path
-        type: string
-        required: true
-        description: Dataset ID
-      - name: file
-        in: formData
-        type: file
-        required: true
-        description: Files to upload (multiple files allowed)
-    responses:
-      200:
-        description: Documents uploaded successfully
-    """
-    # Check ownership before operation
+    """Upload documents to a dataset."""
     is_owner, current_user, owner, error_msg = await check_dataset_ownership(dataset_id)
     if not is_owner:
         return jsonify({
@@ -311,39 +213,13 @@ async def upload_documents(dataset_id: str):
 
 @manager.route("/<dataset_id>/documents/parse", methods=["POST"])
 async def parse_documents(dataset_id: str):
-    """
-    Parse (chunk) documents in a dataset
-    ---
-    tags:
-      - Document
-    parameters:
-      - name: dataset_id
-        in: path
-        type: string
-        required: true
-        description: Dataset ID
-      - name: body
-        in: body
-        required: true
-        schema:
-          type: object
-          properties:
-            document_ids:
-              type: array
-              items:
-                type: string
-              description: Document IDs to parse
-    responses:
-      200:
-        description: Documents parsing started successfully
-    """
+    """Parse documents in a dataset."""
     data = await request.get_json()
     document_ids = data.get("document_ids", [])
     
     if not document_ids:
         return jsonify({"code": -1, "message": "document_ids is required"}), 400
     
-    # Check ownership before operation
     is_owner, current_user, owner, error_msg = await check_dataset_ownership(dataset_id)
     if not is_owner:
         return jsonify({
@@ -367,39 +243,13 @@ async def parse_documents(dataset_id: str):
 
 @manager.route("/<dataset_id>/documents/stop-parse", methods=["POST"])
 async def stop_parsing_documents(dataset_id: str):
-    """
-    Stop parsing documents in a dataset
-    ---
-    tags:
-      - Document
-    parameters:
-      - name: dataset_id
-        in: path
-        type: string
-        required: true
-        description: Dataset ID
-      - name: body
-        in: body
-        required: true
-        schema:
-          type: object
-          properties:
-            document_ids:
-              type: array
-              items:
-                type: string
-              description: Document IDs to stop parsing
-    responses:
-      200:
-        description: Document parsing stopped successfully
-    """
+    """Stop parsing documents in a dataset."""
     data = await request.get_json()
     document_ids = data.get("document_ids", [])
     
     if not document_ids:
         return jsonify({"code": -1, "message": "document_ids is required"}), 400
     
-    # Check ownership before operation
     is_owner, current_user, owner, error_msg = await check_dataset_ownership(dataset_id)
     if not is_owner:
         return jsonify({

@@ -4,13 +4,6 @@
 // Licensed under the Apache License, Version 2.0
 //
 
-/**
- * Error Boundary Component
- *
- * Catches JavaScript errors in child components and displays
- * a fallback UI instead of crashing the whole application.
- */
-
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Result, Button } from 'antd';
 import { useTranslation } from 'react-i18next';

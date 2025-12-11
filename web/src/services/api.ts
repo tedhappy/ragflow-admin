@@ -4,13 +4,6 @@
 // Licensed under the Apache License, Version 2.0
 //
 
-/**
- * API Client Module
- *
- * Provides axios-based HTTP client for all API requests,
- * authentication helpers, and typed API interfaces.
- */
-
 import axios from 'axios';
 
 const TOKEN_KEY = 'ragflow_admin_token';
@@ -80,8 +73,6 @@ request.interceptors.response.use(
         window.location.href = '/login';
       }
     }
-    // Preserve response data for custom error handling (e.g., 403 owner mismatch)
-    // Keep error.response intact so handleApiError can access error_type, current_user, owner
     if (error.response?.data?.message) {
       error.message = error.response.data.message;
     }
@@ -99,7 +90,6 @@ export interface ListResponse<T> {
   total: number;
 }
 
-// Dataset API (MySQL)
 export interface Dataset {
   id: string;
   name: string;
@@ -128,7 +118,6 @@ export const datasetApi = {
     request.post('/datasets/batch-delete', { ids }),
 };
 
-// Document API (within a dataset)
 export interface Document {
   id: string;
   name: string;
@@ -157,7 +146,6 @@ export const documentApi = {
   batchDelete: (datasetId: string, ids: string[]) =>
     request.post(`/datasets/${datasetId}/documents/batch-delete`, { ids }),
   
-  // Pre-check ownership before upload to avoid connection reset on 403
   checkOwnership: (datasetId: string) =>
     request.post(`/datasets/${datasetId}/documents/check-ownership`),
   
@@ -171,7 +159,6 @@ export const documentApi = {
     request.post(`/datasets/${datasetId}/documents/stop-parse`, { document_ids: documentIds }),
 };
 
-// Chat API (MySQL)
 export interface Chat {
   id: string;
   name: string;
@@ -196,7 +183,6 @@ export const chatApi = {
     request.post('/chats/batch-delete', { ids }),
 };
 
-// Agent API (MySQL)
 export interface Agent {
   id: string;
   title: string;
@@ -218,7 +204,6 @@ export const agentApi = {
     request.post('/agents/batch-delete', { ids }),
 };
 
-// User API (RAGFlow users via MySQL)
 export interface RagflowUser {
   id: string;
   email: string;
@@ -243,7 +228,6 @@ export interface MySQLTestResult {
   error?: string;
 }
 
-// User detail with extended info
 export interface UserDetail extends RagflowUser {
   last_login_time?: string;
   language?: string;
@@ -252,7 +236,6 @@ export interface UserDetail extends RagflowUser {
   is_anonymous?: string;
 }
 
-// User's dataset
 export interface UserDataset {
   id: string;
   name: string;
@@ -267,7 +250,6 @@ export interface UserDataset {
   update_time?: string;
 }
 
-// User's agent
 export interface UserAgent {
   id: string;
   title: string;
@@ -277,7 +259,6 @@ export interface UserAgent {
   update_time?: string;
 }
 
-// User's chat
 export interface UserChat {
   id: string;
   name: string;
@@ -289,7 +270,6 @@ export interface UserChat {
 }
 
 export const userApi = {
-  // User CRUD
   list: (params?: PaginationParams & { keyword?: string; status?: string }) =>
     request.get<any, ListResponse<RagflowUser>>('/users', { params }),
   get: (userId: string) =>
@@ -303,7 +283,6 @@ export const userApi = {
   batchDelete: (ids: string[]) =>
     request.post('/users/batch-delete', { ids }),
   
-  // User's resources
   getDatasets: (userId: string, params?: PaginationParams) =>
     request.get<any, ListResponse<UserDataset>>(`/users/${userId}/datasets`, { params }),
   getAgents: (userId: string, params?: PaginationParams) =>
@@ -311,19 +290,16 @@ export const userApi = {
   getChats: (userId: string, params?: PaginationParams) =>
     request.get<any, ListResponse<UserChat>>(`/users/${userId}/chats`, { params }),
   
-  // Get all users as owners for filtering
   getOwners: () =>
     request.get<any, Owner[]>('/users/owners'),
 };
 
-// Owner type for filter dropdown
 export interface Owner {
   id: string;
   email: string;
   nickname?: string;
 }
 
-// Dashboard API
 export interface DashboardStats {
   dataset_count: number;
   document_count: number;
@@ -336,7 +312,6 @@ export const dashboardApi = {
   getStats: () => request.get<any, DashboardStats>('/dashboard/stats'),
 };
 
-// System API (MySQL-based)
 export interface SystemStatus {
   mysql_status: 'connected' | 'not_configured' | 'error' | 'unknown';
   mysql_host: string;
@@ -355,7 +330,6 @@ export interface SystemConfig {
 }
 
 export const systemApi = {
-  // MySQL config
   getStatus: () => request.get<any, SystemStatus>('/system/status'),
   getConfig: () => request.get<any, SystemConfig>('/system/config'),
   saveConfig: (data: { host: string; port: number; database: string; user: string; password: string }) =>
@@ -363,7 +337,6 @@ export const systemApi = {
   testConnection: (data: { host: string; port: number; database: string; user: string; password: string }) =>
     request.post<any, MySQLTestResult>('/system/config/test', data),
   
-  // RAGFlow API config (for document operations)
   getRagflowConfig: () => request.get<any, RagflowConfig>('/system/ragflow/config'),
   saveRagflowConfig: (data: { base_url: string; api_key: string }) =>
     request.post<any, { message: string }>('/system/ragflow/config', data),
@@ -372,7 +345,6 @@ export const systemApi = {
   getRagflowCurrentUser: () => request.get<any, RagflowCurrentUser>('/system/ragflow/current-user'),
 };
 
-// RAGFlow API Config
 export interface RagflowConfig {
   base_url: string;
   api_key_masked: string;
@@ -392,7 +364,6 @@ export interface RagflowCurrentUser {
   has_datasets: boolean;
 }
 
-// Chat Session API
 export interface ChatMessage {
   content: string;
   role: 'user' | 'assistant';
@@ -416,7 +387,6 @@ export const chatSessionApi = {
     request.delete<any, void>(`/chats/${chatId}/sessions`, { data: { ids } }),
 };
 
-// Auth API
 export interface LoginRequest {
   username: string;
   password: string;
@@ -444,7 +414,6 @@ export const authApi = {
     request.post<any, LoginResponse>('/auth/refresh'),
 };
 
-// Task Queue API
 export interface ParsingTask {
   id: string;
   name: string;
@@ -513,7 +482,6 @@ export const taskApi = {
     request.post<any, RetryFailedResponse>('/tasks/retry-failed'),
 };
 
-// Monitoring API
 export interface ServiceHealth {
   status: 'healthy' | 'unhealthy' | 'not_configured' | 'unknown';
   message?: string;
@@ -542,7 +510,7 @@ export interface SystemStats {
   };
   documents: {
     total: number;
-    effective_total: number;  // excludes canceled documents
+    effective_total: number;
     pending: number;
     running: number;
     canceled: number;

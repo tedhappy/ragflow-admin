@@ -201,7 +201,6 @@ export default {
       statusUpdateFailed: 'Failed to update status',
       passwordUpdated: 'Password updated successfully',
       passwordUpdateFailed: 'Failed to update password',
-      // MySQL form labels (shared with settings)
       mysqlHost: 'Host',
       mysqlPort: 'Port',
       mysqlDatabase: 'Database',
@@ -242,7 +241,6 @@ export default {
       title: 'System Settings',
       subtitle: 'Configure database and API connections',
       connectionStatus: 'Connection Status',
-      // MySQL
       mysqlTitle: 'MySQL Database',
       mysqlDesc: 'RAGFlow database connection',
       mysqlRequired: 'Required',
@@ -252,7 +250,6 @@ export default {
       mysqlUserTip: 'MySQL username, find in docker/.env (MYSQL_USER)',
       mysqlPasswordTip: 'MySQL password, find in docker/.env (MYSQL_PASSWORD)',
       mysqlHelp: 'MySQL config can be found in RAGFlow project docker/.env file.',
-      // RAGFlow API
       ragflowTitle: 'RAGFlow API',
       ragflowDesc2: 'Document upload & parsing',
       ragflowOptional: 'Optional',
@@ -290,7 +287,6 @@ export default {
       networkError: 'Network error',
       serverError: 'Server error',
       timeout: 'Request timeout',
-      // Backend messages
       ragflowUrlRequired: 'RAGFlow URL is required',
       apiKeyRequired: 'API Key is required',
       cannotConnect: 'Cannot connect to RAGFlow server',
@@ -300,7 +296,6 @@ export default {
       nameRequired: 'name is required',
       idsRequired: 'ids is required',
       ragflowNotConfigured: 'RAGFlow connection not configured',
-      // Auth messages
       usernameRequired: 'Username is required',
       passwordRequired: 'Password is required',
       invalidCredentials: 'Invalid username or password',

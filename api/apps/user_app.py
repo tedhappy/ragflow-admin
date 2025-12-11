@@ -16,15 +16,7 @@ manager = Blueprint("user", __name__)
 
 @manager.route("/owners", methods=["GET"])
 async def get_owners():
-    """
-    Get all users as owners for filtering
-    ---
-    tags:
-      - User
-    responses:
-      200:
-        description: Owner list
-    """
+    """Get all users as owners for filtering."""
     if not settings.is_mysql_configured:
         return jsonify({"code": -1, "message": "MySQL not configured"}), 400
     
@@ -41,33 +33,7 @@ async def get_owners():
 
 @manager.route("", methods=["GET"])
 async def list_users():
-    """
-    List all users
-    ---
-    tags:
-      - User
-    parameters:
-      - name: page
-        in: query
-        type: integer
-        default: 1
-      - name: page_size
-        in: query
-        type: integer
-        default: 20
-      - name: email
-        in: query
-        type: string
-      - name: nickname
-        in: query
-        type: string
-      - name: status
-        in: query
-        type: string
-    responses:
-      200:
-        description: User list
-    """
+    """List all users."""
     if not settings.is_mysql_configured:
         return jsonify({"code": -1, "message": "MySQL not configured"}), 400
     
@@ -92,28 +58,7 @@ async def list_users():
 
 @manager.route("", methods=["POST"])
 async def create_user():
-    """
-    Create a new user
-    ---
-    tags:
-      - User
-    parameters:
-      - name: body
-        in: body
-        required: true
-        schema:
-          type: object
-          properties:
-            email:
-              type: string
-            password:
-              type: string
-            nickname:
-              type: string
-    responses:
-      200:
-        description: User created
-    """
+    """Create a new user."""
     if not settings.is_mysql_configured:
         return jsonify({"code": -1, "message": "MySQL not configured"}), 400
     
@@ -138,29 +83,7 @@ async def create_user():
 
 @manager.route("/<user_id>/status", methods=["PUT"])
 async def update_user_status(user_id: str):
-    """
-    Update user status
-    ---
-    tags:
-      - User
-    parameters:
-      - name: user_id
-        in: path
-        type: string
-        required: true
-      - name: body
-        in: body
-        required: true
-        schema:
-          type: object
-          properties:
-            status:
-              type: string
-              description: "1 for active, 0 for inactive"
-    responses:
-      200:
-        description: Status updated
-    """
+    """Update user status."""
     if not settings.is_mysql_configured:
         return jsonify({"code": -1, "message": "MySQL not configured"}), 400
     
@@ -183,28 +106,7 @@ async def update_user_status(user_id: str):
 
 @manager.route("/<user_id>/password", methods=["PUT"])
 async def update_user_password(user_id: str):
-    """
-    Update user password
-    ---
-    tags:
-      - User
-    parameters:
-      - name: user_id
-        in: path
-        type: string
-        required: true
-      - name: body
-        in: body
-        required: true
-        schema:
-          type: object
-          properties:
-            password:
-              type: string
-    responses:
-      200:
-        description: Password updated
-    """
+    """Update user password."""
     if not settings.is_mysql_configured:
         return jsonify({"code": -1, "message": "MySQL not configured"}), 400
     
@@ -227,26 +129,7 @@ async def update_user_password(user_id: str):
 
 @manager.route("/batch-delete", methods=["POST"])
 async def batch_delete_users():
-    """
-    Delete users in batch
-    ---
-    tags:
-      - User
-    parameters:
-      - name: body
-        in: body
-        required: true
-        schema:
-          type: object
-          properties:
-            ids:
-              type: array
-              items:
-                type: string
-    responses:
-      200:
-        description: Users deleted
-    """
+    """Delete users in batch."""
     if not settings.is_mysql_configured:
         return jsonify({"code": -1, "message": "MySQL not configured"}), 400
     
@@ -257,7 +140,6 @@ async def batch_delete_users():
         return jsonify({"code": -1, "message": "ids is required"}), 400
     
     try:
-        # Cleans up ALL user data: datasets, documents, tasks, chats, agents, etc.
         result = await mysql_client.delete_users(ids)
         return jsonify({
             "code": 0, 
@@ -272,20 +154,7 @@ async def batch_delete_users():
 
 @manager.route("/<user_id>", methods=["GET"])
 async def get_user(user_id: str):
-    """
-    Get user detail by ID
-    ---
-    tags:
-      - User
-    parameters:
-      - name: user_id
-        in: path
-        type: string
-        required: true
-    responses:
-      200:
-        description: User detail
-    """
+    """Get user detail by ID."""
     if not settings.is_mysql_configured:
         return jsonify({"code": -1, "message": "MySQL not configured"}), 400
     
@@ -304,28 +173,7 @@ async def get_user(user_id: str):
 
 @manager.route("/<user_id>/datasets", methods=["GET"])
 async def get_user_datasets(user_id: str):
-    """
-    Get datasets owned by a user
-    ---
-    tags:
-      - User
-    parameters:
-      - name: user_id
-        in: path
-        type: string
-        required: true
-      - name: page
-        in: query
-        type: integer
-        default: 1
-      - name: page_size
-        in: query
-        type: integer
-        default: 20
-    responses:
-      200:
-        description: User's datasets
-    """
+    """Get datasets owned by a user."""
     if not settings.is_mysql_configured:
         return jsonify({"code": -1, "message": "MySQL not configured"}), 400
     
@@ -345,28 +193,7 @@ async def get_user_datasets(user_id: str):
 
 @manager.route("/<user_id>/agents", methods=["GET"])
 async def get_user_agents(user_id: str):
-    """
-    Get agents owned by a user
-    ---
-    tags:
-      - User
-    parameters:
-      - name: user_id
-        in: path
-        type: string
-        required: true
-      - name: page
-        in: query
-        type: integer
-        default: 1
-      - name: page_size
-        in: query
-        type: integer
-        default: 20
-    responses:
-      200:
-        description: User's agents
-    """
+    """Get agents owned by a user."""
     if not settings.is_mysql_configured:
         return jsonify({"code": -1, "message": "MySQL not configured"}), 400
     
@@ -386,28 +213,7 @@ async def get_user_agents(user_id: str):
 
 @manager.route("/<user_id>/chats", methods=["GET"])
 async def get_user_chats(user_id: str):
-    """
-    Get chats owned by a user
-    ---
-    tags:
-      - User
-    parameters:
-      - name: user_id
-        in: path
-        type: string
-        required: true
-      - name: page
-        in: query
-        type: integer
-        default: 1
-      - name: page_size
-        in: query
-        type: integer
-        default: 20
-    responses:
-      200:
-        description: User's chats
-    """
+    """Get chats owned by a user."""
     if not settings.is_mysql_configured:
         return jsonify({"code": -1, "message": "MySQL not configured"}), 400
     

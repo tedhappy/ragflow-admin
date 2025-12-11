@@ -4,13 +4,6 @@
 // Licensed under the Apache License, Version 2.0
 //
 
-/**
- * Task Queue Management Page
- *
- * Displays all document parsing tasks across all datasets,
- * with filtering, batch operations, and real-time status updates.
- */
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Table, Button, Space, Card, message, Input, Typography, Spin, Tag, Progress, Select, Statistic, Row, Col, Tooltip, Alert } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -72,16 +65,13 @@ const Tasks: React.FC = () => {
   const navigate = useNavigate();
   const { checking, connected } = useConnectionCheck();
   
-  // RAGFlow API config check
   const [ragflowConfigured, setRagflowConfigured] = useState<boolean | null>(null);
   
-  // Filter states
   const [searchDoc, setSearchDoc] = useState('');
   const [searchDataset, setSearchDataset] = useState('');
   const [searchOwner, setSearchOwner] = useState('');
   const [filterStatus, setFilterStatus] = useState<string | undefined>(undefined);
   
-  // Data states
   const [tasks, setTasks] = useState<ParsingTask[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -90,10 +80,8 @@ const Tasks: React.FC = () => {
   const [pageSize, setPageSize] = useState(20);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   
-  // Stats
   const [stats, setStats] = useState<TaskStats | null>(null);
   
-  // Auto-refresh
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const statusOptions = [
@@ -104,7 +92,6 @@ const Tasks: React.FC = () => {
     { value: 'CANCEL', label: t('tasks.status.cancel') },
   ];
 
-  // Check RAGFlow API configuration
   useEffect(() => {
     const checkRagflowConfig = async () => {
       try {
@@ -146,7 +133,7 @@ const Tasks: React.FC = () => {
       const result = await taskApi.getStats();
       setStats(result);
     } catch (error) {
-      // Silently fail for stats
+      // Silent fail
     }
   };
 
@@ -157,7 +144,6 @@ const Tasks: React.FC = () => {
     }
   }, [connected, page, pageSize, filterStatus]);
 
-  // Auto-refresh when there are running tasks
   useEffect(() => {
     const hasRunningTasks = tasks.some((task) => task.run === 'RUNNING');
     
@@ -196,7 +182,6 @@ const Tasks: React.FC = () => {
     fetchStats();
   };
 
-  // Check if RAGFlow API is configured before operations
   const checkRagflowApi = () => {
     if (ragflowConfigured === false) {
       message.warning(t('tasks.ragflowNotConfigured'));
@@ -205,7 +190,6 @@ const Tasks: React.FC = () => {
     return true;
   };
 
-  // Group selected tasks by dataset
   const groupTasksByDataset = (taskIds: React.Key[]) => {
     const groups: { [key: string]: string[] } = {};
     taskIds.forEach((id) => {
@@ -384,7 +368,6 @@ const Tasks: React.FC = () => {
       width: 80,
       align: 'center',
       render: (_, record) => {
-        // Only show position for RUNNING tasks (not UNSTART)
         if (!record.queue_position) {
           return <span style={{ color: '#bfbfbf' }}>-</span>;
         }

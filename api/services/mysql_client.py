@@ -4,13 +4,6 @@
 #  Licensed under the Apache License, Version 2.0
 #
 
-"""
-MySQL client for RAGFlow database operations.
-
-Provides async database access for user management, dataset operations,
-chat sessions, and agent management through direct MySQL queries.
-"""
-
 import json
 import logging
 import time
@@ -22,14 +15,13 @@ from api.settings import settings
 
 
 def format_datetime(val) -> Optional[str]:
-    """Format datetime value to ISO string, handling both datetime objects and timestamps."""
+    """Format datetime value to ISO string."""
     if val is None:
         return None
     if isinstance(val, datetime):
         return val.isoformat()
     if isinstance(val, (int, float)):
-        # Convert timestamp (milliseconds or seconds) to ISO string
-        if val > 1e12:  # Likely milliseconds
+        if val > 1e12:
             val = val / 1000
         return datetime.fromtimestamp(val).strftime("%Y-%m-%d %H:%M:%S")
     return str(val)
@@ -74,8 +66,8 @@ class MySQLClient:
                 minsize=1,
                 maxsize=5,
                 autocommit=True,
-                connect_timeout=5,  # Connection timeout in seconds
-                pool_recycle=60,    # Recycle connections after 60 seconds
+                connect_timeout=5,
+                pool_recycle=60,
             )
         
         return await self._pool.acquire()
@@ -86,7 +78,6 @@ class MySQLClient:
             try:
                 self._pool.release(conn)
             except (AssertionError, Exception) as e:
-                # Connection may have been recycled or already released
                 logger.warning(f"Failed to release connection: {e}")
 
     async def _execute_transaction(self, operations):
@@ -118,7 +109,6 @@ class MySQLClient:
         """Test the MySQL connection with fresh connection attempt."""
         import aiomysql
         
-        # Create a fresh connection for health check (bypass pool)
         try:
             conn = await aiomysql.connect(
                 host=settings.mysql_host,
@@ -349,7 +339,7 @@ class MySQLClient:
                         "id": row[0],
                         "title": row[1],
                         "description": row[2],
-                        "canvas_type": row[3],  # canvas_category value
+                        "canvas_type": row[3],
                         "create_time": format_datetime(row[4]),
                         "update_time": format_datetime(row[5]),
                     })
@@ -1020,8 +1010,6 @@ class MySQLClient:
                     conditions.append("name LIKE %s")
                     params.append(f"%{keywords}%")
                 
-                # RAGFlow status: 0=UNSTART, 1=RUNNING, 2=CANCEL, 3=DONE, 4=FAIL
-                # Use CAST to handle both string and int types
                 status_to_num = {'UNSTART': 0, 'RUNNING': 1, 'CANCEL': 2, 'DONE': 3, 'FAIL': 4}
                 run_status = kwargs.get("run")
                 if run_status:
@@ -1094,8 +1082,6 @@ class MySQLClient:
                 conditions = []
                 params = []
                 
-                # Status filter (RAGFlow status: 0=UNSTART, 1=RUNNING, 2=CANCEL, 3=DONE, 4=FAIL)
-                # Use CAST to handle both string and int types
                 status_to_num = {'UNSTART': 0, 'RUNNING': 1, 'CANCEL': 2, 'DONE': 3, 'FAIL': 4}
                 if status:
                     run_num = status_to_num.get(status, int(status) if status.isdigit() else 0)
@@ -1203,7 +1189,6 @@ class MySQLClient:
         conn = await self._get_connection()
         try:
             async with conn.cursor() as cursor:
-                # Count by status (use CAST to handle both string and int types)
                 await cursor.execute("""
                     SELECT 
                         SUM(CASE WHEN CAST(run AS SIGNED) = 0 THEN 1 ELSE 0 END) as unstart,
@@ -1234,7 +1219,6 @@ class MySQLClient:
             async with conn.cursor() as cursor:
                 stats = {}
                 
-                # User statistics (use CAST to handle both string and int types)
                 await cursor.execute("""
                     SELECT 
                         COUNT(*) as total,
@@ -1249,7 +1233,6 @@ class MySQLClient:
                     "inactive": int(row[2] or 0),
                 }
                 
-                # Dataset statistics
                 await cursor.execute("""
                     SELECT 
                         COUNT(*) as total,
@@ -1266,8 +1249,6 @@ class MySQLClient:
                     "total_tokens": int(row[3] or 0),
                 }
                 
-                # Document parsing statistics (use CAST for type safety)
-                # Note: canceled documents are excluded from effective_total for rate calculation
                 await cursor.execute("""
                     SELECT 
                         COUNT(*) as total,
@@ -1286,7 +1267,6 @@ class MySQLClient:
                 canceled = int(row[3] or 0)
                 completed = int(row[4] or 0)
                 failed = int(row[5] or 0)
-                # effective_total excludes canceled documents for accurate rate calculation
                 effective_total = total - canceled
                 stats["documents"] = {
                     "total": total,
@@ -1299,7 +1279,6 @@ class MySQLClient:
                     "total_size": int(row[6] or 0),
                 }
                 
-                # Chat statistics
                 await cursor.execute("""
                     SELECT 
                         (SELECT COUNT(*) FROM dialog) as total_chats,
@@ -1311,15 +1290,11 @@ class MySQLClient:
                     "total_sessions": int(row[1] or 0),
                 }
                 
-                # Agent statistics
                 await cursor.execute("SELECT COUNT(*) FROM user_canvas")
                 stats["agents"] = {
                     "total": (await cursor.fetchone())[0],
                 }
                 
-                # Recent activity (last 24 hours)
-                # Handle both millisecond timestamps (>10^12) and second timestamps
-                # If create_time > 10^12, treat as milliseconds; otherwise treat as seconds
                 await cursor.execute("""
                     SELECT 
                         (SELECT COUNT(*) FROM user WHERE 
@@ -1347,5 +1322,4 @@ class MySQLClient:
             await self._release_connection(conn)
 
 
-# Global instance
 mysql_client = MySQLClient()

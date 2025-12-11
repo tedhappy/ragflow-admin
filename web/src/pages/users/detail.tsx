@@ -4,12 +4,6 @@
 // Licensed under the Apache License, Version 2.0
 //
 
-/**
- * User Detail Page
- *
- * Displays detailed user information including datasets and agents.
- */
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 

@@ -4,13 +4,6 @@
 // Licensed under the Apache License, Version 2.0
 //
 
-/**
- * Theme Provider Component
- *
- * Provides dark/light theme context to the application
- * with persistence to localStorage.
- */
-
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 
 export enum ThemeEnum {

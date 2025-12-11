@@ -16,28 +16,7 @@ manager = Blueprint("dataset", __name__)
 
 @manager.route("", methods=["GET"])
 async def list_datasets():
-    """
-    List all datasets from all users (MySQL)
-    ---
-    tags:
-      - Dataset
-    parameters:
-      - name: page
-        in: query
-        type: integer
-        default: 1
-      - name: page_size
-        in: query
-        type: integer
-        default: 20
-      - name: name
-        in: query
-        type: string
-        description: Filter by dataset name
-    responses:
-      200:
-        description: Dataset list
-    """
+    """List all datasets."""
     if not check_mysql_configured():
         return jsonify({"code": -1, "message": "MySQL not configured"}), 500
     
@@ -64,26 +43,7 @@ async def list_datasets():
 
 @manager.route("/batch-delete", methods=["POST"])
 async def batch_delete_datasets():
-    """
-    Delete datasets in batch (MySQL)
-    ---
-    tags:
-      - Dataset
-    parameters:
-      - name: body
-        in: body
-        required: true
-        schema:
-          type: object
-          properties:
-            ids:
-              type: array
-              items:
-                type: string
-    responses:
-      200:
-        description: Datasets deleted successfully
-    """
+    """Delete datasets in batch."""
     if not check_mysql_configured():
         return jsonify({"code": -1, "message": "MySQL not configured"}), 500
     
@@ -94,7 +54,6 @@ async def batch_delete_datasets():
         return jsonify({"code": -1, "message": "ids is required"}), 400
     
     try:
-        # Cleans up: documents, tasks, file2document, knowledgebase
         result = await mysql_client.delete_datasets(ids)
         return jsonify({
             "code": 0, 

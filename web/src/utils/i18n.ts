@@ -6,21 +6,6 @@
 
 import { TFunction } from 'i18next';
 
-/**
- * Translate backend error messages to localized strings.
- * Maps common error messages from the API to their i18n equivalents.
- * 
- * @param msg - The error message to translate
- * @param t - The i18next translation function
- * @returns Translated error message, or original message if no translation found
- * 
- * @example
- * ```tsx
- * catch (error) {
- *   message.error(translateErrorMessage(error.message, t));
- * }
- * ```
- */
 export const translateErrorMessage = (
   msg: string | undefined | null,
   t: TFunction

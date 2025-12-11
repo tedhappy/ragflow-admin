@@ -4,13 +4,6 @@
 // Licensed under the Apache License, Version 2.0
 //
 
-/**
- * Login Page
- *
- * User authentication page with username/password form,
- * remember me functionality, and language/theme switching.
- */
-
 import React, { useState, useEffect } from 'react';
 import { Form, Input, Button, Checkbox, message } from 'antd';
 import { EyeInvisibleOutlined, EyeTwoTone } from '@ant-design/icons';
@@ -185,7 +178,6 @@ const Login: React.FC = () => {
   );
 };
 
-// Wrap with ThemeProvider since login page doesn't use main layout
 const LoginPage: React.FC = () => (
   <ThemeProvider>
     <Login />

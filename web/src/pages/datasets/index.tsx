@@ -4,12 +4,6 @@
 // Licensed under the Apache License, Version 2.0
 //
 
-/**
- * Datasets Management Page
- *
- * Lists and manages knowledge base datasets with document counts.
- */
-
 import React, { useState } from 'react';
 import { Table, Button, Space, Card, message, Input, Typography, Spin, Select, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -221,7 +215,6 @@ const Datasets: React.FC = () => {
               }}
               onRow={(record) => ({
                 onClick: (e) => {
-                  // Prevent navigation when clicking on checkbox or action buttons
                   const target = e.target as HTMLElement;
                   if (target.closest('.ant-checkbox-wrapper') || target.closest('button') || target.closest('a')) {
                     return;

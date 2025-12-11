@@ -4,13 +4,6 @@
 // Licensed under the Apache License, Version 2.0
 //
 
-/**
- * Authentication Wrapper
- *
- * Route wrapper that verifies user authentication status
- * and redirects to login page if not authenticated.
- */
-
 import React, { useEffect, useState } from 'react';
 import { Outlet, useNavigate } from 'umi';
 import { Spin } from 'antd';

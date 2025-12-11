@@ -16,28 +16,7 @@ manager = Blueprint("agent", __name__)
 
 @manager.route("", methods=["GET"])
 async def list_agents():
-    """
-    List all agents from all users (MySQL)
-    ---
-    tags:
-      - Agent
-    parameters:
-      - name: page
-        in: query
-        type: integer
-        default: 1
-      - name: page_size
-        in: query
-        type: integer
-        default: 20
-      - name: title
-        in: query
-        type: string
-        description: Filter by agent title
-    responses:
-      200:
-        description: Agent list
-    """
+    """List all agents."""
     if not check_mysql_configured():
         return jsonify({"code": -1, "message": "MySQL not configured"}), 500
     
@@ -64,26 +43,7 @@ async def list_agents():
 
 @manager.route("/batch-delete", methods=["POST"])
 async def batch_delete_agents():
-    """
-    Delete agents in batch (MySQL)
-    ---
-    tags:
-      - Agent
-    parameters:
-      - name: body
-        in: body
-        required: true
-        schema:
-          type: object
-          properties:
-            ids:
-              type: array
-              items:
-                type: string
-    responses:
-      200:
-        description: Agents deleted successfully
-    """
+    """Delete agents in batch."""
     if not check_mysql_configured():
         return jsonify({"code": -1, "message": "MySQL not configured"}), 500
     
@@ -94,7 +54,6 @@ async def batch_delete_agents():
         return jsonify({"code": -1, "message": "ids is required"}), 400
     
     try:
-        # Cleans up: user_canvas_version, user_canvas
         result = await mysql_client.delete_agents(ids)
         return jsonify({
             "code": 0, 

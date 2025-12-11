@@ -60,11 +60,8 @@ const LayoutContent: React.FC = () => {
     }
   };
 
-  // Compute selected menu key based on current path
   const getSelectedKey = (pathname: string): string => {
-    // Handle sub-pages mapping to parent menu items
     if (pathname.startsWith('/users/')) return '/users';
-    // /datasets/:id/documents -> /datasets
     if (pathname.startsWith('/datasets/') && pathname.includes('/documents')) return '/datasets';
     return pathname;
   };

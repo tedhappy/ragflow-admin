@@ -4,12 +4,6 @@
 // Licensed under the Apache License, Version 2.0
 //
 
-/**
- * Users Management Page
- *
- * User administration with create, status toggle, and password reset.
- */
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, Space, Card, message, Input, Typography, Spin, Tag, Badge, Modal, Form, Avatar, Select } from 'antd';
@@ -298,7 +292,6 @@ const Users: React.FC = () => {
               }}
               onRow={(record) => ({
                 onClick: (e) => {
-                  // Prevent navigation when clicking on checkbox or action buttons
                   const target = e.target as HTMLElement;
                   if (target.closest('.ant-checkbox-wrapper') || target.closest('button') || target.closest('a')) {
                     return;

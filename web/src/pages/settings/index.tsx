@@ -4,12 +4,6 @@
 // Licensed under the Apache License, Version 2.0
 //
 
-/**
- * System Settings Page
- *
- * Configuration page for MySQL database and RAGFlow API connections.
- */
-
 import React, { useEffect, useState } from 'react';
 import { Form, Input, InputNumber, Button, Space, message, Typography, Spin, Tooltip, Card, Row, Col } from 'antd';
 import { 

@@ -201,7 +201,6 @@ export default {
       statusUpdateFailed: '状态更新失败',
       passwordUpdated: '密码修改成功',
       passwordUpdateFailed: '密码修改失败',
-      // MySQL form labels (shared with settings)
       mysqlHost: '主机地址',
       mysqlPort: '端口',
       mysqlDatabase: '数据库名',
@@ -242,7 +241,6 @@ export default {
       title: '系统设置',
       subtitle: '配置数据库和 API 连接',
       connectionStatus: '连接状态',
-      // MySQL
       mysqlTitle: 'MySQL 数据库',
       mysqlDesc: 'RAGFlow 数据库连接',
       mysqlRequired: '必需',
@@ -252,7 +250,6 @@ export default {
       mysqlUserTip: 'MySQL 用户名，在 docker/.env 中查找 (MYSQL_USER)',
       mysqlPasswordTip: 'MySQL 密码，在 docker/.env 中查找 (MYSQL_PASSWORD)',
       mysqlHelp: 'MySQL 配置可在 RAGFlow 项目的 docker/.env 文件中找到。',
-      // RAGFlow API
       ragflowTitle: 'RAGFlow API',
       ragflowDesc2: '文档上传与解析',
       ragflowOptional: '可选',
@@ -290,7 +287,6 @@ export default {
       networkError: '网络错误',
       serverError: '服务器错误',
       timeout: '请求超时',
-      // Backend messages
       ragflowUrlRequired: 'RAGFlow 地址不能为空',
       apiKeyRequired: 'API 密钥不能为空',
       cannotConnect: '无法连接到 RAGFlow 服务器',
@@ -300,7 +296,6 @@ export default {
       nameRequired: '名称不能为空',
       idsRequired: 'ID 列表不能为空',
       ragflowNotConfigured: 'RAGFlow 连接未配置',
-      // Auth messages
       usernameRequired: '用户名不能为空',
       passwordRequired: '密码不能为空',
       invalidCredentials: '用户名或密码错误',

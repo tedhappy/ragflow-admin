@@ -4,13 +4,6 @@
 #  Licensed under the Apache License, Version 2.0
 #
 
-"""
-RAGFlow Admin API Application Factory.
-
-This module creates and configures the Quart application instance,
-registers all blueprints, and sets up Swagger documentation.
-"""
-
 from quart import Quart, jsonify
 from quart_cors import cors
 from flasgger import Swagger
@@ -28,15 +21,12 @@ from api.apps.task_app import manager as task_bp
 
 __all__ = ["app"]
 
-# Create Quart application instance
 app = Quart(__name__)
 app = cors(app, allow_origin="*")
 
-# Application configuration
 app.config["SECRET_KEY"] = settings.secret_key
-app.config["MAX_CONTENT_LENGTH"] = 1024 * 1024 * 1024  # 1GB max upload size
+app.config["MAX_CONTENT_LENGTH"] = 1024 * 1024 * 1024
 
-# Swagger/OpenAPI configuration
 swagger_config = {
     "headers": [],
     "specs": [
@@ -65,7 +55,6 @@ swagger = Swagger(
     },
 )
 
-# Register API blueprints
 app.register_blueprint(auth_bp, url_prefix="/api/v1/auth")
 app.register_blueprint(dashboard_bp, url_prefix="/api/v1/dashboard")
 app.register_blueprint(dataset_bp, url_prefix="/api/v1/datasets")

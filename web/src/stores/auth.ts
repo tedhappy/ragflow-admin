@@ -4,13 +4,6 @@
 // Licensed under the Apache License, Version 2.0
 //
 
-/**
- * Authentication Store
- *
- * Zustand store for managing authentication state including
- * login, logout, and session verification.
- */
-
 import { create } from 'zustand';
 import { authApi, getToken, setToken, removeToken, UserInfo } from '@/services/api';
 
@@ -49,8 +42,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   logout: async () => {
     try {
       await authApi.logout();
-    } catch {
-      // Ignore logout errors
+    } catch (error) {
+      // Silent
     } finally {
       removeToken();
       set({

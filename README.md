@@ -30,31 +30,37 @@ A standalone administration console for RAGFlow
 
 ## 🔎 Overview
 
-**RAGFlow Admin** is an independent administration system designed to manage RAGFlow deployments with a modern web interface.
+**RAGFlow Admin** is a lightweight, standalone administration console for [RAGFlow](https://github.com/infiniflow/ragflow) — the leading open-source RAG engine with deep document understanding. It provides a modern web interface for centralized management of datasets, documents, chat assistants, agents, and users.
 
 ### Why RAGFlow Admin?
 
-RAGFlow is an excellent RAG engine, but it has some management limitations in production:
+RAGFlow is a powerful RAG engine, but its built-in management interface has some limitations for production use:
 
 | Pain Point | RAGFlow Admin Solution |
 |------------|------------------------|
-| **No cross-dataset management** | Unified dashboard to manage all datasets and documents |
-| **Difficult batch operations** | Support bulk upload, parse, and delete documents |
-| **Opaque parsing tasks** | Real-time task queue monitoring with progress and position |
-| **Complex multi-user management** | Unified user management interface with multi-tenant support |
-| **Lack of operational monitoring** | Dashboard showing system health and usage statistics |
+| **Single dataset view** | Cross-dataset dashboard for unified management |
+| **No batch operations** | Bulk upload, parse, stop, and delete across datasets |
+| **Hidden task queue** | Real-time task monitoring with queue position and progress |
+| **Complex user management** | Centralized user admin panel with statistics |
+| **Limited operational insight** | Dashboard with health checks and usage metrics |
+| **Steep learning curve** | Intuitive UI designed for administrators |
 
 ## ✨ Features
 
+### Core Management
 | Feature | Description |
 |---------|-------------|
-| **📚 Dataset Management** | Create, delete, and manage knowledge bases with batch operations |
-| **📄 Document Management** | Upload, parse, stop, and delete documents with real-time progress tracking |
+| **📚 Dataset Management** | View all datasets across users, create, delete with batch operations |
+| **📄 Document Management** | Upload, parse, stop, delete documents with real-time progress tracking |
+| **📊 Task Queue** | Global task monitoring across all datasets with queue position, filtering and batch control |
+
+### Extended Capabilities  
+| Feature | Description |
+|---------|-------------|
 | **💬 Chat Management** | View and manage chat assistants and conversation sessions |
-| **🤖 Agent Management** | List, configure, and manage AI agents |
-| **📊 Task Queue** | Monitor parsing tasks across all datasets with filtering and batch control |
-| **🔍 System Monitoring** | Dashboard with health checks, statistics, and usage metrics |
-| **👥 User Management** | View and manage RAGFlow users (requires MySQL access) |
+| **🤖 Agent Management** | List and manage AI agents across users |
+| **👥 User Management** | View RAGFlow users with statistics (requires MySQL access) |
+| **🔍 System Monitoring** | Dashboard with service health checks and usage statistics |
 | **🌐 i18n Support** | Full internationalization (English & Chinese) |
 
 ## 🖼️ Screenshots

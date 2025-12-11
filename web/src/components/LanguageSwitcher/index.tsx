@@ -4,12 +4,6 @@
 // Licensed under the Apache License, Version 2.0
 //
 
-/**
- * Language Switcher Component
- *
- * Dropdown menu for switching between English and Chinese languages.
- */
-
 import React from 'react';
 import { Dropdown, Button } from 'antd';
 import type { MenuProps } from 'antd';

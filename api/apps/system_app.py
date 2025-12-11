@@ -26,19 +26,10 @@ def mask_api_key(api_key: str) -> str:
 
 @manager.route("/status", methods=["GET"])
 async def get_status():
-    """
-    Get system status (MySQL connection)
-    ---
-    tags:
-      - System
-    responses:
-      200:
-        description: System status
-    """
+    """Get system status."""
     mysql_status = "unknown"
     error_message = None
     
-    # Check if MySQL is configured
     if not settings.is_mysql_configured:
         return jsonify({
             "code": 0,
@@ -74,15 +65,7 @@ async def get_status():
 
 @manager.route("/config", methods=["GET"])
 async def get_config():
-    """
-    Get current MySQL configuration
-    ---
-    tags:
-      - System
-    responses:
-      200:
-        description: Configuration info
-    """
+    """Get current MySQL configuration."""
     return jsonify({
         "code": 0,
         "data": {
@@ -99,15 +82,7 @@ async def get_config():
 
 @manager.route("/config", methods=["POST"])
 async def save_config():
-    """
-    Save MySQL configuration
-    ---
-    tags:
-      - System
-    responses:
-      200:
-        description: Configuration saved
-    """
+    """Save MySQL configuration."""
     try:
         data = await request.get_json()
         host = data.get("host", "").strip()
@@ -123,11 +98,9 @@ async def save_config():
         if not user:
             return jsonify({"code": -1, "message": "User is required"}), 400
         
-        # Update settings and save to config.yaml
         success = settings.update_mysql_config(host, port, database, user, password)
         
         if success:
-            # Close existing pool to force reconnection
             await mysql_client.close()
             
             return jsonify({
@@ -149,15 +122,7 @@ async def save_config():
 
 @manager.route("/config/test", methods=["POST"])
 async def test_mysql_connection():
-    """
-    Test MySQL connection with provided credentials
-    ---
-    tags:
-      - System
-    responses:
-      200:
-        description: Connection test result
-    """
+    """Test MySQL connection."""
     try:
         data = await request.get_json()
         host = data.get("host", "").strip()
@@ -173,7 +138,6 @@ async def test_mysql_connection():
         if not user:
             return jsonify({"code": -1, "message": "User is required"}), 400
         
-        # Test connection with provided credentials
         import aiomysql
         try:
             conn = await aiomysql.connect(
@@ -189,7 +153,6 @@ async def test_mysql_connection():
                 await cursor.execute("SELECT VERSION()")
                 version = (await cursor.fetchone())[0]
                 
-                # Check if user table exists
                 await cursor.execute("""
                     SELECT COUNT(*) FROM information_schema.tables 
                     WHERE table_schema = %s AND table_name = 'user'
@@ -225,15 +188,7 @@ async def test_mysql_connection():
 
 @manager.route("/ragflow/config", methods=["GET"])
 async def get_ragflow_config():
-    """
-    Get RAGFlow API configuration (for document operations)
-    ---
-    tags:
-      - System
-    responses:
-      200:
-        description: RAGFlow API configuration
-    """
+    """Get RAGFlow API configuration."""
     is_configured = bool(settings.ragflow_base_url and settings.ragflow_api_key)
     return jsonify({
         "code": 0,
@@ -247,15 +202,7 @@ async def get_ragflow_config():
 
 @manager.route("/ragflow/config", methods=["POST"])
 async def save_ragflow_config():
-    """
-    Save RAGFlow API configuration
-    ---
-    tags:
-      - System
-    responses:
-      200:
-        description: Configuration saved
-    """
+    """Save RAGFlow API configuration."""
     try:
         data = await request.get_json()
         base_url = data.get("base_url", "").strip().rstrip("/")
@@ -266,7 +213,6 @@ async def save_ragflow_config():
         if not api_key:
             return jsonify({"code": -1, "message": "API Key is required"}), 400
         
-        # Update settings and save to config.yaml
         success = settings.update_ragflow_config(base_url, api_key)
         
         if success:
@@ -289,15 +235,7 @@ async def save_ragflow_config():
 
 @manager.route("/ragflow/config/test", methods=["POST"])
 async def test_ragflow_connection():
-    """
-    Test RAGFlow API connection
-    ---
-    tags:
-      - System
-    responses:
-      200:
-        description: Connection test result
-    """
+    """Test RAGFlow API connection."""
     try:
         data = await request.get_json()
         base_url = data.get("base_url", "").strip().rstrip("/")
@@ -376,15 +314,7 @@ async def test_ragflow_connection():
 
 @manager.route("/ragflow/current-user", methods=["GET"])
 async def get_ragflow_current_user():
-    """
-    Get current RAGFlow API user info
-    ---
-    tags:
-      - System
-    responses:
-      200:
-        description: Current API key user info
-    """
+    """Get current RAGFlow API user info."""
     from api.services.ragflow_client import ragflow_client, RAGFlowAPIError
     
     if not settings.ragflow_base_url or not settings.ragflow_api_key:
@@ -397,7 +327,6 @@ async def get_ragflow_current_user():
         user_info = await ragflow_client.get_current_user()
         user_id = user_info.get("user_id")
         
-        # Get user details from MySQL if user_id is available
         user_details = None
         if user_id and settings.is_mysql_configured:
             try:
@@ -429,22 +358,13 @@ async def get_ragflow_current_user():
 
 @manager.route("/monitoring/health", methods=["GET"])
 async def get_health_status():
-    """
-    Get comprehensive health status of all services
-    ---
-    tags:
-      - System
-    responses:
-      200:
-        description: Health status of all services
-    """
+    """Get comprehensive health status of all services."""
     health = {
         "mysql": {"status": "unknown", "message": None},
         "ragflow_api": {"status": "unknown", "message": None},
         "overall": "unknown"
     }
     
-    # Check MySQL
     try:
         if settings.is_mysql_configured:
             result = await mysql_client.test_connection()
@@ -471,11 +391,9 @@ async def get_health_status():
             "message": str(e)
         }
     
-    # Check RAGFlow API
     try:
         if settings.ragflow_base_url and settings.ragflow_api_key:
             async with httpx.AsyncClient() as client:
-                # Try health endpoint first
                 try:
                     response = await client.get(
                         f"{settings.ragflow_base_url}/v1/system/healthz",
@@ -489,7 +407,6 @@ async def get_health_status():
                             "details": resp_data
                         }
                     else:
-                        # Fallback to datasets API
                         response = await client.get(
                             f"{settings.ragflow_base_url}/api/v1/datasets",
                             params={"page": 1, "page_size": 1},
@@ -527,7 +444,6 @@ async def get_health_status():
             "message": str(e)
         }
     
-    # Calculate overall status
     statuses = [health["mysql"]["status"], health["ragflow_api"]["status"]]
     if all(s == "healthy" for s in statuses):
         health["overall"] = "healthy"
@@ -543,15 +459,7 @@ async def get_health_status():
 
 @manager.route("/monitoring/stats", methods=["GET"])
 async def get_system_stats():
-    """
-    Get comprehensive system statistics
-    ---
-    tags:
-      - System
-    responses:
-      200:
-        description: System statistics
-    """
+    """Get comprehensive system statistics."""
     try:
         stats = await mysql_client.get_system_statistics()
         return jsonify({"code": 0, "data": stats})
@@ -565,15 +473,7 @@ async def get_system_stats():
 
 @manager.route("/monitoring/ragflow-health", methods=["GET"])
 async def get_ragflow_health():
-    """
-    Get RAGFlow service health details (DB, Redis, DocEngine, Storage)
-    ---
-    tags:
-      - System
-    responses:
-      200:
-        description: RAGFlow service health
-    """
+    """Get RAGFlow service health details."""
     if not settings.ragflow_base_url:
         return jsonify({
             "code": -1,

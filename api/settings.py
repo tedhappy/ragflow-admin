@@ -73,23 +73,18 @@ class Settings:
     def update_ragflow_config(self, base_url: str, api_key: str) -> bool:
         """Update RAGFlow API configuration and save to config.yaml."""
         try:
-            # Ensure ragflow section exists
             if "ragflow" not in self._config:
                 self._config["ragflow"] = {}
             
-            # Update in memory
             self._config["ragflow"]["base_url"] = base_url
             self._config["ragflow"]["api_key"] = api_key
             
-            # Read original file
             original_content = ""
             if self._config_path.exists():
                 with open(self._config_path, "r", encoding="utf-8") as f:
                     original_content = f.read()
             
-            # Check if ragflow section exists
             if "ragflow:" not in original_content:
-                # Find position after comments and add ragflow section
                 lines = original_content.split("\n")
                 insert_idx = 0
                 for i, line in enumerate(lines):
@@ -106,7 +101,6 @@ ragflow:
                 with open(self._config_path, "w", encoding="utf-8") as f:
                     f.write("\n".join(lines))
             else:
-                # Update existing ragflow section
                 lines = original_content.split("\n")
                 new_lines = []
                 in_ragflow_section = False
@@ -200,26 +194,21 @@ ragflow:
     def update_mysql_config(self, host: str, port: int, database: str, user: str, password: str) -> bool:
         """Update MySQL configuration and save to config.yaml."""
         try:
-            # Ensure mysql section exists
             if "mysql" not in self._config:
                 self._config["mysql"] = {}
             
-            # Update in memory
             self._config["mysql"]["host"] = host
             self._config["mysql"]["port"] = port
             self._config["mysql"]["database"] = database
             self._config["mysql"]["user"] = user
             self._config["mysql"]["password"] = password
             
-            # Read original file
             original_content = ""
             if self._config_path.exists():
                 with open(self._config_path, "r", encoding="utf-8") as f:
                     original_content = f.read()
             
-            # Check if mysql section exists
             if "mysql:" not in original_content:
-                # Append mysql section
                 mysql_section = f"""
 # MySQL connection settings for RAGFlow database
 mysql:
@@ -232,7 +221,6 @@ mysql:
                 with open(self._config_path, "a", encoding="utf-8") as f:
                     f.write(mysql_section)
             else:
-                # Update existing mysql section
                 lines = original_content.split("\n")
                 new_lines = []
                 in_mysql_section = False

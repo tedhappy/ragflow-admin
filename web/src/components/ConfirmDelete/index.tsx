@@ -4,13 +4,6 @@
 // Licensed under the Apache License, Version 2.0
 //
 
-/**
- * Confirm Delete Component
- *
- * A reusable delete button with confirmation popover
- * to prevent accidental deletions.
- */
-
 import React from 'react';
 import { Popconfirm, Button } from 'antd';
 import type { PopconfirmProps, ButtonProps } from 'antd';

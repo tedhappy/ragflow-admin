@@ -10,12 +10,7 @@ from api.settings import settings
 
 
 def check_mysql_configured() -> bool:
-    """
-    Check if MySQL connection is properly configured.
-    
-    Returns:
-        bool: True if all required MySQL settings are present.
-    """
+    """Check if MySQL connection is properly configured."""
     return all([
         settings.mysql_host,
         settings.mysql_port,

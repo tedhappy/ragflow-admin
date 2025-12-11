@@ -10,10 +10,6 @@ import { SunOutlined, MoonOutlined } from '@ant-design/icons';
 import { useTheme, ThemeEnum } from '@/components/ThemeProvider';
 import styles from './index.less';
 
-/**
- * Theme toggle component matching RAGFlow's style.
- * Displays sun/moon icons in a toggle button.
- */
 const ThemeToggle: React.FC = () => {
   const { theme, toggleTheme, isDark } = useTheme();
 

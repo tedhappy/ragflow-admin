@@ -4,13 +4,6 @@
 #  Licensed under the Apache License, Version 2.0
 #
 
-"""
-RAGFlow Admin Server Entry Point.
-
-This module starts the Quart application server with configured
-host, port, and debug settings from the configuration file.
-"""
-
 import logging
 import sys
 import os

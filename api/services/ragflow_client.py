@@ -4,14 +4,6 @@
 #  Licensed under the Apache License, Version 2.0
 #
 
-"""
-RAGFlow API client for document operations.
-
-Provides async HTTP client for RAGFlow API interactions including
-document upload, parsing, and dataset management via REST API.
-Uses official RAGFlow Python SDK for document operations.
-"""
-
 import time
 import logging
 import asyncio
@@ -90,7 +82,6 @@ class RAGFlowClient:
     def _load_config(self):
         """Load configuration from settings."""
         base_url = settings.ragflow_base_url or ""
-        # Auto-add http:// if protocol is missing
         if base_url and not base_url.startswith(("http://", "https://")):
             base_url = f"http://{base_url}"
         self._base_url = base_url
@@ -99,7 +90,6 @@ class RAGFlowClient:
             "Authorization": f"Bearer {settings.ragflow_api_key}",
             "Content-Type": "application/json"
         }
-        # Reset SDK client on config reload
         self._sdk_client = None
 
     @property
@@ -107,7 +97,6 @@ class RAGFlowClient:
         """Check if RAGFlow API is properly configured."""
         base_url = settings.ragflow_base_url or ""
         api_key = settings.ragflow_api_key or ""
-        # Accept URLs without protocol (will be auto-added)
         return bool(base_url and api_key)
 
     def _check_configured(self):
@@ -208,7 +197,6 @@ class RAGFlowClient:
         """List datasets with pagination and filtering."""
         name_filter = kwargs.get("name", "")
         
-        # If searching by name, fetch all and filter locally for partial match
         if name_filter:
             params = {
                 "page": 1,
@@ -223,7 +211,6 @@ class RAGFlowClient:
             if result.get("code") == 0:
                 all_items = result.get("data", [])
                 
-                # Local filtering (case-insensitive partial match)
                 name_lower = name_filter.lower()
                 all_items = [
                     item for item in all_items 
@@ -268,7 +255,7 @@ class RAGFlowClient:
     async def delete_datasets(self, ids: list):
         """Delete datasets by IDs."""
         result = await self._delete("/datasets", json={"ids": ids})
-        _total_cache.invalidate()  # Invalidate all cache after delete
+        _total_cache.invalidate()
         if result.get("code") != 0:
             raise RAGFlowAPIError(result.get("message", "Failed to delete datasets"))
         return result
@@ -277,7 +264,6 @@ class RAGFlowClient:
         """List chat assistants with pagination and filtering."""
         name_filter = kwargs.get("name", "")
         
-        # If searching by name, fetch all and filter locally for partial match
         if name_filter:
             params = {
                 "page": 1,
@@ -292,7 +278,6 @@ class RAGFlowClient:
             if result.get("code") == 0:
                 all_items = result.get("data", [])
                 
-                # Local filtering (case-insensitive partial match)
                 name_lower = name_filter.lower()
                 all_items = [
                     item for item in all_items 
@@ -308,7 +293,6 @@ class RAGFlowClient:
                 }
             raise RAGFlowAPIError(result.get("message", "Failed to list chats"))
         
-        # No filter - use RAGFlow's pagination directly
         params = {
             "page": page,
             "page_size": page_size,
@@ -330,7 +314,7 @@ class RAGFlowClient:
     async def delete_chats(self, ids: list):
         """Delete chats by IDs."""
         result = await self._delete("/chats", json={"ids": ids})
-        _total_cache.invalidate()  # Invalidate all cache after delete
+        _total_cache.invalidate()
         if result.get("code") != 0:
             raise RAGFlowAPIError(result.get("message", "Failed to delete chats"))
         return result
@@ -339,7 +323,6 @@ class RAGFlowClient:
         """List agents with pagination and filtering."""
         title_filter = kwargs.get("title", "")
         
-        # If searching by title, fetch all and filter locally for partial match
         if title_filter:
             params = {
                 "page": 1,
@@ -354,7 +337,6 @@ class RAGFlowClient:
             if result.get("code") == 0:
                 all_items = result.get("data", [])
                 
-                # Local filtering (case-insensitive partial match)
                 title_lower = title_filter.lower()
                 all_items = [
                     item for item in all_items 
@@ -370,7 +352,6 @@ class RAGFlowClient:
                 }
             raise RAGFlowAPIError(result.get("message", "Failed to list agents"))
         
-        # No filter - use RAGFlow's pagination directly
         params = {
             "page": page,
             "page_size": page_size,
@@ -395,7 +376,7 @@ class RAGFlowClient:
             result = await self._delete(f"/agents/{agent_id}")
             if result.get("code") != 0:
                 raise RAGFlowAPIError(result.get("message", f"Failed to delete agent {agent_id}"))
-        _total_cache.invalidate()  # Invalidate all cache after delete
+        _total_cache.invalidate()
         return {"code": 0}
     
     def invalidate_cache(self, resource: str = None):
@@ -410,18 +391,15 @@ class RAGFlowClient:
         keywords_filter = kwargs.get("keywords", "")
         run_filter = kwargs.get("run", "")
         
-        # Build base params
         base_params = {
             "orderby": kwargs.get("orderby", "create_time"),
             "desc": kwargs.get("desc", True),
         }
         if kwargs.get("id"):
             base_params["id"] = kwargs["id"]
-        # Add run filter (server-side filtering)
         if run_filter:
             base_params["run"] = run_filter
         
-        # If searching by keywords, fetch all and filter locally
         if keywords_filter:
             params = {
                 **base_params,
@@ -433,7 +411,6 @@ class RAGFlowClient:
             if result.get("code") == 0:
                 all_items = result.get("data", {}).get("docs", [])
                 
-                # Local filtering (case-insensitive partial match on name)
                 keywords_lower = keywords_filter.lower()
                 all_items = [
                     item for item in all_items 
@@ -449,7 +426,6 @@ class RAGFlowClient:
                 }
             raise RAGFlowAPIError(result.get("message", "Failed to list documents"))
         
-        # No keywords filter - use RAGFlow's pagination directly
         params = {
             **base_params,
             "page": page,
@@ -584,8 +560,6 @@ class RAGFlowClient:
     async def get_current_user(self) -> dict:
         """Get current user info based on API key."""
         try:
-            # RAGFlow doesn't have a direct user info API, so we infer from datasets
-            # The tenant_id of any dataset owned by the API key user is the user ID
             result = await self._get("/datasets", params={"page": 1, "page_size": 1})
             if result.get("code") == 0:
                 datasets = result.get("data", [])

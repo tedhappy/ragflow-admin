@@ -4,12 +4,6 @@
 #  Licensed under the Apache License, Version 2.0
 #
 
-"""
-Task Queue Management API.
-
-Provides endpoints for viewing and managing document parsing tasks
-across all datasets in the RAGFlow system.
-"""
 
 import logging
 from quart import Blueprint, jsonify, request
@@ -24,36 +18,7 @@ manager = Blueprint("task", __name__)
 
 @manager.route("/", methods=["GET"])
 async def list_tasks():
-    """
-    List all document parsing tasks across all datasets
-    ---
-    tags:
-      - Task
-    parameters:
-      - name: page
-        in: query
-        type: integer
-        default: 1
-      - name: page_size
-        in: query
-        type: integer
-        default: 20
-      - name: status
-        in: query
-        type: string
-        description: Filter by status (UNSTART, RUNNING, CANCEL, DONE, FAIL)
-      - name: dataset_name
-        in: query
-        type: string
-        description: Filter by dataset name
-      - name: doc_name
-        in: query
-        type: string
-        description: Filter by document name
-    responses:
-      200:
-        description: Task list
-    """
+    """List all document parsing tasks."""
     page = request.args.get("page", 1, type=int)
     page_size = request.args.get("page_size", 20, type=int)
     status = request.args.get("status", None)
@@ -81,15 +46,7 @@ async def list_tasks():
 
 @manager.route("/stats", methods=["GET"])
 async def get_stats():
-    """
-    Get parsing task statistics
-    ---
-    tags:
-      - Task
-    responses:
-      200:
-        description: Task statistics
-    """
+    """Get parsing task statistics."""
     try:
         result = await mysql_client.get_parsing_stats()
         return jsonify({"code": 0, "data": result})
@@ -103,33 +60,7 @@ async def get_stats():
 
 @manager.route("/parse", methods=["POST"])
 async def batch_parse():
-    """
-    Start parsing for multiple documents
-    ---
-    tags:
-      - Task
-    parameters:
-      - name: body
-        in: body
-        required: true
-        schema:
-          type: object
-          properties:
-            tasks:
-              type: array
-              items:
-                type: object
-                properties:
-                  dataset_id:
-                    type: string
-                  document_ids:
-                    type: array
-                    items:
-                      type: string
-    responses:
-      200:
-        description: Documents parsing started
-    """
+    """Start parsing for multiple documents."""
     data = await request.get_json()
     tasks = data.get("tasks", [])
     
@@ -138,7 +69,7 @@ async def batch_parse():
     
     results = []
     errors = []
-    skipped = []  # Tasks skipped due to ownership mismatch
+    skipped = []
     
     for task in tasks:
         dataset_id = task.get("dataset_id")
@@ -147,7 +78,6 @@ async def batch_parse():
         if not dataset_id or not document_ids:
             continue
         
-        # Check ownership before operation
         is_owner, current_user, owner, error_msg = await check_dataset_ownership(dataset_id)
         if not is_owner:
             skipped.append({
@@ -179,7 +109,6 @@ async def batch_parse():
                 "error": str(e)
             })
     
-    # Count documents, not dataset groups
     total_success_docs = sum(len(r.get("document_ids", [])) for r in results)
     total_skipped_docs = sum(len(s.get("document_ids", [])) for s in skipped)
     
@@ -198,33 +127,7 @@ async def batch_parse():
 
 @manager.route("/stop", methods=["POST"])
 async def batch_stop():
-    """
-    Stop parsing for multiple documents
-    ---
-    tags:
-      - Task
-    parameters:
-      - name: body
-        in: body
-        required: true
-        schema:
-          type: object
-          properties:
-            tasks:
-              type: array
-              items:
-                type: object
-                properties:
-                  dataset_id:
-                    type: string
-                  document_ids:
-                    type: array
-                    items:
-                      type: string
-    responses:
-      200:
-        description: Documents parsing stopped
-    """
+    """Stop parsing for multiple documents."""
     data = await request.get_json()
     tasks = data.get("tasks", [])
     
@@ -233,7 +136,7 @@ async def batch_stop():
     
     results = []
     errors = []
-    skipped = []  # Tasks skipped due to ownership mismatch
+    skipped = []
     
     for task in tasks:
         dataset_id = task.get("dataset_id")
@@ -242,7 +145,6 @@ async def batch_stop():
         if not dataset_id or not document_ids:
             continue
         
-        # Check ownership before operation
         is_owner, current_user, owner, error_msg = await check_dataset_ownership(dataset_id)
         if not is_owner:
             skipped.append({
@@ -274,7 +176,6 @@ async def batch_stop():
                 "error": str(e)
             })
     
-    # Count documents, not dataset groups
     total_success_docs = sum(len(r.get("document_ids", [])) for r in results)
     total_skipped_docs = sum(len(s.get("document_ids", [])) for s in skipped)
     
@@ -293,17 +194,8 @@ async def batch_stop():
 
 @manager.route("/retry-failed", methods=["POST"])
 async def retry_failed():
-    """
-    Retry all failed parsing tasks
-    ---
-    tags:
-      - Task
-    responses:
-      200:
-        description: Failed tasks retried
-    """
+    """Retry all failed parsing tasks."""
     try:
-        # Get all failed tasks
         result = await mysql_client.list_parsing_tasks(
             page=1,
             page_size=1000,
@@ -321,7 +213,6 @@ async def retry_failed():
                 }
             })
         
-        # Group by dataset
         dataset_docs = {}
         for task in failed_tasks:
             dataset_id = task.get("dataset_id")
@@ -331,13 +222,11 @@ async def retry_failed():
                     dataset_docs[dataset_id] = []
                 dataset_docs[dataset_id].append(doc_id)
         
-        # Retry parsing
         results = []
         errors = []
-        skipped = []  # Tasks skipped due to ownership mismatch
+        skipped = []
         
         for dataset_id, document_ids in dataset_docs.items():
-            # Check ownership before operation
             is_owner, current_user, owner, error_msg = await check_dataset_ownership(dataset_id)
             if not is_owner:
                 skipped.append({
