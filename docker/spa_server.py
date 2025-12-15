@@ -78,8 +78,14 @@ class SPAHandler(http.server.SimpleHTTPRequestHandler):
         self.do_request('DELETE')
 
 
+class ThreadedHTTPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+    """Multi-threaded HTTP server to handle concurrent requests."""
+    allow_reuse_address = True
+    daemon_threads = True
+
+
 if __name__ == '__main__':
     os.chdir(os.environ.get('WEBROOT', '/ragflow-admin/web/dist'))
-    with socketserver.TCPServer(('', FRONTEND_PORT), SPAHandler) as httpd:
-        print(f"[frontend] Serving on http://0.0.0.0:{FRONTEND_PORT}")
+    with ThreadedHTTPServer(('', FRONTEND_PORT), SPAHandler) as httpd:
+        print(f"[frontend] Serving on http://0.0.0.0:{FRONTEND_PORT} (multi-threaded)")
         httpd.serve_forever()
