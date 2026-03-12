@@ -216,10 +216,10 @@ async def get_user_chats(user_id: str):
     """Get chats owned by a user."""
     if not settings.is_mysql_configured:
         return jsonify({"code": -1, "message": "MySQL not configured"}), 400
-    
+
     page = request.args.get("page", 1, type=int)
     page_size = request.args.get("page_size", 20, type=int)
-    
+
     try:
         result = await mysql_client.get_user_chats(user_id, page=page, page_size=page_size)
         return jsonify({"code": 0, "data": result})
@@ -228,4 +228,90 @@ async def get_user_chats(user_id: str):
         return jsonify({"code": e.code, "message": e.message}), 500
     except Exception as e:
         logger.exception("Unexpected error getting user chats")
+        return jsonify({"code": -1, "message": str(e)}), 500
+
+
+@manager.route("/<user_id>/team-relations", methods=["GET"])
+async def get_user_team_relations(user_id: str):
+    """Get comprehensive team relations for a user.
+
+    Returns:
+        - owned_teams: Teams where user is OWNER
+        - joined_teams: Teams where user is NORMAL member
+        - pending_invites: Teams where user has INVITE status
+        - members: Users in this user's team
+    """
+    if not settings.is_mysql_configured:
+        return jsonify({"code": -1, "message": "MySQL not configured"}), 400
+
+    try:
+        result = await mysql_client.get_user_team_relations(user_id)
+        return jsonify({"code": 0, "data": result})
+    except MySQLClientError as e:
+        logger.error(f"Failed to get team relations: {e.message}")
+        return jsonify({"code": e.code, "message": e.message}), 500
+    except Exception as e:
+        logger.exception("Unexpected error getting team relations")
+        return jsonify({"code": -1, "message": str(e)}), 500
+
+
+@manager.route("/<tenant_id>/team-members", methods=["POST"])
+async def add_team_member(tenant_id: str):
+    """Add a user to a team directly (admin operation).
+
+    Skips the invite flow - directly adds as normal member.
+    In RAGFlow's original flow, user A invites user B with role=invite,
+    then B accepts and becomes role=normal. Here admin sets role=normal directly.
+    """
+    if not settings.is_mysql_configured:
+        return jsonify({"code": -1, "message": "MySQL not configured"}), 400
+
+    data = await request.get_json()
+    user_id = data.get("user_id", "").strip()
+    role = data.get("role", "normal")
+
+    if not user_id:
+        return jsonify({"code": -1, "message": "user_id is required"}), 400
+
+    if role not in ("normal", "admin"):
+        return jsonify({"code": -1, "message": "role must be 'normal' or 'admin'"}), 400
+
+    if user_id == tenant_id:
+        return jsonify({"code": -1, "message": "Cannot add user to their own team"}), 400
+
+    try:
+        result = await mysql_client.add_team_member(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            role=role
+        )
+        return jsonify({"code": 0, "data": result})
+    except MySQLClientError as e:
+        logger.error(f"Failed to add team member: {e.message}")
+        return jsonify({"code": e.code, "message": e.message}), 500
+    except Exception as e:
+        logger.exception("Unexpected error adding team member")
+        return jsonify({"code": -1, "message": str(e)}), 500
+
+
+@manager.route("/<tenant_id>/team-members/<user_id>", methods=["DELETE"])
+async def remove_team_member(tenant_id: str, user_id: str):
+    """Remove a user from a team (admin operation)."""
+    if not settings.is_mysql_configured:
+        return jsonify({"code": -1, "message": "MySQL not configured"}), 400
+
+    try:
+        result = await mysql_client.remove_team_member(
+            tenant_id=tenant_id,
+            user_id=user_id
+        )
+        if result:
+            return jsonify({"code": 0, "message": "Member removed"})
+        else:
+            return jsonify({"code": -1, "message": "Member not found in team"}), 404
+    except MySQLClientError as e:
+        logger.error(f"Failed to remove team member: {e.message}")
+        return jsonify({"code": e.code, "message": e.message}), 500
+    except Exception as e:
+        logger.exception("Unexpected error removing team member")
         return jsonify({"code": -1, "message": str(e)}), 500

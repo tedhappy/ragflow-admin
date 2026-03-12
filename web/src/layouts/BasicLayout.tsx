@@ -1,10 +1,4 @@
-﻿//
-// Copyright 2024 RAGFlow Admin Authors.
-//
-// Licensed under the Apache License, Version 2.0
-//
-
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'umi';
 import { Layout, Menu, Avatar, Dropdown, Space, theme, ConfigProvider, message } from 'antd';
 import type { MenuProps } from 'antd';
@@ -93,15 +87,15 @@ const LayoutContent: React.FC = () => {
       icon: <UnorderedListOutlined />, 
       label: <Link to="/tasks">{t('menu.tasks')}</Link> 
     },
-    { 
-      key: '/users', 
-      icon: <TeamOutlined />, 
-      label: <Link to="/users">{t('menu.users')}</Link> 
+    {
+      key: '/users',
+      icon: <TeamOutlined />,
+      label: <Link to="/users">{t('menu.users')}</Link>
     },
-    { 
-      key: '/settings', 
-      icon: <SettingOutlined />, 
-      label: <Link to="/settings">{t('menu.settings')}</Link> 
+    {
+      key: '/settings',
+      icon: <SettingOutlined />,
+      label: <Link to="/settings">{t('menu.settings')}</Link>
     },
   ];
 

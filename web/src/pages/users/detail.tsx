@@ -6,21 +6,22 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
+import {
   Card, Button, Space, Typography, Spin, Tag, Tabs, Table, Avatar, Descriptions,
-  message 
+  message, Modal, Select, Popconfirm
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { 
-  ArrowLeftOutlined, UserOutlined, DatabaseOutlined, RobotOutlined, MessageOutlined
+import {
+  ArrowLeftOutlined, UserOutlined, DatabaseOutlined, RobotOutlined, MessageOutlined,
+  TeamOutlined, PlusOutlined, DeleteOutlined
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import { userApi, UserDetail, UserDataset, UserAgent, UserChat } from '@/services/api';
+import { userApi, teamApi, UserDetail, UserDataset, UserAgent, UserChat, UserTeamRelations, TeamRelation, RagflowUser } from '@/services/api';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { translateErrorMessage } from '@/utils/i18n';
 import dayjs from 'dayjs';
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 const UserDetailPage: React.FC = () => {
   const { t } = useTranslation();
@@ -44,6 +45,14 @@ const UserDetailPage: React.FC = () => {
   const [chatsTotal, setChatsTotal] = useState(0);
   const [chatsPage, setChatsPage] = useState(1);
   const [chatsPageSize, setChatsPageSize] = useState(10);
+  const [teamRelations, setTeamRelations] = useState<UserTeamRelations | null>(null);
+  const [teamRelationsLoading, setTeamRelationsLoading] = useState(false);
+  const [addMemberModalVisible, setAddMemberModalVisible] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string | undefined>();
+  const [selectedRole, setSelectedRole] = useState<string>('normal');
+  const [allUsers, setAllUsers] = useState<RagflowUser[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [addingMember, setAddingMember] = useState(false);
 
   useEffect(() => {
     if (userId) {
@@ -51,8 +60,15 @@ const UserDetailPage: React.FC = () => {
       loadDatasets(1);
       loadAgents(1);
       loadChats(1);
+      loadTeamRelations();
     }
   }, [userId]);
+
+  useEffect(() => {
+    if (addMemberModalVisible) {
+      loadAllUsers();
+    }
+  }, [addMemberModalVisible]);
 
   const loadUser = async () => {
     try {
@@ -110,6 +126,163 @@ const UserDetailPage: React.FC = () => {
       setChatsLoading(false);
     }
   };
+
+  const loadTeamRelations = async () => {
+    try {
+      setTeamRelationsLoading(true);
+      const result = await teamApi.getUserRelations(userId!);
+      setTeamRelations(result);
+    } catch (error: any) {
+      message.error(translateErrorMessage(error.message, t) || t('teams.loadFailed'));
+    } finally {
+      setTeamRelationsLoading(false);
+    }
+  };
+
+  const loadAllUsers = async () => {
+    try {
+      setUsersLoading(true);
+      const result = await userApi.list({ page: 1, page_size: 1000 });
+      setAllUsers(result.items || []);
+    } catch (error: any) {
+      message.error(translateErrorMessage(error.message, t) || t('users.loadFailed'));
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
+  const handleAddMember = async () => {
+    if (!selectedUserId) {
+      message.warning(t('teams.selectUser'));
+      return;
+    }
+
+    try {
+      setAddingMember(true);
+      await teamApi.addMember(userId!, selectedUserId, selectedRole);
+      message.success(t('teams.addMemberSuccess'));
+      setAddMemberModalVisible(false);
+      setSelectedUserId(undefined);
+      setSelectedRole('normal');
+      loadTeamRelations();
+    } catch (error: any) {
+      message.error(translateErrorMessage(error.message, t) || t('teams.addMemberFailed'));
+    } finally {
+      setAddingMember(false);
+    }
+  };
+
+  const handleRemoveMember = async (memberId: string) => {
+    try {
+      await teamApi.removeMember(userId!, memberId);
+      message.success(t('teams.removeMemberSuccess'));
+      loadTeamRelations();
+    } catch (error: any) {
+      message.error(translateErrorMessage(error.message, t) || t('teams.removeMemberFailed'));
+    }
+  };
+
+  const getRoleTag = (role: string) => {
+    const roleMap: Record<string, { color: string; text: string }> = {
+      owner: { color: 'gold', text: t('teams.roleOwner') },
+      normal: { color: 'green', text: t('teams.roleMember') },
+      invite: { color: 'orange', text: t('teams.rolePending') },
+      admin: { color: 'blue', text: t('teams.roleAdmin') },
+    };
+    const config = roleMap[role] || { color: 'default', text: role };
+    return <Tag color={config.color}>{config.text}</Tag>;
+  };
+
+  // 我的团队成员列表 - 显示成员信息
+  const ownedTeamColumns: ColumnsType<TeamRelation> = [
+    {
+      title: t('teams.member'),
+      key: 'member',
+      render: (_, record) => (
+        <Space>
+          <Avatar
+            src={record.member_avatar}
+            icon={<UserOutlined />}
+            size="small"
+          />
+          <div>
+            <Space>
+              <span>{record.member_nickname || record.nickname || '-'}</span>
+              {getRoleTag(record.role)}
+            </Space>
+            <div style={{ fontSize: '12px', color: '#999' }}>
+              {record.member_email || record.email || '-'}
+            </div>
+          </div>
+        </Space>
+      ),
+    },
+    {
+      title: t('teams.joinedAt'),
+      dataIndex: 'create_date',
+      key: 'create_date',
+      width: 180,
+      render: (date: string) => date ? dayjs(date).format('YYYY-MM-DD HH:mm') : '-',
+    },
+    {
+      title: t('common.actions'),
+      key: 'actions',
+      width: 100,
+      align: 'center',
+      render: (_, record) => (
+        record.role !== 'owner' ? (
+          <Popconfirm
+            title={t('teams.removeConfirm')}
+            onConfirm={() => handleRemoveMember(record.user_id)}
+            okText={t('common.yes')}
+            cancelText={t('common.no')}
+          >
+            <Button
+              type="link"
+              danger
+              size="small"
+              icon={<DeleteOutlined />}
+            >
+              {t('common.delete')}
+            </Button>
+          </Popconfirm>
+        ) : null
+      ),
+    },
+  ];
+
+  // 已加入的团队列表 - 显示团队所有者信息
+  const joinedTeamColumns: ColumnsType<TeamRelation> = [
+    {
+      title: t('teams.teamOwner'),
+      key: 'owner',
+      render: (_, record) => (
+        <Space>
+          <Avatar
+            src={record.owner_avatar}
+            icon={<UserOutlined />}
+            size="small"
+          />
+          <div>
+            <Space>
+              <span>{record.owner_nickname || '-'}</span>
+              {getRoleTag(record.role)}
+            </Space>
+            <div style={{ fontSize: '12px', color: '#999' }}>
+              {record.owner_email || '-'}
+            </div>
+          </div>
+        </Space>
+      ),
+    },
+    {
+      title: t('teams.joinedAt'),
+      dataIndex: 'create_date',
+      key: 'create_date',
+      width: 180,
+      render: (date: string) => date ? dayjs(date).format('YYYY-MM-DD HH:mm') : '-',
+    },
+  ];
 
   const datasetColumns: ColumnsType<UserDataset> = [
     {
@@ -337,6 +510,106 @@ const UserDetailPage: React.FC = () => {
         />
       ),
     },
+    {
+      key: 'teams',
+      label: (
+        <Space>
+          <TeamOutlined />
+          {t('users.detail.teams')}
+          <Tag>
+            {(teamRelations?.owned_teams.length || 0) +
+              (teamRelations?.joined_teams.length || 0) +
+              (teamRelations?.pending_invites.length || 0)}
+          </Tag>
+        </Space>
+      ),
+      children: (
+        <Spin spinning={teamRelationsLoading}>
+          <Space direction="vertical" style={{ width: '100%' }} size={16}>
+            {/* 我的团队成员 */}
+            <Card
+              size="small"
+              title={
+                <Space>
+                  <TeamOutlined />
+                  {t('teams.ownedTeams')}
+                  <Tag color="blue">{teamRelations?.owned_teams.length || 0}</Tag>
+                </Space>
+              }
+              extra={
+                <Button
+                  type="primary"
+                  size="small"
+                  icon={<PlusOutlined />}
+                  onClick={() => setAddMemberModalVisible(true)}
+                >
+                  {t('teams.addMember')}
+                </Button>
+              }
+            >
+              <Table
+                columns={ownedTeamColumns}
+                dataSource={teamRelations?.owned_teams || []}
+                rowKey="id"
+                size="small"
+                pagination={false}
+                locale={{
+                  emptyText: t('teams.noMembers'),
+                }}
+              />
+            </Card>
+
+            {/* 已加入的团队 */}
+            <Card
+              size="small"
+              title={
+                <Space>
+                  <UserOutlined />
+                  {t('teams.joinedTeams')}
+                  <Tag color="green">{teamRelations?.joined_teams.length || 0}</Tag>
+                </Space>
+              }
+            >
+              <Table
+                columns={joinedTeamColumns}
+                dataSource={teamRelations?.joined_teams || []}
+                rowKey="id"
+                size="small"
+                pagination={false}
+                locale={{
+                  emptyText: t('teams.noJoinedTeams'),
+                }}
+              />
+            </Card>
+
+            {/* 待处理邀请 */}
+            {(teamRelations?.pending_invites.length || 0) > 0 && (
+              <Card
+                size="small"
+                title={
+                  <Space>
+                    <MessageOutlined />
+                    {t('teams.pendingInvites')}
+                    <Tag color="orange">{teamRelations?.pending_invites.length || 0}</Tag>
+                  </Space>
+                }
+              >
+                <Table
+                  columns={joinedTeamColumns}
+                  dataSource={teamRelations?.pending_invites || []}
+                  rowKey="id"
+                  size="small"
+                  pagination={false}
+                  locale={{
+                    emptyText: t('teams.noPendingInvites'),
+                  }}
+                />
+              </Card>
+            )}
+          </Space>
+        </Spin>
+      ),
+    },
   ];
 
   return (
@@ -408,6 +681,57 @@ const UserDetailPage: React.FC = () => {
           )}
         </div>
       </Spin>
+
+      <Modal
+        title={t('teams.addMember')}
+        open={addMemberModalVisible}
+        onOk={handleAddMember}
+        onCancel={() => {
+          setAddMemberModalVisible(false);
+          setSelectedUserId(undefined);
+          setSelectedRole('normal');
+        }}
+        confirmLoading={addingMember}
+        okText={t('common.confirm')}
+        cancelText={t('common.cancel')}
+        width={480}
+      >
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: 8, fontWeight: 500 }}>{t('teams.selectUserToAdd')}</div>
+          <Select
+            style={{ width: '100%' }}
+            placeholder={t('teams.selectUser')}
+            value={selectedUserId}
+            onChange={setSelectedUserId}
+            loading={usersLoading}
+            showSearch
+            filterOption={(input, option) =>
+              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+            }
+            options={allUsers
+              .filter(u => u.id !== userId)
+              .map(u => ({
+                label: `${u.nickname || u.email} (${u.email})`,
+                value: u.id,
+              }))}
+          />
+        </div>
+        <div style={{
+          marginTop: 16,
+          padding: 12,
+          background: '#f5f5f5',
+          borderRadius: 4,
+          fontSize: 13,
+          color: '#666'
+        }}>
+          <div style={{ marginBottom: 4 }}>
+            💡 {t('teams.addMemberTip')}
+          </div>
+          <div>
+            • {t('teams.addMemberTipDetail')}
+          </div>
+        </div>
+      </Modal>
     </ErrorBoundary>
   );
 };

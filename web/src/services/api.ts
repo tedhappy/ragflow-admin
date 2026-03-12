@@ -553,4 +553,42 @@ export const monitoringApi = {
     request.get<any, RagflowHealth>('/system/monitoring/ragflow-health'),
 };
 
+export interface TeamRelation {
+  id: string;
+  user_id: string;
+  tenant_id: string;
+  role: 'owner' | 'normal' | 'invite' | 'admin';
+  invited_by: string;
+  status: string;
+  nickname?: string;
+  email?: string;
+  avatar?: string;
+  member_nickname?: string;
+  member_email?: string;
+  member_avatar?: string;
+  owner_nickname?: string;
+  owner_email?: string;
+  owner_avatar?: string;
+  invited_by_name?: string;
+  invited_by_email?: string;
+  create_date?: string;
+  update_date?: string;
+}
+
+export interface UserTeamRelations {
+  user_id: string;
+  owned_teams: TeamRelation[];
+  joined_teams: TeamRelation[];
+  pending_invites: TeamRelation[];
+}
+
+export const teamApi = {
+  getUserRelations: (userId: string) =>
+    request.get<any, UserTeamRelations>(`/users/${userId}/team-relations`),
+  addMember: (tenantId: string, userId: string, role?: string) =>
+    request.post<any, { message: string }>(`/users/${tenantId}/team-members`, { user_id: userId, role: role || 'normal' }),
+  removeMember: (tenantId: string, userId: string) =>
+    request.delete<any, { message: string }>(`/users/${tenantId}/team-members/${userId}`),
+};
+
 export default request;

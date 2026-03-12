@@ -1321,5 +1321,273 @@ class MySQLClient:
         finally:
             await self._release_connection(conn)
 
+    async def get_user_team_relations(self, user_id: str) -> Dict[str, Any]:
+        """Get comprehensive team relations for a user.
+
+        Returns:
+            - owned_teams: Teams where user is OWNER (members in this user's team)
+            - joined_teams: Teams where user is NORMAL member
+            - pending_invites: Teams where user has INVITE status
+        """
+        conn = await self._get_connection()
+        try:
+            async with conn.cursor() as cursor:
+                result = {
+                    "user_id": user_id,
+                    "owned_teams": [],
+                    "joined_teams": [],
+                    "pending_invites": []
+                }
+
+                # Get members in this user's team (where this user is the tenant/owner)
+                await cursor.execute("""
+                    SELECT
+                        ut.id,
+                        ut.user_id,
+                        ut.tenant_id,
+                        ut.role,
+                        ut.invited_by,
+                        ut.status,
+                        u.nickname,
+                        u.email,
+                        u.avatar,
+                        inviter.nickname as invited_by_name,
+                        inviter.email as invited_by_email,
+                        ut.create_date,
+                        ut.update_date
+                    FROM user_tenant ut
+                    LEFT JOIN user u ON ut.user_id = u.id
+                    LEFT JOIN user inviter ON ut.invited_by = inviter.id
+                    WHERE ut.tenant_id = %s AND ut.status = '1'
+                    ORDER BY ut.create_date DESC
+                """, (user_id,))
+
+                rows = await cursor.fetchall()
+                for row in rows:
+                    result["owned_teams"].append({
+                        "id": row[0],
+                        "user_id": row[1],
+                        "tenant_id": row[2],
+                        "role": row[3],
+                        "invited_by": row[4],
+                        "status": row[5],
+                        "nickname": row[6],
+                        "email": row[7],
+                        "avatar": row[8],
+                        "invited_by_name": row[9],
+                        "invited_by_email": row[10],
+                        "create_date": format_datetime(row[11]),
+                        "update_date": format_datetime(row[12])
+                    })
+
+                # Get teams this user has joined (as NORMAL member)
+                await cursor.execute("""
+                    SELECT
+                        ut.id,
+                        ut.user_id,
+                        ut.tenant_id,
+                        ut.role,
+                        ut.invited_by,
+                        ut.status,
+                        owner.nickname as owner_nickname,
+                        owner.email as owner_email,
+                        owner.avatar as owner_avatar,
+                        inviter.nickname as invited_by_name,
+                        inviter.email as invited_by_email,
+                        ut.create_date,
+                        ut.update_date
+                    FROM user_tenant ut
+                    LEFT JOIN user owner ON ut.tenant_id = owner.id
+                    LEFT JOIN user inviter ON ut.invited_by = inviter.id
+                    WHERE ut.user_id = %s AND ut.role = 'normal' AND ut.status = '1'
+                    ORDER BY ut.create_date DESC
+                """, (user_id,))
+
+                rows = await cursor.fetchall()
+                for row in rows:
+                    result["joined_teams"].append({
+                        "id": row[0],
+                        "user_id": row[1],
+                        "tenant_id": row[2],
+                        "role": row[3],
+                        "invited_by": row[4],
+                        "status": row[5],
+                        "owner_nickname": row[6],
+                        "owner_email": row[7],
+                        "owner_avatar": row[8],
+                        "invited_by_name": row[9],
+                        "invited_by_email": row[10],
+                        "create_date": format_datetime(row[11]),
+                        "update_date": format_datetime(row[12])
+                    })
+
+                # Get pending invites
+                await cursor.execute("""
+                    SELECT
+                        ut.id,
+                        ut.user_id,
+                        ut.tenant_id,
+                        ut.role,
+                        ut.invited_by,
+                        ut.status,
+                        owner.nickname as owner_nickname,
+                        owner.email as owner_email,
+                        owner.avatar as owner_avatar,
+                        inviter.nickname as invited_by_name,
+                        inviter.email as invited_by_email,
+                        ut.create_date,
+                        ut.update_date
+                    FROM user_tenant ut
+                    LEFT JOIN user owner ON ut.tenant_id = owner.id
+                    LEFT JOIN user inviter ON ut.invited_by = inviter.id
+                    WHERE ut.user_id = %s AND ut.role = 'invite' AND ut.status = '1'
+                    ORDER BY ut.create_date DESC
+                """, (user_id,))
+
+                rows = await cursor.fetchall()
+                for row in rows:
+                    result["pending_invites"].append({
+                        "id": row[0],
+                        "user_id": row[1],
+                        "tenant_id": row[2],
+                        "role": row[3],
+                        "invited_by": row[4],
+                        "status": row[5],
+                        "owner_nickname": row[6],
+                        "owner_email": row[7],
+                        "owner_avatar": row[8],
+                        "invited_by_name": row[9],
+                        "invited_by_email": row[10],
+                        "create_date": format_datetime(row[11]),
+                        "update_date": format_datetime(row[12])
+                    })
+
+                return result
+        finally:
+            await self._release_connection(conn)
+
+    async def add_team_member(
+        self,
+        tenant_id: str,
+        user_id: str,
+        role: str = "normal"
+    ) -> Dict[str, Any]:
+        """Add a user to a team directly (admin operation).
+
+        Mimics RAGFlow's user_tenant table structure:
+        - Creates a user_tenant record with role=normal (skipping invite flow)
+        - Uses UUID for the record ID
+        - Sets status=1 (valid)
+
+        Args:
+            tenant_id: The team owner's user ID
+            user_id: The user to add to the team
+            role: The role to assign (normal or admin)
+        """
+        import uuid
+
+        conn = await self._get_connection()
+        try:
+            async with conn.cursor() as cursor:
+                # Verify both users exist
+                await cursor.execute("SELECT id, nickname, email FROM user WHERE id = %s", (tenant_id,))
+                tenant_user = await cursor.fetchone()
+                if not tenant_user:
+                    raise MySQLClientError("Team owner not found", code=-1)
+
+                await cursor.execute("SELECT id, nickname, email FROM user WHERE id = %s", (user_id,))
+                member_user = await cursor.fetchone()
+                if not member_user:
+                    raise MySQLClientError("User to add not found", code=-1)
+
+                # Check if relation already exists
+                await cursor.execute(
+                    "SELECT id, role, status FROM user_tenant WHERE user_id = %s AND tenant_id = %s",
+                    (user_id, tenant_id)
+                )
+                existing = await cursor.fetchone()
+
+                if existing:
+                    existing_role = existing[1]
+                    existing_status = existing[2]
+
+                    if existing_status == '1' and existing_role in ('normal', 'owner', 'admin'):
+                        raise MySQLClientError(
+                            f"User '{member_user[1] or member_user[2]}' is already in the team (role: {existing_role})",
+                            code=-1
+                        )
+
+                    # Update existing record (e.g. was invite, now set to normal)
+                    now_ts = int(time.time() * 1000)
+                    now_dt = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    await cursor.execute(
+                        "UPDATE user_tenant SET role = %s, status = '1', update_time = %s, update_date = %s WHERE id = %s",
+                        (role, now_ts, now_dt, existing[0])
+                    )
+                    return {
+                        "id": existing[0],
+                        "action": "updated",
+                        "user_id": user_id,
+                        "tenant_id": tenant_id,
+                        "role": role,
+                        "member_nickname": member_user[1],
+                        "member_email": member_user[2],
+                    }
+
+                # Create new record
+                record_id = uuid.uuid1().hex  # 32-char UUID without hyphens
+                now_ts = int(time.time() * 1000)
+                now_dt = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                await cursor.execute("""
+                    INSERT INTO user_tenant (id, user_id, tenant_id, invited_by, role, status, create_time, create_date, update_time, update_date)
+                    VALUES (%s, %s, %s, %s, %s, '1', %s, %s, %s, %s)
+                """, (record_id, user_id, tenant_id, tenant_id, role, now_ts, now_dt, now_ts, now_dt))
+
+                return {
+                    "id": record_id,
+                    "action": "created",
+                    "user_id": user_id,
+                    "tenant_id": tenant_id,
+                    "role": role,
+                    "member_nickname": member_user[1],
+                    "member_email": member_user[2],
+                }
+        finally:
+            await self._release_connection(conn)
+
+    async def remove_team_member(self, tenant_id: str, user_id: str) -> bool:
+        """Remove a user from a team.
+
+        Sets status to 0 (invalid) rather than deleting, consistent with RAGFlow's soft-delete pattern.
+
+        Args:
+            tenant_id: The team owner's user ID
+            user_id: The user to remove
+        """
+        conn = await self._get_connection()
+        try:
+            async with conn.cursor() as cursor:
+                # Don't allow removing the owner
+                await cursor.execute(
+                    "SELECT role FROM user_tenant WHERE user_id = %s AND tenant_id = %s AND status = '1'",
+                    (user_id, tenant_id)
+                )
+                existing = await cursor.fetchone()
+                if not existing:
+                    return False
+
+                if existing[0] == 'owner':
+                    raise MySQLClientError("Cannot remove the team owner", code=-1)
+
+                now_ts = int(time.time() * 1000)
+                now_dt = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                await cursor.execute(
+                    "UPDATE user_tenant SET status = '0', update_time = %s, update_date = %s WHERE user_id = %s AND tenant_id = %s AND status = '1'",
+                    (now_ts, now_dt, user_id, tenant_id)
+                )
+                return cursor.rowcount > 0
+        finally:
+            await self._release_connection(conn)
+
 
 mysql_client = MySQLClient()
