@@ -54,12 +54,13 @@ RAGFlow is a powerful RAG engine, but its built-in management interface has some
 | **📄 Document Management** | Upload, parse, stop, delete documents with real-time progress tracking |
 | **📊 Task Queue** | Global task monitoring across all datasets with queue position, filtering and batch control |
 
-### Extended Capabilities  
+### Extended Capabilities
 | Feature | Description |
 |---------|-------------|
 | **💬 Chat Management** | View and manage chat assistants and conversation sessions |
 | **🤖 Agent Management** | List and manage AI agents across users |
-| **👥 User Management** | View RAGFlow users with statistics (requires MySQL access) |
+| **👥 User Management** | View RAGFlow users with statistics, manage team relations (requires MySQL access) |
+| **👥 Team Relations** | View and manage user team memberships - owned teams, joined teams, and pending invites |
 | **🔍 System Monitoring** | Dashboard with service health checks and usage statistics |
 | **🌐 i18n Support** | Full internationalization (English & Chinese) |
 
@@ -88,6 +89,11 @@ RAGFlow is a powerful RAG engine, but its built-in management interface has some
 ### Chat Management
 <p align="center">
   <img src="docs/images/chats.jpg" width="800" alt="Chats"/>
+</p>
+
+### Team Relations
+<p align="center">
+  <img src="docs/images/teams.png" width="800" alt="teams"/>
 </p>
 
 ### User Management
